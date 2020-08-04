@@ -1,24 +1,42 @@
 # pylint: disable=invalid-name,too-few-public-methods
 import ctypes
 import dataclasses
-from typing import TYPE_CHECKING, Iterator, List, Set, Tuple, cast
+import struct
+from typing import TYPE_CHECKING, Dict, Iterator, List, Set, Tuple, Union, cast
 
-from . import _bsd, _cache, _psposix, _util
+from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
 
 if TYPE_CHECKING:
     from ._process import Process
+
+libc = _ffi.load_libc()
+libc.proc_pidinfo.argtypes = (
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_uint64,
+    ctypes.c_void_p,
+    ctypes.c_int,
+)
+libc.proc_pidinfo.restype = ctypes.c_int
 
 WMESGLEN = 7
 NGROUPS = 16
 COMPAT_MAXLOGNAME = 12
 MAXCOMLEN = 16
 
+MAXPATHLEN = 1024
+
 CTL_KERN = 1
+KERN_PROCARGS2 = 49
 KERN_BOOTTIME = 21
 KERN_PROC = 14
 KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
+
+PROC_PIDVNODEPATHINFO = 9
+PROC_PIDPATHINFO = 11
+PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 
 caddr_t = ctypes.c_char_p
 segsz_t = ctypes.c_int32
@@ -28,6 +46,8 @@ u_quad_t = ctypes.c_uint64
 time_t = ctypes.c_long
 suseconds_t = ctypes.c_int32
 sigset_t = ctypes.c_uint32
+fsid_t = ctypes.c_int32 * 2
+off_t = ctypes.c_int64
 
 
 @dataclasses.dataclass
@@ -183,6 +203,55 @@ class KinfoProc(ctypes.Structure):
         return list(self.kp_eproc.e_ucred.cr_groups[: self.kp_eproc.e_ucred.cr_ngroups])
 
 
+class VinfoStat(ctypes.Structure):
+    _fields_ = [
+        ("vst_dev", ctypes.c_uint32),
+        ("vst_mode", ctypes.c_uint16),
+        ("vst_nlink", ctypes.c_uint16),
+        ("vst_ino", ctypes.c_uint64),
+        ("vst_uid", uid_t),
+        ("vst_gid", gid_t),
+        ("vst_atime", ctypes.c_int64),
+        ("vst_atimensec", ctypes.c_int64),
+        ("vst_mtime", ctypes.c_int64),
+        ("vst_mtimensec", ctypes.c_int64),
+        ("vst_ctime", ctypes.c_int64),
+        ("vst_ctimensec", ctypes.c_int64),
+        ("vst_birthtime", ctypes.c_int64),
+        ("vst_birthtimensec", ctypes.c_int64),
+        ("vst_size", off_t),
+        ("vst_blocks", ctypes.c_int64),
+        ("vst_blksize", ctypes.c_int32),
+        ("vst_flags", ctypes.c_uint32),
+        ("vst_gen", ctypes.c_uint32),
+        ("vst_rdev", ctypes.c_uint32),
+        ("vst_qspare", (ctypes.c_int64 * 2)),
+    ]
+
+
+class VnodeInfo(ctypes.Structure):
+    _fields_ = [
+        ("vi_stat", VinfoStat),
+        ("vi_type", ctypes.c_int),
+        ("vi_pad", ctypes.c_int),
+        ("vi_fsid", fsid_t),
+    ]
+
+
+class VnodeInfoPath(ctypes.Structure):
+    _fields_ = [
+        ("vip_vi", VnodeInfo),
+        ("vip_path", (ctypes.c_char * MAXPATHLEN)),
+    ]
+
+
+class ProcVnodePathInfo(ctypes.Structure):
+    _fields_ = [
+        ("pvi_cdir", VnodeInfoPath),
+        ("pvi_rdir", VnodeInfoPath),
+    ]
+
+
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
 
@@ -203,6 +272,23 @@ def _list_kinfo_procs() -> List[KinfoProc]:
     kinfo_proc_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
     nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
     return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
+
+
+def _proc_pidinfo(
+    pid: int, flavor: int, arg: int, buf: Union[ctypes.Array, ctypes.Structure]  # type: ignore
+) -> int:
+    res = libc.proc_pidinfo(pid, flavor, arg, buf, ctypes.sizeof(buf))
+    if res < 0:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    return cast(int, res)
+
+
+@_cache.CachedByProcess
+def _get_proc_vnode_info(proc: "Process") -> ProcVnodePathInfo:
+    info = ProcVnodePathInfo()
+    _proc_pidinfo(proc.pid, PROC_PIDVNODEPATHINFO, 0, info)
+    return info
 
 
 def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
@@ -239,6 +325,53 @@ def proc_gids(proc: "Process") -> Tuple[int, int, int]:
 
 def proc_getgroups(proc: "Process") -> List[int]:
     return _get_kinfo_proc(proc).get_groups()
+
+
+def proc_cwd(proc: "Process") -> str:
+    return cast(str, _get_proc_vnode_info(proc).pvi_cdir.vip_path.value.decode())
+
+
+def proc_root(proc: "Process") -> str:
+    return cast(str, _get_proc_vnode_info(proc).pvi_rdir.vip_path.value.decode())
+
+
+@_cache.CachedByProcess
+def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
+    if proc.pid == 0:
+        raise ProcessLookupError
+
+    data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROCARGS2, proc.pid], None)
+    argc = struct.unpack("i", data[: ctypes.sizeof(ctypes.c_int)])[0]
+    data = data[ctypes.sizeof(ctypes.c_int):]
+    if data.endswith(b"\0"):
+        data = data[:-1]
+
+    items = data.split(b"\0")
+
+    environ = {}
+    for env_item in items[argc:]:
+        try:
+            key, value = env_item.split(b"=", 1)
+        except ValueError:
+            pass
+        else:
+            environ[key.decode()] = value.decode()
+
+    return [arg.decode() for arg in items[:argc]], environ
+
+
+def proc_cmdline(proc: "Process") -> List[str]:
+    return _proc_cmdline_environ(proc)[0]
+
+
+def proc_environ(proc: "Process") -> Dict[str, str]:
+    return _proc_cmdline_environ(proc)[1]
+
+
+def proc_exe(proc: "Process") -> str:
+    buf = (ctypes.c_char * PROC_PIDPATHINFO_MAXSIZE)()
+    _proc_pidinfo(proc.pid, PROC_PIDPATHINFO, 0, buf)
+    return buf.value.decode()
 
 
 def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
