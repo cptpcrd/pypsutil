@@ -283,7 +283,7 @@ def _proc_pidinfo(
     allow_zero: bool = False,
 ) -> int:
     res = libc.proc_pidinfo(pid, flavor, arg, ctypes.byref(buf), ctypes.sizeof(buf))
-    if res < 0 or (res == 0 and allow_zero):
+    if res < 0 or (res == 0 and not allow_zero):
         raise _ffi.build_oserror(ctypes.get_errno())
 
     return cast(int, res)
