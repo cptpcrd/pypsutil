@@ -151,7 +151,9 @@ def proc_rlimit(
     proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
 ) -> Tuple[int, int]:
     if new_limits is None:
-        return resource.prlimit(proc.pid, res)  # pylint: disable=no-member
+        return resource.prlimit(  # pylint: disable=no-member  # pytype: disable=missing-parameter
+            proc.pid, res
+        )
     else:
         return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
 
