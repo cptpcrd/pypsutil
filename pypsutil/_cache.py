@@ -12,7 +12,9 @@ class CachedByProcess(Generic[T]):
         self._name = self.__class__.__name__ + "-" + func.__module__ + "." + func.__name__
 
     def get_cached_value(self, proc: "Process") -> T:
-        return cast(T, proc._get_cache(self._name))  # pylint: disable=protected-access
+        return cast(  # pytype: disable=invalid-typevar
+            T, proc._get_cache(self._name)  # pylint: disable=protected-access
+        )
 
     def __call__(self, proc: "Process") -> T:
         try:
