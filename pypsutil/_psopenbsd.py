@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 CTL_KERN = 1
 
+KERN_BOOTTIME = 21
 KERN_PROC = 66
 KERN_PROC_PID = 1
 KERN_PROC_KTHREAD = 7
@@ -26,6 +27,19 @@ KI_MAXCOMLEN = 24
 KI_WMESGLEN = 8
 KI_MAXLOGNAME = 32
 KI_MAXEMULLEN = 16
+
+time_t = ctypes.c_int64  # pylint: disable=invalid-name
+suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
+
+
+class Timeval(ctypes.Structure):
+    _fields_ = [
+        ("tv_sec", time_t),
+        ("tv_usec", suseconds_t),
+    ]
+
+    def to_float(self) -> float:
+        return cast(float, self.tv_sec + (self.tv_usec / 1000000.0))
 
 
 class KinfoProc(ctypes.Structure):
@@ -279,3 +293,9 @@ def pid_0_exists() -> bool:
         return False
     else:
         return True
+
+
+def boot_time() -> float:
+    btime = Timeval()
+    _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
+    return btime.to_float()

@@ -15,6 +15,7 @@ COMPAT_MAXLOGNAME = 12
 MAXCOMLEN = 16
 
 CTL_KERN = 1
+KERN_BOOTTIME = 21
 KERN_PROC = 14
 KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
@@ -251,3 +252,9 @@ def pid_0_exists() -> bool:
         return False
     else:
         return True
+
+
+def boot_time() -> float:
+    btime = Timeval()
+    _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
+    return btime.to_float()

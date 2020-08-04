@@ -16,6 +16,7 @@ PROC_PID_LIMIT = 2
 PROC_PID_LIMIT_TYPE_SOFT = 1
 PROC_PID_LIMIT_TYPE_HARD = 2
 
+KERN_BOOTTIME = 83
 KERN_PROC2 = 47
 KERN_PROC_ARGS = 48
 KERN_PROC_ALL = 0
@@ -32,6 +33,8 @@ KI_MAXLOGNAME = 24
 KI_MAXEMULLEN = 16
 
 rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
+
+time_t = ctypes.c_int64  # pylint: disable=invalid-name
 
 
 def _proc_rlimit_getset(proc: "Process", res: int, new_limit: Optional[int], hard: bool) -> int:
@@ -85,6 +88,16 @@ def proc_rlimit(
 
 
 proc_getrlimit = proc_rlimit
+
+
+class Timespec(ctypes.Structure):
+    _fields_ = [
+        ("tv_sec", time_t),
+        ("tv_nsec", ctypes.c_long),
+    ]
+
+    def to_float(self) -> float:
+        return cast(float, self.tv_sec + (self.tv_nsec / 1000000000.0))
 
 
 class KiSigset(ctypes.Structure):
@@ -339,3 +352,9 @@ def pid_0_exists() -> bool:
         return False
     else:
         return True
+
+
+def boot_time() -> float:
+    btime = Timespec()
+    _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
+    return btime.to_float()
