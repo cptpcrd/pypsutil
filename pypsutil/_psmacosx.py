@@ -276,10 +276,14 @@ def _list_kinfo_procs() -> List[KinfoProc]:
 
 
 def _proc_pidinfo(
-    pid: int, flavor: int, arg: int, buf: Union[ctypes.Array, ctypes.Structure]  # type: ignore
+    pid: int,
+    flavor: int,
+    arg: int,
+    buf: Union[ctypes.Array, ctypes.Structure],  # type: ignore
+    allow_zero: bool = False,
 ) -> int:
     res = libc.proc_pidinfo(pid, flavor, arg, ctypes.byref(buf), ctypes.sizeof(buf))
-    if res <= 0:
+    if res < 0 or (res == 0 and allow_zero):
         raise _ffi.build_oserror(ctypes.get_errno())
 
     return cast(int, res)
@@ -376,7 +380,7 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
 
 def proc_exe(proc: "Process") -> str:
     buf = (ctypes.c_char * PROC_PIDPATHINFO_MAXSIZE)()
-    _proc_pidinfo(proc.pid, PROC_PIDPATHINFO, 0, buf)
+    _proc_pidinfo(proc.pid, PROC_PIDPATHINFO, 0, buf, allow_zero=True)
     return buf.value.decode()
 
 
