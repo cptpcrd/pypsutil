@@ -254,6 +254,11 @@ def iter_pids() -> Iterator[int]:
         yield kinfo.ki_pid
 
 
+def pid_create_time(pid: int) -> float:
+    kinfo = _get_kinfo_proc2_pid(pid)
+    return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+
+
 def proc_name(proc: "Process") -> str:
     return _ffi.char_array_to_bytes(_get_kinfo_proc2(proc).p_comm).decode()
 

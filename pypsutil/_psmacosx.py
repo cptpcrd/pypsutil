@@ -214,6 +214,10 @@ def iter_pids() -> Iterator[int]:
         yield kinfo.ki_pid
 
 
+def pid_create_time(pid: int) -> float:
+    return cast(float, _get_kinfo_proc_pid(pid).kp_proc.p_un.p_starttime.to_float())
+
+
 def proc_getgroups(proc: "Process") -> List[int]:
     return _get_kinfo_proc(proc).get_groups()
 
