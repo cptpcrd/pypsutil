@@ -232,7 +232,11 @@ def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
     )
 
 
-def proc_getpgid(proc: "Process") -> int:
+def proc_ppid(proc: "Process") -> int:
+    return cast(int, _get_kinfo_proc(proc).kp_eproc.e_ppid)
+
+
+def proc_pgid(proc: "Process") -> int:
     if proc.pid == 0 or proc._is_cache_enabled():  # pylint: disable=protected-access
         # Either a) pid=0, so we can't use getpgid() (because for that function
         # pid=0 means the current process) or b) we're in a oneshot() and
