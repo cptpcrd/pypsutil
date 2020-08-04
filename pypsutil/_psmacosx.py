@@ -344,10 +344,6 @@ def proc_cwd(proc: "Process") -> str:
     return cast(str, _get_proc_vnode_info(proc).pvi_cdir.vip_path.decode())
 
 
-def proc_root(proc: "Process") -> str:
-    return cast(str, _get_proc_vnode_info(proc).pvi_rdir.vip_path.decode())
-
-
 def proc_name(proc: "Process") -> str:
     return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).kp_proc.p_comm).decode()
 
