@@ -63,7 +63,7 @@ class ExternProcPunSt1(ctypes.Structure):
 class ExternProcPun(ctypes.Union):
     _fields_ = [
         ("p_st1", ExternProcPunSt1),
-        ("p_startime", Timeval),
+        ("p_starttime", Timeval),
     ]
 
 
