@@ -65,6 +65,17 @@ def test_parents() -> None:
     assert proc.parent() is None
 
 
+def test_children() -> None:
+    cur_proc = pypsutil.Process()
+    child_proc = fork_proc(lambda: sys.exit(0))
+
+    assert child_proc.ppid() == cur_proc.pid
+    assert child_proc.parent() == cur_proc
+    assert child_proc in cur_proc.children()
+
+    os.waitpid(child_proc.pid, 0)
+
+
 if hasattr(pypsutil.Process, "umask"):
 
     def test_umask() -> None:
