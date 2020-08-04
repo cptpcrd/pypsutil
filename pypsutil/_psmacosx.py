@@ -348,6 +348,10 @@ def proc_root(proc: "Process") -> str:
     return cast(str, _get_proc_vnode_info(proc).pvi_rdir.vip_path.decode())
 
 
+def proc_name(proc: "Process") -> str:
+    return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).kp_proc.p_comm).decode()
+
+
 @_cache.CachedByProcess
 def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     if proc.pid == 0:
