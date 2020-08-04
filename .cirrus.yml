@@ -29,8 +29,8 @@ task:
         PYTHON_EXE: python3.7
         PIP_EXE: pip-3.7
 
-  # env:
-  #   CODECOV_TOKEN: ENCRYPTED[]
+  env:
+    CODECOV_TOKEN: ENCRYPTED[11110d45532021cebe01ea3bc4501a9feb9c1c06ad65e1460795293f1e1194dd875a6daec58ce0a8dca9d6b9b65bdf31]
 
   install_script:
     - pkg install -y $PYTHON_PORT_NAMES cmake ninja gcc bash
