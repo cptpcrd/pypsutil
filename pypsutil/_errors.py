@@ -1,0 +1,2 @@
+class ZombieProcess(ProcessLookupError):
+    pass

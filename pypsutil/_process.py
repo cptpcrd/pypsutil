@@ -1,0 +1,377 @@
+import collections
+import contextlib
+import os
+import pwd
+import resource
+import signal
+import threading
+from typing import Any, Dict, Iterator, List, Optional, Tuple, cast
+
+from . import _psimpl
+
+ProcessSignalMasks = _psimpl.ProcessSignalMasks
+Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
+Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
+
+
+class Process:
+    _create_time: Optional[float] = None
+
+    def __init__(self, pid: Optional[int] = None) -> None:
+        if pid is None:
+            pid = os.getpid()
+
+        if pid < 0 or (pid == 0 and not _psimpl.pid_0_exists()):
+            raise ProcessLookupError
+
+        self._pid = pid
+        self._dead = False
+        self._cache: Optional[Dict[str, Any]] = None
+        self._lock = threading.RLock()
+
+        self.create_time()
+
+    @classmethod
+    def _create(cls, pid: int, create_time: float) -> "Process":
+        proc = object.__new__(cls)
+        proc._create_time = create_time  # pylint: disable=protected-access
+        proc.__init__(pid)
+        return cast(Process, proc)
+
+    def _get_cache(self, name: str) -> Any:
+        with self._lock:
+            if self._cache is None:
+                raise KeyError
+
+            return self._cache[name]
+
+    def _set_cache(self, name: str, value: Any) -> None:
+        with self._lock:
+            if self._cache is not None:
+                self._cache[name] = value
+
+    def _is_cache_enabled(self) -> bool:
+        with self._lock:
+            return self._cache is not None
+
+    @property
+    def pid(self) -> int:
+        return self._pid
+
+    def ppid(self) -> int:
+        return _psimpl.proc_ppid(self)
+
+    def parent(self) -> Optional["Process"]:
+        ppid = self.ppid()
+        if ppid <= 0:
+            return None
+
+        try:
+            return Process(ppid)
+        except ProcessLookupError:
+            return None
+
+    def parents(self) -> List["Process"]:
+        proc = self
+        parents: List[Process] = []
+
+        while True:
+            proc = proc.parent()  # type: ignore
+            if proc is None:
+                return parents
+
+            parents.append(proc)
+
+    def children(self, *, recursive: bool = False) -> List["Process"]:
+        children = [proc for proc in process_iter() if proc.ppid() == self.pid]
+
+        if recursive:
+            descendants = []
+            for child in children:
+                descendants.extend(child.children(recursive=True))
+
+            children.extend(descendants)
+
+        return children
+
+    def create_time(self) -> float:
+        if self._create_time is None:
+            self._create_time = _psimpl.pid_create_time(self._pid)
+
+        return self._create_time
+
+    def pgid(self) -> int:
+        return _psimpl.proc_pgid(self)
+
+    def sid(self) -> int:
+        return _psimpl.proc_sid(self)
+
+    def name(self) -> str:
+        return _psimpl.proc_name(self)
+
+    def exe(self) -> str:
+        return _psimpl.proc_exe(self)
+
+    def cmdline(self) -> List[str]:
+        return _psimpl.proc_cmdline(self)
+
+    def cwd(self) -> str:
+        return _psimpl.proc_cwd(self)
+
+    def environ(self) -> Dict[str, str]:
+        return _psimpl.proc_environ(self)
+
+    def uids(self) -> Tuple[int, int, int]:
+        return Uids(*_psimpl.proc_uids(self))
+
+    def gids(self) -> Tuple[int, int, int]:
+        return Gids(*_psimpl.proc_gids(self))
+
+    if hasattr(_psimpl, "proc_getgroups"):
+
+        def getgroups(self) -> List[int]:
+            return _psimpl.proc_getgroups(self)
+
+    def username(self) -> str:
+        ruid = self.uids()[0]
+
+        try:
+            return pwd.getpwuid(ruid).pw_name
+        except KeyError:
+            return str(ruid)
+
+    if hasattr(_psimpl, "proc_umask"):
+
+        def umask(self) -> Optional[int]:
+            return _psimpl.proc_umask(self)
+
+    if hasattr(_psimpl, "proc_sigmasks"):
+
+        def sigmasks(self) -> ProcessSignalMasks:
+            return _psimpl.proc_sigmasks(self)
+
+    if hasattr(_psimpl, "proc_rlimit"):
+
+        def rlimit(self, res: int, new_limits: Optional[Tuple[int, int]] = None) -> Tuple[int, int]:
+            if new_limits is not None:
+                soft, hard = new_limits
+
+                if soft < 0:
+                    soft = resource.RLIM_INFINITY
+                if hard < 0:
+                    hard = resource.RLIM_INFINITY
+
+                if soft > hard or (
+                    soft == resource.RLIM_INFINITY and hard != resource.RLIM_INFINITY
+                ):
+                    raise ValueError("current limit exceeds maximum limit")
+
+                new_limits = (soft, hard)
+
+            return _psimpl.proc_rlimit(self, res, new_limits)
+
+    if hasattr(_psimpl, "proc_getrlimit"):
+
+        def getrlimit(self, res: int) -> Tuple[int, int]:
+            return _psimpl.proc_getrlimit(self, res)
+
+    def getpriority(self) -> int:
+        self._check_not_pid_0()
+        return os.getpriority(os.PRIO_PROCESS, self._pid)
+
+    def setpriority(self, prio: int) -> None:
+        self._check_not_pid_0()
+        self._check_running()
+        os.setpriority(os.PRIO_PROCESS, self._pid, prio)
+
+    def send_signal(self, sig: int) -> None:
+        self._check_not_pid_0()
+        self._check_running()
+        os.kill(self._pid, sig)
+
+    def suspend(self) -> None:
+        self.send_signal(signal.SIGSTOP)
+
+    def resume(self) -> None:
+        self.send_signal(signal.SIGCONT)
+
+    def terminate(self) -> None:
+        self.send_signal(signal.SIGTERM)
+
+    def kill(self) -> None:
+        self.send_signal(signal.SIGKILL)
+
+    @contextlib.contextmanager
+    def oneshot(self) -> Iterator[None]:
+        with self._lock:
+            if self._cache is None:
+                self._cache = {}
+                yield
+                self._cache = None
+            else:
+                yield
+
+    def _check_running(self) -> None:
+        if not self.is_running():
+            raise ProcessLookupError
+
+    def _check_not_pid_0(self) -> None:
+        if self._pid == 0:
+            raise ProcessLookupError
+
+    def is_running(self) -> bool:
+        with self._lock:
+            if self._dead:
+                return False
+
+            try:
+                self._dead = self != Process(self._pid)
+            except ProcessLookupError:
+                self._dead = True
+
+            return not self._dead
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Process):
+            return self._pid == other._pid and self._create_time == other._create_time
+
+        return NotImplemented
+
+    def __repr__(self) -> str:
+        return "Process(pid={})".format(self._pid)
+
+
+def pids() -> List[int]:
+    return list(_psimpl.iter_pids())
+
+
+_process_iter_cache: Dict[int, Process] = {}
+_process_iter_cache_lock = threading.RLock()
+
+
+if hasattr(_psimpl, "iter_pid_create_time"):
+
+    def process_iter() -> Iterator[Process]:
+        seen_pids = set()
+
+        pid_ctime_iter = _psimpl.iter_pid_create_time()  # type: ignore # pylint: disable=no-member
+
+        for (pid, create_time) in pid_ctime_iter:
+            seen_pids.add(pid)
+
+            try:
+                # Check the cache
+                with _process_iter_cache_lock:
+                    proc = _process_iter_cache[pid]
+            except KeyError:
+                # Cache failure
+                pass
+            else:
+                # Cache hit
+                if proc.create_time() == create_time:
+                    # It's the same process
+                    yield proc
+                    continue
+                else:
+                    # Different process
+                    with _process_iter_cache_lock:
+                        # There's a potential race condition here.
+                        # Between the time when we first checked the cache and now,
+                        # another thread might have also checked the cache, found
+                        # this process doesn't exist, and removed it.
+                        # We handle that by using pop() instead of 'del' to remove
+                        # the entry, so we don't get an error if it's not present.
+                        _process_iter_cache.pop(pid, None)
+
+            proc = Process._create(pid, create_time)  # pylint: disable=protected-access
+            with _process_iter_cache_lock:
+                # There's also a potential race condition here.
+                # Another thread might have already populated the cache entry, and we
+                # may be overwriting it.
+                # However, the only cost is a small increase in memory because we're
+                # keeping track of an extra Process object. That's not enough
+                # to be concerned about.
+                _process_iter_cache[pid] = proc
+
+            yield proc
+
+        # If we got to the end, clean up the cache
+
+        # List the cached PIDs
+        with _process_iter_cache_lock:
+            cached_pids = list(_process_iter_cache.keys())
+
+        # Find all of the ones that don't exist anymore
+        bad_pids = set(cached_pids) - seen_pids
+
+        # Remove them
+        with _process_iter_cache_lock:
+            for bad_pid in bad_pids:
+                # Potential race condition (similar to the ones described above)
+                _process_iter_cache.pop(bad_pid, None)
+
+
+else:
+
+    def process_iter() -> Iterator[Process]:
+        seen_pids = set()
+
+        for pid in _psimpl.iter_pids():
+            seen_pids.add(pid)
+
+            try:
+                # Check the cache
+                with _process_iter_cache_lock:
+                    proc = _process_iter_cache[pid]
+            except KeyError:
+                # Cache failure
+                pass
+            else:
+                # Cache hit
+                if proc.is_running():
+                    # It's the same process
+                    yield proc
+                    continue
+                else:
+                    # Different process
+                    with _process_iter_cache_lock:
+                        # Potential race condition; see above
+                        _process_iter_cache.pop(pid, None)
+
+            try:
+                proc = Process(pid)
+            except ProcessLookupError:
+                pass
+            else:
+                with _process_iter_cache_lock:
+                    # Potential race condition; see above
+                    _process_iter_cache[pid] = proc
+
+                yield proc
+
+        # Cache cleanup; see above
+        with _process_iter_cache_lock:
+            cached_pids = list(_process_iter_cache.keys())
+
+        bad_pids = set(cached_pids) - seen_pids
+
+        with _process_iter_cache_lock:
+            for bad_pid in bad_pids:
+                # Potential race condition; see above
+                _process_iter_cache.pop(bad_pid, None)
+
+
+def pid_exists(pid: int) -> bool:
+    if pid < 0:
+        return False
+    elif pid > 0:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        else:
+            return True
+    else:
+        return _psimpl.pid_0_exists()

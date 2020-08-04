@@ -1,0 +1,26 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[packages]
+
+[dev-packages]
+# Pytype requires ninja, which requires scikit-build when building
+scikit-build = "~=0.11.1"
+
+flake8 = "~=3.8.3"
+pylint = "~=2.5.3"
+mypy = "~=0.782"
+pytype = "~=2020.7.24"
+
+isort = "~=4.3.21"
+black = "==19.10b0"
+autopep8 = "~=1.5.3"
+
+pytest = "~=5.4.3"
+pytest-cov = "~=2.10.0"
+
+# Required by pytest, but not properly pulled in by Pipenv
+importlib-metadata = {version = ">=0.12", markers = "python_version < '3.8'"}
+zipp = {version = ">=0.5", markers = "python_version < '3.8'"}

@@ -1,0 +1,276 @@
+# pylint: disable=too-few-public-methods
+import ctypes
+import errno
+import os
+import shutil
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
+
+from . import _bsd, _cache, _ffi, _psposix, _util
+from ._util import ProcessSignalMasks
+
+if TYPE_CHECKING:
+    from ._process import Process
+
+CTL_KERN = 1
+
+KERN_PROC = 66
+KERN_PROC_PID = 1
+KERN_PROC_KTHREAD = 7
+KERN_PROC_ARGS = 55
+KERN_PROC_CWD = 78
+KERN_PROC_ARGV = 1
+KERN_PROC_ENV = 3
+
+KI_NGROUPS = 16
+KI_MAXCOMLEN = 24
+KI_WMESGLEN = 8
+KI_MAXLOGNAME = 32
+KI_MAXEMULLEN = 16
+
+
+class KinfoProc(ctypes.Structure):
+    _fields_ = [
+        ("p_forw", ctypes.c_uint64),
+        ("p_back", ctypes.c_uint64),
+        ("p_paddr", ctypes.c_uint64),
+        ("p_addr", ctypes.c_uint64),
+        ("p_fd", ctypes.c_uint64),
+        ("p_stats", ctypes.c_uint64),
+        ("p_limit", ctypes.c_uint64),
+        ("p_vmspace", ctypes.c_uint64),
+        ("p_sigacts", ctypes.c_uint64),
+        ("p_sess", ctypes.c_uint64),
+        ("p_tsess", ctypes.c_uint64),
+        ("p_ru", ctypes.c_uint64),
+        ("p_eflag", ctypes.c_int32),
+        ("p_exitsig", ctypes.c_int32),
+        ("p_flag", ctypes.c_int32),
+        ("p_pid", ctypes.c_int32),
+        ("p_ppid", ctypes.c_int32),
+        ("p_sid", ctypes.c_int32),
+        ("p__pgid", ctypes.c_int32),
+        ("p_tpgid", ctypes.c_int32),
+        ("p_uid", ctypes.c_uint32),
+        ("p_ruid", ctypes.c_uint32),
+        ("p_gid", ctypes.c_uint32),
+        ("p_rgid", ctypes.c_uint32),
+        ("p_groups", (ctypes.c_uint32 * KI_NGROUPS)),
+        ("p_ngroups", ctypes.c_int16),
+        ("p_jobc", ctypes.c_int16),
+        ("p_tdev", ctypes.c_uint32),
+        ("p_estcpu", ctypes.c_uint32),
+        ("p_rtime_sec", ctypes.c_uint32),
+        ("p_rtime_usec", ctypes.c_uint32),
+        ("p_cpticks", ctypes.c_int32),
+        ("p_cptcpu", ctypes.c_uint32),
+        ("p_swtime", ctypes.c_uint32),
+        ("p_slptime", ctypes.c_uint32),
+        ("p_schedflags", ctypes.c_int32),
+        ("p_uticks", ctypes.c_uint64),
+        ("p_sticks", ctypes.c_uint64),
+        ("p_iticks", ctypes.c_uint64),
+        ("p_tracep", ctypes.c_uint64),
+        ("p_traceflag", ctypes.c_int32),
+        ("p_holdcnt", ctypes.c_int32),
+        ("p_siglist", ctypes.c_int32),
+        ("p_sigmask", ctypes.c_uint32),
+        ("p_sigignore", ctypes.c_uint32),
+        ("p_sigcatch", ctypes.c_uint32),
+        ("p_stat", ctypes.c_int8),
+        ("p_priority", ctypes.c_uint8),
+        ("p_usrpri", ctypes.c_uint8),
+        ("p_nice", ctypes.c_uint8),
+        ("p_xstat", ctypes.c_uint16),
+        ("p_acflag", ctypes.c_uint16),
+        ("p_comm", (ctypes.c_char * KI_MAXCOMLEN)),
+        ("p_wmesg", (ctypes.c_char * KI_WMESGLEN)),
+        ("p_wchan", ctypes.c_uint64),
+        ("p_login", (ctypes.c_char * KI_MAXLOGNAME)),
+        ("p_vm_rssize", ctypes.c_int32),
+        ("p_vm_tsize", ctypes.c_int32),
+        ("p_vm_dsize", ctypes.c_int32),
+        ("p_vm_ssize", ctypes.c_int32),
+        ("p_uvalid", ctypes.c_int64),
+        ("p_ustart_sec", ctypes.c_uint64),
+        ("p_ustart_usec", ctypes.c_uint64),
+        ("p_uutime_sec", ctypes.c_uint32),
+        ("p_uutime_usec", ctypes.c_uint32),
+        ("p_ustime_sec", ctypes.c_uint32),
+        ("p_ustime_usec", ctypes.c_uint32),
+        ("p_uru_maxrss", ctypes.c_uint64),
+        ("p_uru_ixrss", ctypes.c_uint64),
+        ("p_uru_idrss", ctypes.c_uint64),
+        ("p_uru_isrss", ctypes.c_uint64),
+        ("p_uru_minflt", ctypes.c_uint64),
+        ("p_uru_majflt", ctypes.c_uint64),
+        ("p_uru_nswap", ctypes.c_uint64),
+        ("p_uru_inblock", ctypes.c_uint64),
+        ("p_uru_oublock", ctypes.c_uint64),
+        ("p_uru_msgsnd", ctypes.c_uint64),
+        ("p_uru_msgrcv", ctypes.c_uint64),
+        ("p_uru_nsignals", ctypes.c_uint64),
+        ("p_uru_nvcsw", ctypes.c_uint64),
+        ("p_uru_nivcsw", ctypes.c_uint64),
+        ("p_uctime_sec", ctypes.c_uint32),
+        ("p_uctime_usec", ctypes.c_uint32),
+        ("p_uctime_sec", ctypes.c_uint32),
+        ("p_uctime_usec", ctypes.c_uint32),
+        ("p_psflags", ctypes.c_int32),
+        ("p_spare", ctypes.c_int32),
+        ("p_svuid", ctypes.c_uint32),
+        ("p_svgid", ctypes.c_uint32),
+        ("p_emul", (ctypes.c_char * KI_MAXEMULLEN)),
+        ("p_rlim_rss_cur", ctypes.c_uint64),
+        ("p_cpuid", ctypes.c_uint64),
+        ("p_vm_map_size", ctypes.c_uint64),
+        ("p_tid", ctypes.c_int32),
+        ("p_rtableid", ctypes.c_uint32),
+        ("p_pledge", ctypes.c_uint64),
+    ]
+
+    def get_groups(self) -> List[int]:
+        return list(self.p_groups[: self.p_ngroups])
+
+
+def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
+    proc_info = KinfoProc()
+
+    length = _bsd.sysctl(
+        [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid, ctypes.sizeof(proc_info), 1], None, proc_info
+    )
+
+    if length == 0:
+        raise ProcessLookupError
+
+    return proc_info
+
+
+@_cache.CachedByProcess
+def _get_kinfo_proc(proc: "Process") -> KinfoProc:
+    return _get_kinfo_proc_pid(proc.pid)
+
+
+def _list_kinfo_procs() -> List[KinfoProc]:
+    kinfo_size = ctypes.sizeof(KinfoProc)
+
+    while True:
+        nprocs = (
+            _bsd.sysctl(
+                [CTL_KERN, KERN_PROC, KERN_PROC_KTHREAD, 0, kinfo_size, 1000000], None, None
+            )
+            // kinfo_size
+        )
+
+        proc_arr = (KinfoProc * nprocs)()
+
+        try:
+            nprocs = (
+                _bsd.sysctl(
+                    [CTL_KERN, KERN_PROC, KERN_PROC_KTHREAD, 0, kinfo_size, nprocs], None, proc_arr
+                )
+                // kinfo_size
+            )
+        except OSError as ex:
+            # EINVAL means a range error; retry
+            if ex.errno != errno.EINVAL:
+                raise
+        else:
+            return proc_arr[:nprocs]
+
+
+def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
+    for kinfo in _list_kinfo_procs():
+        yield kinfo.ki_pid, cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+
+
+def iter_pids() -> Iterator[int]:
+    for kinfo in _list_kinfo_procs():
+        yield kinfo.ki_pid
+
+
+def proc_name(proc: "Process") -> str:
+    return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).p_comm).decode()
+
+
+def proc_getgroups(proc: "Process") -> List[int]:
+    return _get_kinfo_proc(proc).get_groups()
+
+
+def proc_cwd(proc: "Process") -> str:
+    return _bsd.sysctl_bytes_retry(
+        [CTL_KERN, KERN_PROC_CWD, proc.pid], None, trim_nul=True
+    ).decode()
+
+
+def proc_exe(proc: "Process") -> str:
+    cmdline = proc_cmdline(proc)
+    if cmdline:
+        path: Optional[str]
+        try:
+            path = proc_environ(proc)["PATH"]
+        except (OSError, KeyError):
+            path = os.environ.get("PATH")
+
+        exe = shutil.which(cmdline[0], path=path)
+        if exe:
+            return exe
+
+    return ""
+
+
+def proc_cmdline(proc: "Process") -> List[str]:
+    cmdline_nul = _bsd.sysctl_bytes_retry(
+        [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ARGV, proc.pid], None
+    )
+    return _util.parse_cmdline_bytes(cmdline_nul)
+
+
+def proc_environ(proc: "Process") -> Dict[str, str]:
+    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ENV, proc.pid], None)
+    return _util.parse_environ_bytes(env_data)
+
+
+def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
+    kinfo = _get_kinfo_proc(proc)
+
+    return ProcessSignalMasks(
+        pending=_util.expand_sig_bitmask(kinfo.p_siglist),
+        blocked=_util.expand_sig_bitmask(kinfo.p_sigmask),
+        ignored=_util.expand_sig_bitmask(kinfo.p_sigignore),
+        caught=_util.expand_sig_bitmask(kinfo.p_sigcatch),
+    )
+
+
+def proc_getpgid(proc: "Process") -> int:
+    if proc.pid == 0 or proc._is_cache_enabled():  # pylint: disable=protected-access
+        # Either a) pid=0, so we can't use getpgid() (because for that function
+        # pid=0 means the current process) or b) we're in a oneshot() and
+        # we should retrieve extra information.
+        return cast(int, _get_kinfo_proc(proc).p__pgid)
+    else:
+        try:
+            return _psposix.proc_pgid(proc)
+        except PermissionError:
+            return cast(int, _get_kinfo_proc(proc).p__pgid)
+
+
+def proc_getsid(proc: "Process") -> int:
+    if proc.pid == 0 or proc._is_cache_enabled():  # pylint: disable=protected-access
+        # Either a) pid=0, so we can't use getsid() (because for that function
+        # pid=0 means the current process) or b) we're in a oneshot() and
+        # we should retrieve extra information.
+        return cast(int, _get_kinfo_proc(proc).p_sid)
+    else:
+        try:
+            return _psposix.proc_sid(proc)
+        except PermissionError:
+            return cast(int, _get_kinfo_proc(proc).p_sid)
+
+
+def pid_0_exists() -> bool:
+    try:
+        _get_kinfo_proc_pid(0)
+    except (ProcessLookupError, PermissionError):
+        return False
+    else:
+        return True
