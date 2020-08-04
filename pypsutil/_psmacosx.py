@@ -277,7 +277,7 @@ def _list_kinfo_procs() -> List[KinfoProc]:
 def _proc_pidinfo(
     pid: int, flavor: int, arg: int, buf: Union[ctypes.Array, ctypes.Structure]  # type: ignore
 ) -> int:
-    res = libc.proc_pidinfo(pid, flavor, arg, buf, ctypes.sizeof(buf))
+    res = libc.proc_pidinfo(pid, flavor, arg, ctypes.byref(buf), ctypes.sizeof(buf))
     if res < 0:
         raise _ffi.build_oserror(ctypes.get_errno())
 
