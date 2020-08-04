@@ -26,7 +26,7 @@ def _get_proc_stat_fields(proc: "Process") -> List[str]:
             line = file.readline().strip()
 
         lparen = line.index("(")
-        rparen = line.index(")")
+        rparen = line.rindex(")")
 
         items = line[:lparen].split()
         items.append(line[lparen + 1: rparen])
