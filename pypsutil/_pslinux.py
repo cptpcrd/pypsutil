@@ -1,7 +1,7 @@
 import dataclasses
 import os
 import resource
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Set, Tuple, no_type_check
 
 from . import _cache, _psposix, _util
 from ._errors import ZombieProcess
@@ -146,13 +146,12 @@ def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
     )
 
 
+@no_type_check
 def proc_rlimit(
     proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
 ) -> Tuple[int, int]:
     if new_limits is None:
-        return resource.prlimit(  # type: ignore # pylint: disable=no-member
-            proc.pid, res
-        )
+        return resource.prlimit(proc.pid, res)  # pylint: disable=no-member
     else:
         return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
 
