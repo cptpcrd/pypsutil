@@ -271,116 +271,64 @@ _process_iter_cache: Dict[int, Process] = {}
 _process_iter_cache_lock = threading.RLock()
 
 
-if hasattr(_psimpl, "iter_pid_create_time"):
+def process_iter() -> Iterator[Process]:
+    seen_pids = set()
 
-    def process_iter() -> Iterator[Process]:
-        seen_pids = set()
+    pid_ctime_iter = _psimpl.iter_pid_create_time()  # pylint: disable=no-member
 
-        pid_ctime_iter = _psimpl.iter_pid_create_time()  # pylint: disable=no-member
+    for (pid, create_time) in pid_ctime_iter:
+        seen_pids.add(pid)
 
-        for (pid, create_time) in pid_ctime_iter:
-            seen_pids.add(pid)
-
-            try:
-                # Check the cache
-                with _process_iter_cache_lock:
-                    proc = _process_iter_cache[pid]
-            except KeyError:
-                # Cache failure
-                pass
-            else:
-                # Cache hit
-                if proc.create_time() == create_time:
-                    # It's the same process
-                    yield proc
-                    continue
-                else:
-                    # Different process
-                    with _process_iter_cache_lock:
-                        # There's a potential race condition here.
-                        # Between the time when we first checked the cache and now,
-                        # another thread might have also checked the cache, found
-                        # this process doesn't exist, and removed it.
-                        # We handle that by using pop() instead of 'del' to remove
-                        # the entry, so we don't get an error if it's not present.
-                        _process_iter_cache.pop(pid, None)
-
-            proc = Process._create(pid, create_time)  # pylint: disable=protected-access
+        try:
+            # Check the cache
             with _process_iter_cache_lock:
-                # There's also a potential race condition here.
-                # Another thread might have already populated the cache entry, and we
-                # may be overwriting it.
-                # However, the only cost is a small increase in memory because we're
-                # keeping track of an extra Process object. That's not enough
-                # to be concerned about.
-                _process_iter_cache[pid] = proc
-
-            yield proc
-
-        # If we got to the end, clean up the cache
-
-        # List the cached PIDs
-        with _process_iter_cache_lock:
-            cached_pids = list(_process_iter_cache.keys())
-
-        # Find all of the ones that don't exist anymore
-        bad_pids = set(cached_pids) - seen_pids
-
-        # Remove them
-        with _process_iter_cache_lock:
-            for bad_pid in bad_pids:
-                # Potential race condition (similar to the ones described above)
-                _process_iter_cache.pop(bad_pid, None)
-
-
-else:
-
-    def process_iter() -> Iterator[Process]:
-        seen_pids = set()
-
-        for pid in _psimpl.iter_pids():
-            seen_pids.add(pid)
-
-            try:
-                # Check the cache
-                with _process_iter_cache_lock:
-                    proc = _process_iter_cache[pid]
-            except KeyError:
-                # Cache failure
-                pass
-            else:
-                # Cache hit
-                if proc.is_running():
-                    # It's the same process
-                    yield proc
-                    continue
-                else:
-                    # Different process
-                    with _process_iter_cache_lock:
-                        # Potential race condition; see above
-                        _process_iter_cache.pop(pid, None)
-
-            try:
-                proc = Process(pid)
-            except ProcessLookupError:
-                pass
-            else:
-                with _process_iter_cache_lock:
-                    # Potential race condition; see above
-                    _process_iter_cache[pid] = proc
-
+                proc = _process_iter_cache[pid]
+        except KeyError:
+            # Cache failure
+            pass
+        else:
+            # Cache hit
+            if proc.create_time() == create_time:
+                # It's the same process
                 yield proc
+                continue
+            else:
+                # Different process
+                with _process_iter_cache_lock:
+                    # There's a potential race condition here.
+                    # Between the time when we first checked the cache and now,
+                    # another thread might have also checked the cache, found
+                    # this process doesn't exist, and removed it.
+                    # We handle that by using pop() instead of 'del' to remove
+                    # the entry, so we don't get an error if it's not present.
+                    _process_iter_cache.pop(pid, None)
 
-        # Cache cleanup; see above
+        proc = Process._create(pid, create_time)  # pylint: disable=protected-access
         with _process_iter_cache_lock:
-            cached_pids = list(_process_iter_cache.keys())
+            # There's also a potential race condition here.
+            # Another thread might have already populated the cache entry, and we
+            # may be overwriting it.
+            # However, the only cost is a small increase in memory because we're
+            # keeping track of an extra Process object. That's not enough
+            # to be concerned about.
+            _process_iter_cache[pid] = proc
 
-        bad_pids = set(cached_pids) - seen_pids
+        yield proc
 
-        with _process_iter_cache_lock:
-            for bad_pid in bad_pids:
-                # Potential race condition; see above
-                _process_iter_cache.pop(bad_pid, None)
+    # If we got to the end, clean up the cache
+
+    # List the cached PIDs
+    with _process_iter_cache_lock:
+        cached_pids = list(_process_iter_cache.keys())
+
+    # Find all of the ones that don't exist anymore
+    bad_pids = set(cached_pids) - seen_pids
+
+    # Remove them
+    with _process_iter_cache_lock:
+        for bad_pid in bad_pids:
+            # Potential race condition (similar to the ones described above)
+            _process_iter_cache.pop(bad_pid, None)
 
 
 def pid_exists(pid: int) -> bool:
