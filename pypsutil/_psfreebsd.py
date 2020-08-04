@@ -243,16 +243,9 @@ def _get_kinfo_proc(proc: "Process") -> KinfoProc:
 
 
 def _list_kinfo_procs() -> List[KinfoProc]:
-    while True:
-        try:
-            kinfo_proc_data = _bsd.sysctl_bytes([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
-        except OSError as ex:
-            # EINVAL means a range error; retry
-            if ex.errno != errno.EINVAL:
-                raise
-        else:
-            nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
-            return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
+    kinfo_proc_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
+    nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
+    return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
 
 
 def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
