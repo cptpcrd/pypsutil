@@ -73,6 +73,13 @@ def proc_exe(proc: "Process") -> str:
         raise ProcessLookupError
 
 
+def proc_root(proc: "Process") -> str:
+    try:
+        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
+    except FileNotFoundError:
+        raise ProcessLookupError
+
+
 def proc_cmdline(proc: "Process") -> List[str]:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "cmdline"), "rb") as file:
