@@ -86,6 +86,13 @@ if hasattr(pypsutil.Process, "umask"):
         if mask is not None:
             assert os.umask(mask) == mask
 
+    def test_umask_no_proc() -> None:
+        proc = fork_proc(lambda: sys.exit(0))
+        os.waitpid(proc.pid, 0)
+
+        with pytest.raises(ProcessLookupError):
+            proc.umask()
+
 
 if hasattr(pypsutil.Process, "root"):
 
@@ -93,3 +100,10 @@ if hasattr(pypsutil.Process, "root"):
         proc = pypsutil.Process()
 
         assert proc.root() == "/"
+
+    def test_root_no_proc() -> None:
+        proc = fork_proc(lambda: sys.exit(0))
+        os.waitpid(proc.pid, 0)
+
+        with pytest.raises(ProcessLookupError):
+            proc.root()
