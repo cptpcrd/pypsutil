@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import getpass
 import os
 import sys

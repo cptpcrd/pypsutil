@@ -1,3 +1,6 @@
+# Type checkers don't like the wrapper names not existing.
+# mypy: ignore-errors
+# pytype: disable=module-attr
 import collections
 import contextlib
 import os
@@ -259,7 +262,7 @@ if hasattr(_psimpl, "iter_pid_create_time"):
     def process_iter() -> Iterator[Process]:
         seen_pids = set()
 
-        pid_ctime_iter = _psimpl.iter_pid_create_time()  # type: ignore # pylint: disable=no-member
+        pid_ctime_iter = _psimpl.iter_pid_create_time()  # pylint: disable=no-member
 
         for (pid, create_time) in pid_ctime_iter:
             seen_pids.add(pid)
