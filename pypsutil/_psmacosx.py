@@ -1,6 +1,7 @@
 # pylint: disable=invalid-name,too-few-public-methods
 import ctypes
 import dataclasses
+import errno
 import struct
 from typing import TYPE_CHECKING, Dict, Iterator, List, Set, Tuple, Union, cast
 
@@ -356,7 +357,14 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax_arr)
 
     buf = (ctypes.c_char * argmax_arr[0])()
-    nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, buf)
+
+    try:
+        nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, buf)
+    except OSError as ex:
+        if ex.errno == errno.EINVAL:
+            raise ProcessLookupError
+        else:
+            raise
 
     argc = struct.unpack("i", buf.raw[: ctypes.sizeof(ctypes.c_int)])[0]
     data = buf.raw[ctypes.sizeof(ctypes.c_int): nbytes]
