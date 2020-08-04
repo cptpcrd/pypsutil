@@ -86,14 +86,28 @@ class Process:
             parents.append(proc)
 
     def children(self, *, recursive: bool = False) -> List["Process"]:
-        children = [proc for proc in process_iter() if proc.ppid() == self.pid]
-
         if recursive:
-            descendants = []
-            for child in children:
-                descendants.extend(child.children(recursive=True))
+            all_processes = list(process_iter())
 
-            children.extend(descendants)
+            search_parents = {self}
+            children = []
+            while True:
+                new_search_parents = set()
+
+                # Loop through every process
+                for proc in all_processes:
+                    if proc.parent() in search_parents and proc not in children:
+                        # Its parent is one of the processes we were looking for
+                        children.append(proc)
+                        # Look for its children next round
+                        new_search_parents.add(proc)
+
+                search_parents = new_search_parents
+                if not search_parents:
+                    break
+
+        else:
+            children = [proc for proc in process_iter() if proc.ppid() == self.pid]
 
         return children
 
