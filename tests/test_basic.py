@@ -85,3 +85,11 @@ if hasattr(pypsutil.Process, "umask"):
         mask = proc.umask()
         if mask is not None:
             assert os.umask(mask) == mask
+
+
+if hasattr(pypsutil.Process, "root"):
+
+    def test_root() -> None:
+        proc = pypsutil.Process()
+
+        assert proc.root() == "/"
