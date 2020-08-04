@@ -14,7 +14,7 @@ def test_uids() -> None:
     proc = pypsutil.Process()
 
     if hasattr(os, "getresuid"):
-        assert proc.uids() == os.getresuid()
+        assert proc.uids() == os.getresuid()  # pylint: disable=no-member
     else:
         ruid, euid, _ = proc.uids()
         assert ruid == os.getuid()
@@ -25,7 +25,7 @@ def test_gids() -> None:
     proc = pypsutil.Process()
 
     if hasattr(os, "getresgid"):
-        assert proc.gids() == os.getresgid()
+        assert proc.gids() == os.getresgid()  # pylint: disable=no-member
     else:
         rgid, egid, _ = proc.gids()
         assert rgid == os.getgid()
