@@ -28,6 +28,7 @@ MAXCOMLEN = 16
 MAXPATHLEN = 1024
 
 CTL_KERN = 1
+KERN_ARGMAX = 8
 KERN_PROCARGS2 = 49
 KERN_BOOTTIME = 21
 KERN_PROC = 14
@@ -340,9 +341,14 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     if proc.pid == 0:
         raise ProcessLookupError
 
-    data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROCARGS2, proc.pid], None)
+    argmax = ctypes.c_int()
+    _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax)
+
+    data = ctypes.c_char * argmax
+    nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, data)
+
     argc = struct.unpack("i", data[: ctypes.sizeof(ctypes.c_int)])[0]
-    data = data[ctypes.sizeof(ctypes.c_int):]
+    data = data[ctypes.sizeof(ctypes.c_int): nbytes]
     if data.endswith(b"\0"):
         data = data[:-1]
 
