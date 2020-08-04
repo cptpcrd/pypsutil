@@ -28,8 +28,9 @@ def test_basic_info() -> None:
     # so we can't do a simple comparison.
     proc_environ = proc.environ()
     assert proc_environ
-    for key in proc_environ:
-        assert os.environ[key] == proc_environ[key]
+    assert os.environ.get("PATH") == proc_environ.get("PATH")
+    assert os.environ.get("USER") == proc_environ.get("USER")
+    assert os.environ.get("LANG") == proc_environ.get("LANG")
 
 
 def test_basic_info_no_proc() -> None:
