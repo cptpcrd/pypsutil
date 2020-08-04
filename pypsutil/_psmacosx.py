@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from ._process import Process
 
 libc = _ffi.load_libc()
+
 libc.proc_pidinfo.argtypes = (
     ctypes.c_int,
     ctypes.c_int,
@@ -19,6 +20,13 @@ libc.proc_pidinfo.argtypes = (
     ctypes.c_int,
 )
 libc.proc_pidinfo.restype = ctypes.c_int
+
+libc.proc_pidpath.argtypes = (
+    ctypes.c_int,
+    ctypes.c_void_p,
+    ctypes.c_uint32,
+)
+libc.proc_pidpath.restype = ctypes.c_int
 
 WMESGLEN = 7
 NGROUPS = 16
@@ -36,7 +44,6 @@ KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
 
 PROC_PIDVNODEPATHINFO = 9
-PROC_PIDPATHINFO = 11
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 
 caddr_t = ctypes.c_char_p
@@ -380,7 +387,9 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
 
 def proc_exe(proc: "Process") -> str:
     buf = (ctypes.c_char * PROC_PIDPATHINFO_MAXSIZE)()
-    _proc_pidinfo(proc.pid, PROC_PIDPATHINFO, 0, buf, allow_zero=True)
+    if libc.proc_pidpath(proc.pid, buf, ctypes.sizeof(buf)) <= 0:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
     return buf.value.decode()
 
 
