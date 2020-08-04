@@ -24,7 +24,7 @@ class Process:
         if pid is None:
             pid = os.getpid()
 
-        if pid < 0 or (pid == 0 and not _psimpl.pid_0_exists()):
+        if pid < 0:
             raise ProcessLookupError
 
         self._pid = pid
