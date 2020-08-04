@@ -328,11 +328,11 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_cwd(proc: "Process") -> str:
-    return cast(str, _get_proc_vnode_info(proc).pvi_cdir.vip_path.value.decode())
+    return cast(str, _get_proc_vnode_info(proc).pvi_cdir.vip_path.decode())
 
 
 def proc_root(proc: "Process") -> str:
-    return cast(str, _get_proc_vnode_info(proc).pvi_rdir.vip_path.value.decode())
+    return cast(str, _get_proc_vnode_info(proc).pvi_rdir.vip_path.decode())
 
 
 @_cache.CachedByProcess
