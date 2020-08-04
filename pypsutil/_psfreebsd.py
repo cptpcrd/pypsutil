@@ -263,7 +263,7 @@ def pid_create_time(pid: int) -> float:
     return cast(float, _get_kinfo_proc_pid(pid).ki_start.to_float())
 
 
-def proc_get_umask(proc: "Process") -> int:
+def proc_umask(proc: "Process") -> int:
     if proc.pid == 0:
         # Unlike the other FreeBSD functions, we can't accept pid=0, because the
         # KERN_PROC_UMASK sysctl uses that to mean the current process.
