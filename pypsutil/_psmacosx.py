@@ -374,7 +374,7 @@ def proc_exe(proc: "Process") -> str:
     return buf.value.decode()
 
 
-def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc(proc)
 
     return ProcessSignalMasks(

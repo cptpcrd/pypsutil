@@ -314,7 +314,7 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
     return _util.parse_environ_bytes(env_data)
 
 
-def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc2(proc)
 
     return ProcessSignalMasks(

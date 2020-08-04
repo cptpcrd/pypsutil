@@ -360,7 +360,7 @@ def proc_rlimit(
 proc_getrlimit = proc_rlimit
 
 
-def proc_get_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc(proc)
 
     return ProcessSignalMasks(
