@@ -259,12 +259,12 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
 
 def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs2():
-        yield kinfo.ki_pid, cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+        yield kinfo.p_pid, cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
 
 
 def iter_pids() -> Iterator[int]:
     for kinfo in _list_kinfo_procs2():
-        yield kinfo.ki_pid
+        yield kinfo.p_pid
 
 
 def pid_create_time(pid: int) -> float:
