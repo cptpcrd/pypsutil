@@ -80,6 +80,8 @@ _SS_PAD2SIZE = (
     - _SS_ALIGNSIZE
 )
 
+CAP_RIGHTS_VERSION = 0
+
 
 class Rlimit(ctypes.Structure):
     _fields_ = [
@@ -252,6 +254,12 @@ class SockaddrStorage(ctypes.Structure):
     ]
 
 
+class CapRights(ctypes.Structure):
+    _fields = [
+        ("cr_rights", (ctypes.c_uint64 * (CAP_RIGHTS_VERSION + 2))),
+    ]
+
+
 class KinfoFile11(ctypes.Structure):
     _fields_ = [
         ("kf_vnode_type", ctypes.c_int),
@@ -356,13 +364,13 @@ class KinfoFile(ctypes.Structure):
         ("kf_ref_count", ctypes.c_int),
         ("kf_flags", ctypes.c_int),
         ("kf_pad0", ctypes.c_int),
-        ("kf_offset", ctypes.c_int),
+        ("kf_offset", ctypes.c_int64),
         ("kf_un", KinfoFileUn),
         ("kf_status", ctypes.c_uint16),
         ("kf_pad1", ctypes.c_uint16),
         ("_kfispare0", ctypes.c_int),
-        ("kf_status", ctypes.c_uint16),
-        ("kf_status", ctypes.c_uint16),
+        ("kf_cap_rights", CapRights),
+        ("_kf_cap_spare", ctypes.c_uint64),
         ("kf_path", (ctypes.c_char * PATH_MAX)),
     ]
 
