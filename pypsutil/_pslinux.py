@@ -169,6 +169,21 @@ def iter_pids() -> Iterable[int]:
             pass
 
 
+def iter_pid_create_time() -> Iterable[Tuple[int, float]]:
+    for name in os.listdir(_util.get_procfs_path()):
+        try:
+            pid = int(name)
+        except ValueError:
+            continue
+
+        try:
+            ctime = pid_create_time(pid)
+        except ProcessLookupError:
+            continue
+
+        yield (pid, ctime)
+
+
 def boot_time() -> float:
     with open("/proc/stat") as file:
         for line in file:
