@@ -334,12 +334,12 @@ def proc_exe(proc: "Process") -> str:
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
-    cmdline_nul = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, proc.pid], None)
+    cmdline_nul = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ARGS, proc.pid], None)
     return _util.parse_cmdline_bytes(cmdline_nul)
 
 
 def proc_environ(proc: "Process") -> Dict[str, str]:
-    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ENV, proc.pid], None)
+    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ENV, proc.pid], None)
     return _util.parse_environ_bytes(env_data)
 
 
