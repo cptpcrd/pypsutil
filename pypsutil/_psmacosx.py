@@ -41,6 +41,9 @@ class Timeval(ctypes.Structure):
         ("tv_usec", suseconds_t),
     ]
 
+    def to_float(self) -> float:
+        return cast(float, self.tv_sec + (self.tv_usec / 1000000.0))
+
 
 class ITimerval(ctypes.Structure):
     _fields_ = [
@@ -193,6 +196,22 @@ def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
 @_cache.CachedByProcess
 def _get_kinfo_proc(proc: "Process") -> KinfoProc:
     return _get_kinfo_proc_pid(proc.pid)
+
+
+def _list_kinfo_procs() -> List[KinfoProc]:
+    kinfo_proc_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
+    nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
+    return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
+
+
+def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
+    for kinfo in _list_kinfo_procs():
+        yield kinfo.ki_pid, kinfo.kp_proc.p_un.p_starttime.to_float()
+
+
+def iter_pids() -> Iterator[int]:
+    for kinfo in _list_kinfo_procs():
+        yield kinfo.ki_pid
 
 
 def proc_getgroups(proc: "Process") -> List[int]:
