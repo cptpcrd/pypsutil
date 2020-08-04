@@ -345,14 +345,14 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     if proc.pid == 0:
         raise ProcessLookupError
 
-    argmax = ctypes.c_int()
-    _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax)
+    argmax_arr = (ctypes.c_int * 1)()
+    _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax_arr)
 
-    data = ctypes.c_char * argmax
-    nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, data)
+    buf = (ctypes.c_char * argmax_arr[0])()
+    nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, buf)
 
-    argc = struct.unpack("i", data[: ctypes.sizeof(ctypes.c_int)])[0]
-    data = data[ctypes.sizeof(ctypes.c_int): nbytes]
+    argc = struct.unpack("i", buf.raw[: ctypes.sizeof(ctypes.c_int)])[0]
+    data = buf.raw[ctypes.sizeof(ctypes.c_int): nbytes]
     if data.endswith(b"\0"):
         data = data[:-1]
 
