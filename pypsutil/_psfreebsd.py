@@ -245,7 +245,7 @@ class KinfoProc(ctypes.Structure):
 
 
 class SockaddrStorage(ctypes.Structure):
-    _fields = [
+    _fields_ = [
         ("ss_len", ctypes.c_ubyte),
         ("ss_family", sa_family_t),
         ("ss_pad1", (ctypes.c_char * _SS_PAD1SIZE)),
@@ -255,7 +255,7 @@ class SockaddrStorage(ctypes.Structure):
 
 
 class CapRights(ctypes.Structure):
-    _fields = [
+    _fields_ = [
         ("cr_rights", (ctypes.c_uint64 * (CAP_RIGHTS_VERSION + 2))),
     ]
 
@@ -368,7 +368,7 @@ class KinfoFile(ctypes.Structure):
         ("kf_un", KinfoFileUn),
         ("kf_status", ctypes.c_uint16),
         ("kf_pad1", ctypes.c_uint16),
-        ("_kfispare0", ctypes.c_int),
+        ("_kf_ispare0", ctypes.c_int),
         ("kf_cap_rights", CapRights),
         ("_kf_cap_spare", ctypes.c_uint64),
         ("kf_path", (ctypes.c_char * PATH_MAX)),
