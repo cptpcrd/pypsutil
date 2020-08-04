@@ -118,6 +118,11 @@ class Process:
     def cwd(self) -> str:
         return _psimpl.proc_cwd(self)
 
+    if hasattr(_psimpl, "proc_root"):
+
+        def root(self) -> str:
+            return _psimpl.proc_root(self)
+
     def environ(self) -> Dict[str, str]:
         return _psimpl.proc_environ(self)
 
