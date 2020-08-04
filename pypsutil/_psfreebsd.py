@@ -543,6 +543,15 @@ def proc_sid(proc: "Process") -> int:
         return _psposix.proc_sid(proc)
 
 
+def proc_getpriority(proc: "Process") -> int:
+    if proc.pid == 0:
+        # We don't call _get_kinfo_proc() if pid != 0 and the cache is enabled because
+        # Process.setpriority() can change the priority and make the cache invalid.
+        return cast(int, _get_kinfo_proc(proc).ki_nice)
+    else:
+        return _psposix.proc_getpriority(proc)
+
+
 def pid_0_exists() -> bool:
     try:
         _get_kinfo_proc_pid(0)

@@ -198,8 +198,7 @@ class Process:
             return _psimpl.proc_getrlimit(self, res)
 
     def getpriority(self) -> int:
-        self._check_not_pid_0()
-        return os.getpriority(os.PRIO_PROCESS, self._pid)
+        return _psimpl.proc_getpriority(self)
 
     def setpriority(self, prio: int) -> None:
         self._check_not_pid_0()

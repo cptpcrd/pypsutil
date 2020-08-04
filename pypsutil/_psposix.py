@@ -21,3 +21,12 @@ def proc_sid(proc: "Process") -> int:
         raise ProcessLookupError
 
     return os.getsid(pid)
+
+
+def proc_getpriority(proc: "Process") -> int:
+    pid = proc.pid
+
+    if pid <= 0:
+        raise ProcessLookupError
+
+    return os.getpriority(os.PRIO_PROCESS, pid)
