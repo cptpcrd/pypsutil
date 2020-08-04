@@ -251,7 +251,7 @@ def _list_kinfo_procs() -> List[KinfoProc]:
 
 def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
-        yield kinfo.ki_pid, kinfo.ki_start.as_float()
+        yield kinfo.ki_pid, kinfo.ki_start.to_float()
 
 
 def iter_pids() -> Iterator[int]:
@@ -260,7 +260,7 @@ def iter_pids() -> Iterator[int]:
 
 
 def pid_create_time(pid: int) -> float:
-    return cast(float, _get_kinfo_proc_pid(pid).ki_start.as_float())
+    return cast(float, _get_kinfo_proc_pid(pid).ki_start.to_float())
 
 
 def proc_get_umask(proc: "Process") -> int:
