@@ -219,6 +219,17 @@ def pid_create_time(pid: int) -> float:
     return cast(float, _get_kinfo_proc_pid(pid).kp_proc.p_un.p_starttime.to_float())
 
 
+def proc_uids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.kp_eproc.e_pcred.p_ruid, kinfo.kp_eproc.e_ucred.cr_uid, kinfo.kp_eproc.e_pcred.p_svuid
+
+
+def proc_gids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.kp_eproc.e_pcred.p_rgid, kinfo.kp_eproc.e_ucred.cr_groups[0], kinfo.kp_eproc.e_pcred.p_svgid
+
+
+
 def proc_getgroups(proc: "Process") -> List[int]:
     return _get_kinfo_proc(proc).get_groups()
 

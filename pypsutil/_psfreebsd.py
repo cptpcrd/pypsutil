@@ -279,6 +279,16 @@ def proc_umask(proc: "Process") -> int:
     return umask.value
 
 
+def proc_uids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.ki_ruid, kinfo.ki_uid, kinfo.ki_svuid
+
+
+def proc_gids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.ki_rgid, kinfo.ki_groups[0], kinfo.ki_svgid
+
+
 def proc_getgroups(proc: "Process") -> List[int]:
     if proc._is_cache_enabled():  # pylint: disable=protected-access
         # We're in a oneshot(); try to retrieve extra information

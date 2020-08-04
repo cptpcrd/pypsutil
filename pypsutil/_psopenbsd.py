@@ -211,6 +211,16 @@ def proc_name(proc: "Process") -> str:
     return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).p_comm).decode()
 
 
+def proc_uids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.p_ruid, kinfo.p_uid, kinfo.p_svuid
+
+
+def proc_gids(proc: "Process") -> Tuple[int, int, int]:
+    kinfo = _get_kinfo_proc(proc)
+    return kinfo.p_rgid, kinfo.p_egid, kinfo.p_svgid
+
+
 def proc_getgroups(proc: "Process") -> List[int]:
     return _get_kinfo_proc(proc).get_groups()
 
