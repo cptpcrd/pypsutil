@@ -1,10 +1,9 @@
 # pylint: disable=invalid-name,too-few-public-methods
 import ctypes
 import dataclasses
-from typing import TYPE_CHECKING, List, Set, cast
+from typing import TYPE_CHECKING, Iterator, List, Set, Tuple, cast
 
-from . import _cache, _psposix, _util
-from ._bsd import sysctl
+from . import _bsd, _cache, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
 
 if TYPE_CHECKING:
@@ -17,6 +16,7 @@ MAXCOMLEN = 16
 
 CTL_KERN = 1
 KERN_PROC = 14
+KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
 
 caddr_t = ctypes.c_char_p
@@ -182,7 +182,7 @@ class KinfoProc(ctypes.Structure):
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
 
-    length = sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid], None, proc_info)
+    length = _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid], None, proc_info)
 
     if length == 0:
         raise ProcessLookupError
