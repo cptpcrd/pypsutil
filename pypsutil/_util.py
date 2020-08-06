@@ -1,8 +1,7 @@
 import dataclasses
 import resource
+import sys
 from typing import Dict, Iterator, List, Set
-
-from . import _get_procfs_path as get_procfs_path  # noqa # pylint: disable=unused-import
 
 RESOURCE_NUMS = set()
 for name in dir(resource):
@@ -16,6 +15,10 @@ class ProcessSignalMasks:
     blocked: Set[int]
     ignored: Set[int]
     caught: Set[int]
+
+
+def get_procfs_path() -> str:
+    return sys.modules[__package__].PROCFS_PATH  # type: ignore
 
 
 def check_rlimit_resource(res: int) -> None:

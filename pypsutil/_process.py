@@ -10,7 +10,7 @@ import signal
 import threading
 from typing import Any, Dict, Iterator, List, Optional, Tuple, cast
 
-from . import _psimpl
+from ._detect import _psimpl
 
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])

@@ -1,4 +1,4 @@
-from . import _psimpl
+from ._detect import _psimpl
 
 
 def boot_time() -> float:
