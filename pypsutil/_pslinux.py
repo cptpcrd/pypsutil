@@ -185,7 +185,7 @@ def iter_pid_create_time() -> Iterable[Tuple[int, float]]:
 
 
 def boot_time() -> float:
-    with open("/proc/stat") as file:
+    with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
         for line in file:
             if line.startswith("btime "):
                 return float(line[6:].strip())
