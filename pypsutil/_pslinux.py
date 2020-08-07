@@ -1,7 +1,7 @@
 import dataclasses
 import os
 import resource
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Set, Tuple, no_type_check
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, no_type_check
 
 from . import _cache, _psposix, _util
 from ._errors import ZombieProcess
@@ -171,7 +171,7 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return tty_nr if tty_nr != 0 else None
 
 
-def iter_pids() -> Iterable[int]:
+def iter_pids() -> Iterator[int]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
             yield int(name)
@@ -179,7 +179,7 @@ def iter_pids() -> Iterable[int]:
             pass
 
 
-def iter_pid_create_time() -> Iterable[Tuple[int, float]]:
+def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
             pid = int(name)
