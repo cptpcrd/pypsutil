@@ -64,7 +64,7 @@ class Process:
     def ppid(self) -> int:
         return _psimpl.proc_ppid(self)
 
-    def parent(self) -> Optional["Process"]:
+    def _parent_unchecked(self) -> Optional["Process"]:
         ppid = self.ppid()
         if ppid <= 0:
             return None
@@ -74,18 +74,26 @@ class Process:
         except ProcessLookupError:
             return None
 
+    def parent(self) -> Optional["Process"]:
+        self._check_running()
+        return self._parent_unchecked()
+
     def parents(self) -> List["Process"]:
+        self._check_running()
+
         proc = self
         parents: List[Process] = []
 
         while True:
-            proc = proc.parent()  # type: ignore
+            proc = proc._parent_unchecked()  # type: ignore  # pylint: disable=protected-access
             if proc is None:
                 return parents
 
             parents.append(proc)
 
     def children(self, *, recursive: bool = False) -> List["Process"]:
+        self._check_running()
+
         if recursive:
             all_processes = list(process_iter())
 
@@ -176,6 +184,8 @@ class Process:
 
         def rlimit(self, res: int, new_limits: Optional[Tuple[int, int]] = None) -> Tuple[int, int]:
             if new_limits is not None:
+                self._check_running()
+
                 soft, hard = new_limits
 
                 if soft < 0:
