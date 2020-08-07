@@ -8,7 +8,8 @@ import pwd
 import resource
 import signal
 import threading
-from typing import Any, Dict, Iterator, List, Optional, Tuple, cast
+import time
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from ._detect import _psimpl
 
@@ -371,3 +372,52 @@ def pid_exists(pid: int) -> bool:
             return True
     else:
         return _psimpl.pid_0_exists()
+
+
+def wait_procs(
+    procs: Iterable[Process],
+    timeout: Union[int, float, None] = None,
+    callback: Optional[Callable[[Process], None]] = None,
+) -> Tuple[List[Process], List[Process]]:
+    start_time = time.monotonic()
+
+    gone = list()
+    alive = list()
+
+    for proc in procs:
+        if hasattr(proc, "returncode"):
+            gone.append(proc)
+            callback(proc)
+        else:
+            alive.append(proc)
+
+    while alive:
+        for proc in list(alive):
+            if not proc.is_running():
+                try:
+                    wstatus = os.waitpid(proc.pid, os.WNOHANG)[1]
+                except ChildProcessError:
+                    proc.returncode = None
+                else:
+                    proc.returncode = (
+                        -os.WTERMSIG(wstatus)
+                        if os.WIFSIGNALED(wstatus)
+                        else os.WEXITSTATUS(wstatus)
+                    )
+
+                callback(proc)
+
+                alive.remove(proc)
+                gone.append(proc)
+
+        interval = 0.01
+        if timeout is not None:
+            remaining_time = (start_time + timeout) - time.monotonic()
+            if remaining_time <= 0:
+                break
+
+            interval = min(interval, remaining_time / 2)
+
+        time.sleep(interval)
+
+    return gone, alive
