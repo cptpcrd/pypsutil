@@ -126,10 +126,15 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_umask(proc: "Process") -> Optional[int]:
+    proc_status = _get_proc_status_dict(proc)
+
     try:
-        umask_str = _get_proc_status_dict(proc)["Umask"]
+        umask_str = proc_status["Umask"]
     except KeyError:
-        return None
+        if proc_status["State"].startswith("Z"):
+            raise ZombieProcess
+        else:
+            return None
     else:
         return int(umask_str, 8)
 
