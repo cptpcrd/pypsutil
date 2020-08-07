@@ -273,9 +273,7 @@ _process_iter_cache_lock = threading.RLock()
 def process_iter() -> Iterator[Process]:
     seen_pids = set()
 
-    pid_ctime_iter = _psimpl.iter_pid_create_time()
-
-    for (pid, create_time) in pid_ctime_iter:
+    for (pid, create_time) in _psimpl.iter_pid_create_time():
         seen_pids.add(pid)
 
         try:
