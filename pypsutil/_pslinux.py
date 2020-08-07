@@ -19,10 +19,9 @@ def parse_sigmask(raw_mask: str) -> Set[int]:
     return _util.expand_sig_bitmask(int(raw_mask, 16))
 
 
-@_cache.CachedByProcess
-def _get_proc_stat_fields(proc: "Process") -> List[str]:
+def _get_pid_stat_fields(pid: int) -> List[str]:
     try:
-        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "stat")) as file:
+        with open(os.path.join(_util.get_procfs_path(), str(pid), "stat")) as file:
             line = file.readline().strip()
 
         lparen = line.index("(")
@@ -35,6 +34,11 @@ def _get_proc_stat_fields(proc: "Process") -> List[str]:
         return items
     except FileNotFoundError:
         raise ProcessLookupError
+
+
+@_cache.CachedByProcess
+def _get_proc_stat_fields(proc: "Process") -> List[str]:
+    return _get_pid_stat_fields(proc.pid)
 
 
 @_cache.CachedByProcess
@@ -52,11 +56,12 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
         raise ProcessLookupError
 
 
+_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+
+
 def pid_create_time(pid: int) -> float:
-    try:
-        return os.stat(os.path.join(_util.get_procfs_path(), str(pid))).st_ctime
-    except FileNotFoundError:
-        raise ProcessLookupError
+    ctime_ticks = int(_get_pid_stat_fields(pid)[21])
+    return _internal_boot_time() + ctime_ticks / _clk_tck
 
 
 def proc_cwd(proc: "Process") -> str:
@@ -194,13 +199,24 @@ def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
         yield (pid, ctime)
 
 
+_cached_boot_time = None
+
+
 def boot_time() -> float:
+    global _cached_boot_time  # pylint: disable=global-statement
+
     with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
         for line in file:
             if line.startswith("btime "):
-                return float(line[6:].strip())
+                btime = float(line[6:].strip())
+                _cached_boot_time = btime
+                return btime
 
     raise ValueError
+
+
+def _internal_boot_time() -> float:
+    return _cached_boot_time if _cached_boot_time is not None else boot_time()
 
 
 def pid_0_exists() -> bool:
