@@ -243,6 +243,16 @@ class KinfoProc(ctypes.Structure):
     def get_groups(self) -> List[int]:
         return list(self.ki_groups[: self.ki_ngroups])
 
+    def get_tdev(self) -> Optional[int]:
+        if self.ki_tdev:
+            tdev = cast(int, self.ki_tdev)
+            NODEV = 2 ** 64 - 1
+        else:
+            tdev = cast(int, self.ki_tdev_freebsd11)
+            NODEV = 2 ** 32 - 1
+
+        return tdev if tdev != NODEV else None
+
 
 class SockaddrStorage(ctypes.Structure):
     _fields_ = [
@@ -550,6 +560,10 @@ def proc_getpriority(proc: "Process") -> int:
         return cast(int, _get_kinfo_proc(proc).ki_nice)
     else:
         return _psposix.proc_getpriority(proc)
+
+
+def proc_tty_rdev(proc: "Process") -> Optional[int]:
+    return _get_kinfo_proc(proc).get_tdev()
 
 
 def pid_0_exists() -> bool:

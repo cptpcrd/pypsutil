@@ -3,7 +3,7 @@ import ctypes
 import dataclasses
 import errno
 import struct
-from typing import TYPE_CHECKING, Dict, Iterator, List, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
@@ -434,6 +434,11 @@ def proc_getpriority(proc: "Process") -> int:
         return cast(int, _get_kinfo_proc(proc).kp_proc.p_nice)
     else:
         return _psposix.proc_getpriority(proc)
+
+
+def proc_tty_rdev(proc: "Process") -> Optional[int]:
+    tdev = _get_kinfo_proc(proc).kp_eproc.e_tdev
+    return tdev if tdev != -1 else None
 
 
 def pid_0_exists() -> bool:

@@ -197,6 +197,23 @@ class Process:
         def getrlimit(self, res: int) -> Tuple[int, int]:
             return _psimpl.proc_getrlimit(self, res)
 
+    def terminal(self) -> Optional[str]:
+        tty_rdev = _psimpl.proc_tty_rdev(self)
+
+        if tty_rdev is not None:
+            for fname in os.listdir("/dev/pts"):
+                fpath = os.path.join("/dev/pts", fname)
+                if os.stat(fpath).st_rdev == tty_rdev:
+                    return fpath
+
+            for fname in os.listdir("/dev"):
+                if fname.startswith("tty") and len(fname) > 3:
+                    fpath = os.path.join("/dev", fname)
+                    if os.stat(fpath).st_rdev == tty_rdev:
+                        return fpath
+
+        return None
+
     def getpriority(self) -> int:
         return _psimpl.proc_getpriority(self)
 

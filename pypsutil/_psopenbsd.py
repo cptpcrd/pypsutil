@@ -309,6 +309,11 @@ def proc_getpriority(proc: "Process") -> int:
         return _psposix.proc_getpriority(proc)
 
 
+def proc_tty_rdev(proc: "Process") -> Optional[int]:
+    tdev = _get_kinfo_proc(proc).p_tdev
+    return tdev if tdev != 2 ** 32 - 1 else None
+
+
 def pid_0_exists() -> bool:
     try:
         _get_kinfo_proc_pid(0)

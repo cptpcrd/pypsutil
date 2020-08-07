@@ -166,6 +166,11 @@ def proc_rlimit(
 proc_getrlimit = proc_rlimit
 
 
+def proc_tty_rdev(proc: "Process") -> Optional[int]:
+    tty_nr = int(_get_proc_stat_fields(proc)[6])
+    return tty_nr if tty_nr != 0 else None
+
+
 def iter_pids() -> Iterable[int]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
