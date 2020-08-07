@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 def proc_pgid(proc: "Process") -> int:
     pid = proc.pid
 
-    if pid <= 0:
-        raise ProcessLookupError
+    if pid == 0:
+        return 0
 
     return os.getpgid(pid)
 
@@ -17,8 +17,8 @@ def proc_pgid(proc: "Process") -> int:
 def proc_sid(proc: "Process") -> int:
     pid = proc.pid
 
-    if pid <= 0:
-        raise ProcessLookupError
+    if pid == 0:
+        return 0
 
     return os.getsid(pid)
 
@@ -26,7 +26,7 @@ def proc_sid(proc: "Process") -> int:
 def proc_getpriority(proc: "Process") -> int:
     pid = proc.pid
 
-    if pid <= 0:
+    if pid == 0:
         raise ProcessLookupError
 
     return os.getpriority(os.PRIO_PROCESS, pid)

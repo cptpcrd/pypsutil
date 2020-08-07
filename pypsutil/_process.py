@@ -201,12 +201,18 @@ class Process:
         return _psimpl.proc_getpriority(self)
 
     def setpriority(self, prio: int) -> None:
-        self._check_not_pid_0()
+        if self._pid == 0:
+            # Can't change the kernel's priority
+            raise PermissionError
+
         self._check_running()
         os.setpriority(os.PRIO_PROCESS, self._pid, prio)
 
     def send_signal(self, sig: int) -> None:
-        self._check_not_pid_0()
+        if self._pid == 0:
+            # Can't send signals to the kernel
+            raise PermissionError
+
         self._check_running()
         os.kill(self._pid, sig)
 
@@ -234,10 +240,6 @@ class Process:
 
     def _check_running(self) -> None:
         if not self.is_running():
-            raise ProcessLookupError
-
-    def _check_not_pid_0(self) -> None:
-        if self._pid == 0:
             raise ProcessLookupError
 
     def is_running(self) -> bool:
