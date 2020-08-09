@@ -212,10 +212,15 @@ class Process:
         tty_rdev = _psimpl.proc_tty_rdev(self)
 
         if tty_rdev is not None:
-            for fname in os.listdir("/dev/pts"):
-                fpath = os.path.join("/dev/pts", fname)
-                if os.stat(fpath).st_rdev == tty_rdev:
-                    return fpath
+            try:
+                pts_names = os.listdir("/dev/pts")
+            except FileNotFoundError:
+                pass
+            else:
+                for fname in pts_names:
+                    fpath = os.path.join("/dev/pts", fname)
+                    if os.stat(fpath).st_rdev == tty_rdev:
+                        return fpath
 
             for fname in os.listdir("/dev"):
                 if fname.startswith("tty") and len(fname) > 3:
