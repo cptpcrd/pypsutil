@@ -158,10 +158,8 @@ class Process:
     def gids(self) -> Tuple[int, int, int]:
         return Gids(*_psimpl.proc_gids(self))
 
-    if hasattr(_psimpl, "proc_getgroups"):
-
-        def getgroups(self) -> List[int]:
-            return _psimpl.proc_getgroups(self)
+    def getgroups(self) -> List[int]:
+        return _psimpl.proc_getgroups(self)
 
     def username(self) -> str:
         ruid = self.uids()[0]
