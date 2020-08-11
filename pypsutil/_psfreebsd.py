@@ -440,6 +440,10 @@ def proc_umask(proc: "Process") -> int:
     return umask.value
 
 
+def proc_name(proc: "Process") -> str:
+    return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).ki_comm).decode()
+
+
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
     kinfo = _get_kinfo_proc(proc)
     return kinfo.ki_ruid, kinfo.ki_uid, kinfo.ki_svuid
