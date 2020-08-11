@@ -4,18 +4,7 @@ import dataclasses
 import errno
 import struct
 import time
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-    cast,
-    no_type_check,
-)
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
@@ -475,6 +464,5 @@ def time_since_boot() -> float:
     return round(time.time() - boot_time(), 4)
 
 
-@no_type_check
 def uptime() -> float:
-    return time.clock_gettime(time.CLOCK_UPTIME_RAW)  # pylint: disable=no-member
+    return time.clock_gettime(time.CLOCK_UPTIME_RAW)  # type: ignore[attr-defined]  # pylint: disable=no-member
