@@ -1,5 +1,13 @@
 from ._errors import ZombieProcess
-from ._process import Process, ProcessSignalMasks, pid_exists, pids, process_iter, wait_procs
+from ._process import (
+    Process,
+    ProcessSignalMasks,
+    pid_exists,
+    pids,
+    process_iter,
+    process_iter_available,
+    wait_procs,
+)
 from ._system import boot_time, time_since_boot
 
 try:
@@ -18,6 +26,7 @@ __all__ = [
     "pid_exists",
     "pids",
     "process_iter",
+    "process_iter_available",
     "wait_procs",
     "ZombieProcess",
 ]

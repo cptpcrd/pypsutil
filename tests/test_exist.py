@@ -33,6 +33,12 @@ def test_proc_exists() -> None:
     else:
         raise ValueError("Current process not found")
 
+    for proc in pypsutil.process_iter_available():
+        if proc.pid == pid:
+            break
+    else:
+        raise ValueError("Current process not found")
+
     # Make sure that all interfaces report that PID 0 either
     # exists or doesn't exist.
     if pypsutil.pid_exists(0):
@@ -45,6 +51,12 @@ def test_proc_exists() -> None:
                 break
         else:
             raise ValueError("PID 0 not found")
+
+        for proc in pypsutil.process_iter_available():
+            if proc.pid == 0:
+                break
+        else:
+            raise ValueError("PID 0 not found")
     else:
         # PID 0 doesn't show up
         assert 0 not in pypsutil.pids()
@@ -52,6 +64,9 @@ def test_proc_exists() -> None:
             pypsutil.Process(0)
 
         for proc in pypsutil.process_iter():
+            assert proc.pid != 0
+
+        for proc in pypsutil.process_iter_available():
             assert proc.pid != 0
 
 
@@ -70,4 +85,6 @@ def test_proc_not_exists() -> None:
 
     assert proc.pid not in pypsutil.pids()
     for iter_proc in pypsutil.process_iter():
+        assert iter_proc.pid != proc.pid
+    for iter_proc in pypsutil.process_iter_available():
         assert iter_proc.pid != proc.pid

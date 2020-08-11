@@ -185,7 +185,7 @@ def iter_pids() -> Iterator[int]:
             pass
 
 
-def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
+def iter_pid_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int, float]]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
             pid = int(name)
@@ -196,6 +196,11 @@ def iter_pid_create_time() -> Iterator[Tuple[int, float]]:
             ctime = pid_create_time(pid)
         except ProcessLookupError:
             continue
+        except PermissionError:
+            if skip_perm_error:
+                continue
+            else:
+                raise
 
         yield (pid, ctime)
 

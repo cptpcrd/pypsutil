@@ -299,14 +299,22 @@ def pids() -> List[int]:
     return list(_psimpl.iter_pids())
 
 
+def process_iter() -> Iterator[Process]:
+    return _process_iter_impl(skip_perm_error=False)
+
+
+def process_iter_available() -> Iterator[Process]:
+    return _process_iter_impl(skip_perm_error=True)
+
+
 _process_iter_cache: Dict[int, Process] = {}
 _process_iter_cache_lock = threading.RLock()
 
 
-def process_iter() -> Iterator[Process]:
+def _process_iter_impl(*, skip_perm_error: bool = False) -> Iterator[Process]:
     seen_pids = set()
 
-    for (pid, create_time) in _psimpl.iter_pid_create_time():
+    for (pid, create_time) in _psimpl.iter_pid_create_time(skip_perm_error=skip_perm_error):
         seen_pids.add(pid)
 
         try:
