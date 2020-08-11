@@ -48,6 +48,8 @@ KERN_PROC_PID = 1
 PROC_PIDVNODEPATHINFO = 9
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 
+CLOCK_UPTIME_RAW = 8
+
 caddr_t = ctypes.c_char_p
 segsz_t = ctypes.c_int32
 dev_t = ctypes.c_int32
@@ -465,4 +467,4 @@ def time_since_boot() -> float:
 
 
 def uptime() -> float:
-    return time.clock_gettime(time.CLOCK_UPTIME_RAW)  # type: ignore[attr-defined]  # pylint: disable=no-member
+    return time.clock_gettime(CLOCK_UPTIME_RAW)
