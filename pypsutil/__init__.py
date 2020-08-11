@@ -11,7 +11,7 @@ from ._process import (
 from ._system import boot_time, time_since_boot
 
 try:
-    from ._system import uptime  # noqa
+    from ._system import uptime  # noqa  # pytype: disable=import-error
 except ImportError:
     pass
 
