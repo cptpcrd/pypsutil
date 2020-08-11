@@ -20,6 +20,7 @@ def test_basic_info() -> None:
     assert proc.parent().pid == os.getppid()  # type: ignore
 
     assert proc.create_time() <= time.time()
+    assert proc.create_time() >= pypsutil.boot_time()
 
     assert os.path.samefile(proc.cwd(), os.getcwd())
     assert os.path.samefile(proc.exe(), sys.executable)
