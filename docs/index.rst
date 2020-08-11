@@ -287,24 +287,42 @@ Process information
 
    .. py:method:: suspend()
 
-      Suspends process execution. Equivalent to ``proc.send_signal(signal.SIGSTOP)``.
+      Suspends process execution, preemptively checking for PID reuse. Equivalent to
+      ``proc.send_signal(signal.SIGSTOP)``.
 
    .. py:method:: resume()
 
-      Resumes process execution. Equivalent to ``proc.send_signal(signal.SIGSCONT)``.
+      Resumes process execution, preemptively checking for PID reuse. Equivalent to
+      ``proc.send_signal(signal.SIGSCONT)``.
 
    .. py:method:: terminate()
 
-      Terminates the process. Equivalent to ``proc.send_signal(signal.SIGTERM)``.
+      Terminates the process, preemptively checking for PID reuse. Equivalent to
+      ``proc.send_signal(signal.SIGTERM)``.
 
    .. py:method:: kill()
 
-      Kills the process. Equivalent to ``proc.send_signal(signal.SIGKELL)``.
+      Kills the process, preemptively checking for PID reuse. Equivalent to
+      ``proc.send_signal(signal.SIGKELL)``.
 
    .. py:method:: is_running()
 
       Checks if the process is still running. Unlike ``pid_exists(proc.pid)``, this also checks for PID
       reuse.
+
+      Note: The following methods preemptively check whether the process is still running and raise
+      ``ProcessLookupError`` if it has exited:
+
+      - :py:meth:`parent()`
+      - :py:meth:`parents()`
+      - :py:meth:`children()`
+      - :py:meth:`rlimit()` (when setting limits)
+      - :py:meth:`setpriority()`
+      - :py:meth:`send_signal()`
+      - :py:meth:`suspend()`
+      - :py:meth:`resume()`
+      - :py:meth:`terminate()`
+      - :py:meth:`kill()`
 
       :returns: Whether the process is still running
       :rtype: int
