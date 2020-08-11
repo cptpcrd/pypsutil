@@ -16,4 +16,5 @@ if hasattr(pypsutil, "uptime"):
 
     def test_uptime() -> None:
         # time_since_boot() should always be greater than or equal to uptime()
-        assert round(pypsutil.time_since_boot() - pypsutil.uptime(), 2) >= 0
+        # Allow some minor flexibility, though
+        assert pypsutil.time_since_boot() - pypsutil.uptime() >= -1
