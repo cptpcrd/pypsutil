@@ -4,6 +4,7 @@ import errno
 import os
 import resource
 import sys
+import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
@@ -579,3 +580,12 @@ def boot_time() -> float:
     btime = Timeval()
     _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
     return btime.to_float()
+
+
+def time_since_boot() -> float:
+    # Round the result to reduce small variations
+    return round(time.time() - boot_time(), 4)
+
+
+def uptime() -> float:
+    return time.clock_gettime(time.CLOCK_UPTIME)  # pylint: disable=no-member

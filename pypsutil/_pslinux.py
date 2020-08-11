@@ -1,6 +1,7 @@
 import dataclasses
 import os
 import resource
+import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, no_type_check
 
 from . import _cache, _psposix, _util
@@ -205,18 +206,32 @@ _cached_boot_time = None
 def boot_time() -> float:
     global _cached_boot_time  # pylint: disable=global-statement
 
+    btime = None
+
     with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
         for line in file:
             if line.startswith("btime "):
                 btime = float(line[6:].strip())
-                _cached_boot_time = btime
-                return btime
+                break
 
-    raise ValueError
+    if btime is None:
+        # Compute it manually, and round the result to reduce small variations.
+        btime = round(time.time() - time_since_boot(), 4)
+
+    _cached_boot_time = btime
+    return btime
 
 
 def _internal_boot_time() -> float:
     return _cached_boot_time if _cached_boot_time is not None else boot_time()
+
+
+def time_since_boot() -> float:
+    return time.clock_gettime(time.CLOCK_BOOTTIME)  # pylint: disable=no-member
+
+
+def uptime() -> float:
+    return time.clock_gettime(time.CLOCK_MONOTONIC)
 
 
 def pid_0_exists() -> bool:

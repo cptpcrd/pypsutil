@@ -3,7 +3,19 @@ import ctypes
 import dataclasses
 import errno
 import struct
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+import time
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+    no_type_check,
+)
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
@@ -454,3 +466,13 @@ def boot_time() -> float:
     btime = Timeval()
     _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
     return btime.to_float()
+
+
+def time_since_boot() -> float:
+    # Round the result to reduce small variations
+    return round(time.time() - boot_time(), 4)
+
+
+@no_type_check
+def uptime() -> float:
+    return time.clock_gettime(time.CLOCK_UPTIME_RAW)  # pylint: disable=no-member

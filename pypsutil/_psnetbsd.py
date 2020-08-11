@@ -1,6 +1,7 @@
 # pylint: disable=too-few-public-methods
 import ctypes
 import errno
+import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
@@ -376,3 +377,8 @@ def boot_time() -> float:
     btime = Timespec()
     _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)
     return btime.to_float()
+
+
+def time_since_boot() -> float:
+    # Round the result to reduce small variations
+    return round(time.time() - boot_time(), 4)
