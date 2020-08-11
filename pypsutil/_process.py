@@ -262,8 +262,6 @@ class Process:
     @contextlib.contextmanager
     def oneshot(self) -> Iterator[None]:
         with self._lock:
-            self._check_running()
-
             if self._cache is None:
                 self._cache = {}
                 yield
