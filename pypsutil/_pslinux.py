@@ -211,17 +211,8 @@ _cached_boot_time = None
 def boot_time() -> float:
     global _cached_boot_time  # pylint: disable=global-statement
 
-    btime = None
-
-    with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
-        for line in file:
-            if line.startswith("btime "):
-                btime = float(line[6:].strip())
-                break
-
-    if btime is None:
-        # Compute it manually, and round the result to reduce small variations.
-        btime = round(time.time() - time_since_boot(), 4)
+    # Round the result to reduce small variations.
+    btime = round(time.time() - time_since_boot(), 4)
 
     _cached_boot_time = btime
     return btime
