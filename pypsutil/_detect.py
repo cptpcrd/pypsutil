@@ -16,10 +16,6 @@ elif sys.platform.startswith("openbsd"):
     from . import _psopenbsd
 
     _psimpl = _psopenbsd
-elif sys.platform.startswith("dragonfly"):
-    from . import _psdragonfly
-
-    _psimpl = _psdragonfly
 elif sys.platform.startswith("darwin"):
     from . import _psmacosx
 
