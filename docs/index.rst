@@ -165,6 +165,15 @@ Process information
 
         Get the supplementary group list of this process.
 
+        .. note::
+            Currently, on Windows Subsystem for Linux 1 (not tested on WSL 2), this
+            function succeeds but always returns an empty list.
+
+        .. note::
+            On macOS, this function's behavior differs from that of
+            `os.getgroups() <https://docs.python.org/3/library/os.html#os.getgroups>`_.
+            Effectively, it always behaves as if the deployment target is less than 10.5.
+
         :return: A list of this process's supplementary group IDs.
         :rtype: list[int]
 
@@ -207,6 +216,10 @@ Process information
           whole, not just this thread.
 
         All of these are ``set`` objects.
+
+        .. note::
+            Currently, on Windows Subsystem for Linux 1 (not tested on WSL 2), this
+            function succeeds but always returns empty sets for all fields.
 
         :return: The signal masks of this process.
         :rtype: ProcessSignalMasks
