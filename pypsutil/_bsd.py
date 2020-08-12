@@ -47,15 +47,6 @@ def sysctl(
     return old_size.value
 
 
-def sysctl_bytes(mib: Collection[int], new: Optional[bytes], trim_nul: bool = False) -> bytes:
-    old_len = sysctl(mib, None, None)
-
-    buf = (ctypes.c_char * old_len)()  # pytype: disable=not-callable
-
-    old_len = sysctl(mib, new, buf)
-    return (buf.value if trim_nul else buf.raw)[:old_len]
-
-
 def sysctl_bytes_retry(mib: Collection[int], new: Optional[bytes], trim_nul: bool = False) -> bytes:
     while True:
         old_len = sysctl(mib, None, None)
