@@ -1,3 +1,4 @@
+from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import ZombieProcess
 from ._process import (
     Process,
@@ -19,6 +20,12 @@ __version__ = "0.2.0"
 
 __all__ = [
     "PROCFS_PATH",
+    "LINUX",
+    "MACOS",
+    "FREEBSD",
+    "NETBSD",
+    "OPENBSD",
+    "BSD",
     "boot_time",
     "time_since_boot",
     "Process",
