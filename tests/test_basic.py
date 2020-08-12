@@ -57,6 +57,11 @@ def test_basic_info_no_proc() -> None:
         proc.environ()
 
 
+def test_negative_pid() -> None:
+    with pytest.raises(ProcessLookupError):
+        pypsutil.Process(-1)
+
+
 def test_parents() -> None:
     proc = pypsutil.Process()
 
