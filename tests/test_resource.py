@@ -55,6 +55,12 @@ if hasattr(pypsutil.Process, "rlimit"):
         with pytest.raises(ValueError, match=r"^invalid resource specified$"):
             proc.rlimit(max(RESOURCE_NUMS) + 1)
 
+        with pytest.raises(OverflowError):
+            proc.rlimit(resource.RLIMIT_NOFILE, (2 ** 64, -1))
+
+        with pytest.raises(OverflowError):
+            proc.rlimit(resource.RLIMIT_NOFILE, (2 ** 31 - 1, 2 ** 64))
+
 
 if hasattr(pypsutil.Process, "getrlimit"):
 
