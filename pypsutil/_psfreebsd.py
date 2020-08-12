@@ -83,6 +83,8 @@ _SS_PAD2SIZE = (
 
 CAP_RIGHTS_VERSION = 0
 
+rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
 
 class Rlimit(ctypes.Structure):
     _fields_ = [
@@ -92,7 +94,15 @@ class Rlimit(ctypes.Structure):
 
     @classmethod
     def construct_opt(cls, limits: Optional[Tuple[int, int]]) -> Optional["Rlimit"]:
-        return cls(rlim_cur=limits[0], rlim_max=limits[1]) if limits is not None else None
+        if limits is not None:
+            soft, hard = limits
+
+            if soft > rlimit_max_value or hard > rlimit_max_value:
+                raise OverflowError("resource limit value is too large")
+
+            return cls(rlim_cur=soft, rlim_max=hard)
+        else:
+            return None
 
     def unpack(self) -> Tuple[int, int]:
         return self.rlim_cur, self.rlim_max

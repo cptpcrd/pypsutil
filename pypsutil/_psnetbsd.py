@@ -37,6 +37,8 @@ rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 
+rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
 
 def _proc_rlimit_getset(proc: "Process", res: int, new_limit: Optional[int], hard: bool) -> int:
     new_limit_raw = ctypes.byref(rlim_t(new_limit)) if new_limit is not None else None
@@ -67,6 +69,9 @@ def proc_rlimit(
     if new_limits is not None:
         new_soft = new_limits[0]
         new_hard = new_limits[1]
+
+        if new_soft > rlimit_max_value or new_hard > rlimit_max_value:
+            raise OverflowError("resource limit value is too large")
     else:
         new_soft = None
         new_hard = None
