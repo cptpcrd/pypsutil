@@ -96,20 +96,25 @@ class Process:
         self._check_running()
 
         if recursive:
-            all_processes = list(process_iter())
-
             search_parents = {self}
             children = []
             while True:
                 new_search_parents = set()
 
                 # Loop through every process
-                for proc in all_processes:
-                    if proc.parent() in search_parents and proc not in children:
-                        # Its parent is one of the processes we were looking for
-                        children.append(proc)
-                        # Look for its children next round
-                        new_search_parents.add(proc)
+                for proc in process_iter():
+                    try:
+                        # We can skip the is_running() check because we literally just got this
+                        # PID/create time from the OS
+                        proc_parent = proc._parent_unchecked()
+                    except ProcessLookupError:
+                        pass
+                    else:
+                        if proc_parent in search_parents and proc not in children:
+                            # Its parent is one of the processes we were looking for
+                            children.append(proc)
+                            # Look for its children next round
+                            new_search_parents.add(proc)
 
                 search_parents = new_search_parents
                 if not search_parents:
