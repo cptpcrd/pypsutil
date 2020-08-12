@@ -197,7 +197,9 @@ class Process:
                 if hard < 0:
                     hard = resource.RLIM_INFINITY
 
-                if hard != resource.RLIM_INFINITY and (soft > hard or soft == resource.RLIM_INFINITY):
+                if hard != resource.RLIM_INFINITY and (
+                    soft > hard or soft == resource.RLIM_INFINITY
+                ):
                     raise ValueError("current limit exceeds maximum limit")
 
                 new_limits = (soft, hard)
