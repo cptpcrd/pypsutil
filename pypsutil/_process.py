@@ -106,7 +106,7 @@ class Process:
                     try:
                         # We can skip the is_running() check because we literally just got this
                         # PID/create time from the OS
-                        proc_parent = proc._parent_unchecked()
+                        proc_parent = proc._parent_unchecked()  # pylint: disable=protected-access
                     except ProcessLookupError:
                         pass
                     else:
