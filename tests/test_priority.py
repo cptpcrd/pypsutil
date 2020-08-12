@@ -33,4 +33,8 @@ def test_priority_pid_0() -> None:
         pass
     else:
         # If it does, we should be able to get its priority
-        proc.getpriority()
+        prio = proc.getpriority()
+
+        # But not set it
+        with pytest.raises(PermissionError):
+            proc.setpriority(prio)

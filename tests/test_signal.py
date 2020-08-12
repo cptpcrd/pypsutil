@@ -1,4 +1,5 @@
 import os
+import signal
 import sys
 
 import pytest
@@ -18,3 +19,16 @@ def test_send_signal_no_proc() -> None:
 
     with pytest.raises(ProcessLookupError):
         proc.send_signal(0)
+
+
+def test_priority_pid_0() -> None:
+    try:
+        proc = pypsutil.Process(0)
+    except ProcessLookupError:
+        # PID 0 doesn't show up
+        return
+
+    # If it does, we shouldn't be able to send it signals
+
+    with pytest.raises(PermissionError):
+        proc.send_signal(signal.SIGINT)
