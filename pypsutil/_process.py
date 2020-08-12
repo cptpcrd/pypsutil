@@ -291,6 +291,9 @@ class Process:
 
         return NotImplemented
 
+    def __hash__(self) -> int:
+        return hash((self._pid, self._create_time))
+
     def __repr__(self) -> str:
         return "Process(pid={})".format(self._pid)
 
