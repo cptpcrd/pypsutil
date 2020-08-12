@@ -121,7 +121,16 @@ class Process:
                     break
 
         else:
-            children = [proc for proc in process_iter() if proc.ppid() == self.pid]
+            children = []
+
+            for proc in process_iter():
+                try:
+                    proc_ppid = proc.ppid()
+                except ProcessLookupError:
+                    pass
+                else:
+                    if proc_ppid == self.pid:
+                        children.append(proc)
 
         return children
 
