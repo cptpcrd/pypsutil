@@ -11,7 +11,7 @@ import pypsutil
 
 from .util import get_dead_process
 
-if sys.platform.startswith(("linux", "darwin", "freebsd", "openbsd", "netbsd")):
+if pypsutil.UNIX:
 
     def test_sigmasks_simple() -> None:
         proc = pypsutil.Process()
@@ -105,7 +105,7 @@ if sys.platform.startswith(("linux", "darwin", "freebsd", "openbsd", "netbsd")):
     def blank_signal_handler(sig: int, frame: Any) -> None:  # pylint: disable=unused-argument
         pass
 
-    def check_sigmasks(sigmasks: pypsutil.ProcessSignalMasks) -> None:
+    def check_sigmasks(sigmasks: pypsutil.ProcessSignalMasks) -> None:  # pylint: disable=no-member
         if hasattr(sigmasks, "blocked"):
             assert sigmasks.blocked == signal.pthread_sigmask(signal.SIG_BLOCK, [])
 

@@ -6,6 +6,8 @@ FREEBSD = False
 NETBSD = False
 OPENBSD = False
 BSD = False
+UNIX = False
+WINDOWS = False
 
 if sys.platform.startswith("linux"):
     from . import _pslinux
@@ -13,6 +15,7 @@ if sys.platform.startswith("linux"):
     _psimpl = _pslinux
 
     LINUX = True
+    UNIX = True
 elif sys.platform.startswith("freebsd"):
     from . import _psfreebsd
 
@@ -20,6 +23,7 @@ elif sys.platform.startswith("freebsd"):
 
     FREEBSD = True
     BSD = True
+    UNIX = True
 elif sys.platform.startswith("netbsd"):
     from . import _psnetbsd
 
@@ -27,6 +31,7 @@ elif sys.platform.startswith("netbsd"):
 
     NETBSD = True
     BSD = True
+    UNIX = True
 elif sys.platform.startswith("openbsd"):
     from . import _psopenbsd
 
@@ -34,11 +39,19 @@ elif sys.platform.startswith("openbsd"):
 
     OPENBSD = True
     BSD = True
+    UNIX = True
 elif sys.platform.startswith("darwin"):
     from . import _psmacosx
 
     _psimpl = _psmacosx
 
     MACOS = True
+    UNIX = True
+elif sys.platform.startswith("win"):
+    from . import _pswindows
+
+    _psimpl = _pswindows
+
+    WINDOWS = True
 else:
     raise RuntimeError("Unsupported platform")

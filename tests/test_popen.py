@@ -15,10 +15,10 @@ def sanitized_env() -> Dict[str, str]:
 
 
 def test_popen_launch_error() -> None:
-    with pytest.raises(OSError, match="No such file or directory"):
+    with pytest.raises(FileNotFoundError):
         pypsutil.Popen(["./NOEXIST"])
 
-    with pytest.raises(OSError, match="No such file or directory"):
+    with pytest.raises(FileNotFoundError):
         pypsutil.Popen(["NOEXIST"])
 
 
@@ -62,8 +62,9 @@ def test_popen_communicate() -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=sanitized_env(),
+        universal_newlines=True,
     )
-    assert proc.communicate() == (b"1\n", b"2\n")
+    assert proc.communicate() == ("1\n", "2\n")
 
     proc = pypsutil.Popen(
         [sys.executable, "-c", "print(input())"],
@@ -71,8 +72,9 @@ def test_popen_communicate() -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=sanitized_env(),
+        universal_newlines=True,
     )
-    assert proc.communicate(b"1\n") == (b"1\n", b"")
+    assert proc.communicate("1\n") == ("1\n", "")
 
     proc = pypsutil.Popen(
         [sys.executable, "-c", "import time; time.sleep(10)"], env=sanitized_env()

@@ -10,11 +10,15 @@ import pypsutil
 
 from .util import get_dead_process
 
+all_families = [socket.AF_INET, socket.AF_INET6]
+if pypsutil.UNIX:
+    all_families.append(socket.AF_UNIX)
+
 
 @contextlib.contextmanager
 def open_testing_sockets(
     *,
-    families: Iterable[int] = (socket.AF_INET, socket.AF_INET6, socket.AF_UNIX),
+    families: Iterable[int] = tuple(all_families),
     types: Iterable[int] = (socket.SOCK_STREAM, socket.SOCK_DGRAM, socket.SOCK_SEQPACKET),
 ) -> Iterator[Dict[int, Tuple[int, int, Union[Tuple[str, int], str], Union[Tuple[str, int], str]]]]:
     socks = []

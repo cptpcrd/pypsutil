@@ -22,29 +22,36 @@ from .util import (
     replace_info_directories,
 )
 
-# NetBSD opens an extra file descriptor
-if not pypsutil.NETBSD:
+if pypsutil.WINDOWS:
+    pytest.skip("threading tests currently broken on Windows", allow_module_level=True)
 
-    def test_num_fds() -> None:
-        with managed_child_process2(
-            [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
-            close_fds=True,
-            stdout=subprocess.PIPE,
-            bufsize=0,
-        ) as proc:
-            assert proc.stdout is not None
-            assert proc.stdout.read(1) == b"a"
+if pypsutil.UNIX:
+    # NetBSD opens an extra file descriptor
+    if not pypsutil.NETBSD:
 
-            assert proc.num_fds() == 3
+        def test_num_fds() -> None:
+            with managed_child_process2(
+                [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
+                close_fds=True,
+                stdout=subprocess.PIPE,
+                bufsize=0,
+            ) as proc:
+                assert proc.stdout is not None
+                assert proc.stdout.read(1) == b"a"
+
+                assert proc.num_fds() == 3
+
+    def test_num_fds_no_proc() -> None:
+        proc = get_dead_process()
+
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.num_fds()
 
 
-def test_num_fds_no_proc() -> None:
-    proc = get_dead_process()
-
-    with pytest.raises(pypsutil.NoSuchProcess):
-        proc.num_fds()
-
-
+@pytest.mark.skipif(
+    pypsutil.WINDOWS and sys.version_info < (3, 7),
+    reason="close_fds not supported with stdin/stdout/stderr on Windows before Python 3.7",
+)
 def test_open_files_empty() -> None:
     with managed_child_process2(
         [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
@@ -59,6 +66,10 @@ def test_open_files_empty() -> None:
         assert proc.open_files() == []
 
 
+@pytest.mark.skipif(
+    pypsutil.WINDOWS and sys.version_info < (3, 7),
+    reason="close_fds not supported with stdin/stdout/stderr on Windows before Python 3.7",
+)
 def test_open_files_2(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "a", "w"):
         pass
@@ -110,181 +121,181 @@ def test_open_files_no_proc() -> None:
         proc.open_files()
 
 
-def test_iter_fds(tmp_path: pathlib.Path) -> None:
-    # pylint: disable=invalid-name
+if pypsutil.UNIX:
+    # pylint: disable=no-member
 
-    proc = pypsutil.Process()
+    def test_iter_fds(tmp_path: pathlib.Path) -> None:
+        # pylint: disable=invalid-name
 
-    os.mkfifo(tmp_path / "fifo")
-    os.mkdir(tmp_path / "dir")
+        proc = pypsutil.Process()
 
-    with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
-        socket.AF_INET
-    ) as sock_in, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
-    ) as fifo, open(
-        tmp_path / "file", "w"
-    ) as file, managed_fd(
-        os.open(tmp_path / "dir", os.O_RDONLY | os.O_DIRECTORY)
-    ) as dirfd:
-        sock_un = sock_un.fileno()
-        sock_in = sock_in.fileno()
-        fifo = fifo.fileno()
-        file = file.fileno()
+        os.mkfifo(tmp_path / "fifo")
+        os.mkdir(tmp_path / "dir")
 
-        os.write(w, b"abc")
+        with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
+            socket.AF_INET
+        ) as sock_in, managed_pipe() as (r, w), open(
+            tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        ) as fifo, open(
+            tmp_path / "file", "w"
+        ) as file, managed_fd(
+            os.open(tmp_path / "dir", os.O_RDONLY | os.O_DIRECTORY)
+        ) as dirfd:
+            sock_un = sock_un.fileno()
+            sock_in = sock_in.fileno()
+            fifo = fifo.fileno()
+            file = file.fileno()
 
-        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+            os.write(w, b"abc")
 
-        for fd in [0, 1, 2, sock_un, sock_in, r, w, fifo, file, dirfd]:
-            st = os.fstat(fd)
-            assert pfds[fd].rdev in (st.st_rdev, None)
-            assert pfds[fd].dev in (st.st_dev, None)
-            assert pfds[fd].ino in (st.st_ino, None)
+            pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
 
-        for fd in [0, 1, 2]:
-            if pfds[fd].path:
-                try:
-                    tty = os.ttyname(fd)
-                except OSError:
-                    pass
-                else:
-                    assert os.path.samefile(pfds[fd].path, tty)
+            for fd in [0, 1, 2, sock_un, sock_in, r, w, fifo, file, dirfd]:
+                st = os.fstat(fd)
+                assert pfds[fd].rdev in (st.st_rdev, None)
+                assert pfds[fd].dev in (st.st_dev, None)
+                assert pfds[fd].ino in (st.st_ino, None)
+
+            for fd in [0, 1, 2]:
+                if pfds[fd].path:
+                    try:
+                        tty = os.ttyname(fd)
+                    except OSError:
+                        pass
+                    else:
+                        assert os.path.samefile(pfds[fd].path, tty)
+
+                if not pypsutil.FREEBSD:
+                    assert pfds[fd].flags & os.O_CLOEXEC == 0
+
+            for fd in [sock_un, sock_in, r, w, fifo, dirfd]:
+                assert pfds[fd].position == 0
+
+                if not pypsutil.FREEBSD:
+                    assert pfds[fd].flags & os.O_CLOEXEC == os.O_CLOEXEC
+
+            for fd in [sock_un, sock_in, r, w]:
+                assert not pfds[fd].path
+
+            if pfds[fifo].path:
+                assert os.path.samefile(pfds[fifo].path, tmp_path / "fifo")
+            if pfds[file].path:
+                assert os.path.samefile(pfds[file].path, tmp_path / "file")
+            if pfds[dirfd].path:
+                assert os.path.samefile(pfds[dirfd].path, tmp_path / "dir")
+
+            assert pfds[sock_un].fdtype == pypsutil.ProcessFdType.SOCKET
+            assert pfds[sock_in].fdtype == pypsutil.ProcessFdType.SOCKET
+            assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+            assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
+            assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
+            assert pfds[file].fdtype == pypsutil.ProcessFdType.FILE
+            assert pfds[dirfd].fdtype == pypsutil.ProcessFdType.FILE
+
+            if pypsutil.FREEBSD or pypsutil.MACOS:
+                assert pfds[r].extra_info["buffer_cnt"] == 3
+
+            if pypsutil.FREEBSD:
+                # FreeBSD looks at this end of the pipe (since they're bidirectional on FreeBSD)
+                assert pfds[w].extra_info["buffer_cnt"] == 0
+            elif pypsutil.MACOS:
+                # macOS switches to the other end of the pipe
+                assert pfds[w].extra_info["buffer_cnt"] == 3
+
+    @linux_only
+    def test_iter_fds_epoll(tmp_path: pathlib.Path) -> None:
+        # pylint: disable=invalid-name,no-member
+
+        proc = pypsutil.Process()
+
+        os.mkfifo(tmp_path / "fifo")
+
+        with select.epoll() as epoll, managed_pipe() as (r, w), open(
+            tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        ) as fifo:
+            epoll.register(r, select.EPOLLIN)
+            epoll.register(w, select.EPOLLOUT)
+            epoll.register(fifo.fileno(), select.EPOLLIN)
+
+            epoll = epoll.fileno()
+            fifo = fifo.fileno()
+
+            pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+
+            st = os.fstat(epoll)
+            assert pfds[epoll].rdev in (st.st_rdev, None)
+            assert pfds[epoll].dev in (st.st_dev, None)
+            assert pfds[epoll].ino in (st.st_ino, None)
+
+            assert pfds[epoll].position == 0
+            assert pfds[epoll].flags & os.O_CLOEXEC == os.O_CLOEXEC
+
+            assert not pfds[epoll].path
+
+            assert pfds[epoll].fdtype == pypsutil.ProcessFdType.EPOLL
+            assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+            assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
+
+            tfds = pfds[epoll].extra_info["tfds"]
+
+            assert tfds[r]["pos"] == 0
+            assert tfds[r]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
+            assert tfds[r]["ino"] == pfds[r].ino
+
+            assert tfds[w]["pos"] == 0
+            assert tfds[w]["events"] == select.EPOLLOUT | select.EPOLLERR | select.EPOLLHUP
+            assert tfds[w]["ino"] == pfds[w].ino
+
+            assert tfds[fifo]["pos"] == 0
+            assert tfds[fifo]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
+            assert tfds[fifo]["ino"] == pfds[fifo].ino
+
+    @macos_bsd_only
+    def test_iter_fds_kqueue(tmp_path: pathlib.Path) -> None:
+        # pylint: disable=invalid-name,no-member
+
+        proc = pypsutil.Process()
+
+        os.mkfifo(tmp_path / "fifo")
+
+        with contextlib.closing(select.kqueue()) as kqueue, managed_pipe() as (r, w), open(
+            tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        ) as fifo:
+            kqueue.control([select.kevent(r, select.KQ_FILTER_READ)], 0)
+            kqueue.control([select.kevent(w, select.KQ_FILTER_WRITE)], 0)
+            kqueue.control([select.kevent(fifo.fileno(), select.KQ_FILTER_READ)], 0)
+
+            kqueue = kqueue.fileno()
+            fifo = fifo.fileno()
+
+            os.write(w, b"abc")
+
+            pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+
+            st = os.fstat(kqueue)
+            assert pfds[kqueue].rdev in (st.st_rdev, None)
+            assert pfds[kqueue].dev in (st.st_dev, None)
+            assert pfds[kqueue].ino in (st.st_ino, None)
+
+            assert pfds[kqueue].position == 0
 
             if not pypsutil.FREEBSD:
-                assert pfds[fd].flags & os.O_CLOEXEC == 0
+                assert pfds[kqueue].flags & os.O_CLOEXEC == os.O_CLOEXEC
 
-        for fd in [sock_un, sock_in, r, w, fifo, dirfd]:
-            assert pfds[fd].position == 0
+            assert not pfds[kqueue].path
 
-            if not pypsutil.FREEBSD:
-                assert pfds[fd].flags & os.O_CLOEXEC == os.O_CLOEXEC
+            assert pfds[kqueue].fdtype == pypsutil.ProcessFdType.KQUEUE
+            assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+            assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
 
-        for fd in [sock_un, sock_in, r, w]:
-            assert not pfds[fd].path
+            if pypsutil.OPENBSD or pypsutil.MACOS:
+                assert pfds[kqueue].extra_info["kq_count"] == 2
 
-        if pfds[fifo].path:
-            assert os.path.samefile(pfds[fifo].path, tmp_path / "fifo")
-        if pfds[file].path:
-            assert os.path.samefile(pfds[file].path, tmp_path / "file")
-        if pfds[dirfd].path:
-            assert os.path.samefile(pfds[dirfd].path, tmp_path / "dir")
+    def test_iter_fds_no_proc() -> None:
+        proc = get_dead_process()
 
-        assert pfds[sock_un].fdtype == pypsutil.ProcessFdType.SOCKET
-        assert pfds[sock_in].fdtype == pypsutil.ProcessFdType.SOCKET
-        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
-        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
-        assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
-        assert pfds[file].fdtype == pypsutil.ProcessFdType.FILE
-        assert pfds[dirfd].fdtype == pypsutil.ProcessFdType.FILE
-
-        if pypsutil.FREEBSD or pypsutil.MACOS:
-            assert pfds[r].extra_info["buffer_cnt"] == 3
-
-        if pypsutil.FREEBSD:
-            # FreeBSD looks at this end of the pipe (since they're bidirectional on FreeBSD)
-            assert pfds[w].extra_info["buffer_cnt"] == 0
-        elif pypsutil.MACOS:
-            # macOS switches to the other end of the pipe
-            assert pfds[w].extra_info["buffer_cnt"] == 3
-
-
-@linux_only
-def test_iter_fds_epoll(tmp_path: pathlib.Path) -> None:
-    # pylint: disable=invalid-name,no-member
-
-    proc = pypsutil.Process()
-
-    os.mkfifo(tmp_path / "fifo")
-
-    with select.epoll() as epoll, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
-    ) as fifo:
-        epoll.register(r, select.EPOLLIN)
-        epoll.register(w, select.EPOLLOUT)
-        epoll.register(fifo.fileno(), select.EPOLLIN)
-
-        epoll = epoll.fileno()
-        fifo = fifo.fileno()
-
-        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
-
-        st = os.fstat(epoll)
-        assert pfds[epoll].rdev in (st.st_rdev, None)
-        assert pfds[epoll].dev in (st.st_dev, None)
-        assert pfds[epoll].ino in (st.st_ino, None)
-
-        assert pfds[epoll].position == 0
-        assert pfds[epoll].flags & os.O_CLOEXEC == os.O_CLOEXEC
-
-        assert not pfds[epoll].path
-
-        assert pfds[epoll].fdtype == pypsutil.ProcessFdType.EPOLL
-        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
-        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
-
-        tfds = pfds[epoll].extra_info["tfds"]
-
-        assert tfds[r]["pos"] == 0
-        assert tfds[r]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
-        assert tfds[r]["ino"] == pfds[r].ino
-
-        assert tfds[w]["pos"] == 0
-        assert tfds[w]["events"] == select.EPOLLOUT | select.EPOLLERR | select.EPOLLHUP
-        assert tfds[w]["ino"] == pfds[w].ino
-
-        assert tfds[fifo]["pos"] == 0
-        assert tfds[fifo]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
-        assert tfds[fifo]["ino"] == pfds[fifo].ino
-
-
-@macos_bsd_only
-def test_iter_fds_kqueue(tmp_path: pathlib.Path) -> None:
-    # pylint: disable=invalid-name,no-member
-
-    proc = pypsutil.Process()
-
-    os.mkfifo(tmp_path / "fifo")
-
-    with contextlib.closing(select.kqueue()) as kqueue, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
-    ) as fifo:
-        kqueue.control([select.kevent(r, select.KQ_FILTER_READ)], 0)
-        kqueue.control([select.kevent(w, select.KQ_FILTER_WRITE)], 0)
-        kqueue.control([select.kevent(fifo.fileno(), select.KQ_FILTER_READ)], 0)
-
-        kqueue = kqueue.fileno()
-        fifo = fifo.fileno()
-
-        os.write(w, b"abc")
-
-        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
-
-        st = os.fstat(kqueue)
-        assert pfds[kqueue].rdev in (st.st_rdev, None)
-        assert pfds[kqueue].dev in (st.st_dev, None)
-        assert pfds[kqueue].ino in (st.st_ino, None)
-
-        assert pfds[kqueue].position == 0
-
-        if not pypsutil.FREEBSD:
-            assert pfds[kqueue].flags & os.O_CLOEXEC == os.O_CLOEXEC
-
-        assert not pfds[kqueue].path
-
-        assert pfds[kqueue].fdtype == pypsutil.ProcessFdType.KQUEUE
-        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
-        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
-
-        if pypsutil.OPENBSD or pypsutil.MACOS:
-            assert pfds[kqueue].extra_info["kq_count"] == 2
-
-
-def test_iter_fds_no_proc() -> None:
-    proc = get_dead_process()
-
-    with pytest.raises(pypsutil.NoSuchProcess):
-        next(proc.iter_fds())
+        with pytest.raises(pypsutil.NoSuchProcess):
+            next(proc.iter_fds())
 
 
 @linux_only

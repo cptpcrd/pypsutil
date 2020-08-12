@@ -2,9 +2,10 @@ import pytest
 
 import pypsutil
 
-from .util import linux_only, managed_zombie_process
+from .util import linux_only, managed_zombie_process, unix_only
 
 
+@unix_only
 def test_zombie_status() -> None:
     with managed_zombie_process() as proc:
         assert proc.status() == pypsutil.ProcessStatus.ZOMBIE

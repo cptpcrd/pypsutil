@@ -1,0 +1,107 @@
+name: WinCI
+on:
+  push:
+    branches:
+  pull_request:
+  release:
+    types: [published]
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  format_lint:
+    name: Formatting and linting
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        python-version: [3.9]
+        os: [windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Set up repo
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install --dev --deploy --python ${{ matrix.python-version }}
+
+      - name: Format code
+        run: pipenv run .\scripts\format.bat && ("" -eq "$(git status --porcelain=v1)")
+
+      - name: Lint code
+        run: pipenv run .\scripts\check.bat
+
+  test:
+    name: Tests
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        os: [windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Set up repo
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install --dev --deploy --python ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: pipenv run pytest --cov-report=xml --verbose tests/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1.0.13
+        with:
+          name: ${{ matrix.os }}-${{ matrix.python-version }}
+          fail_ci_if_error: true
+          env_vars: OS,PYTHON_VERSION,JOB
+        env:
+          JOB: ${{ github.job }}
+          OS: ${{ matrix.os }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
+
+  build:
+    name: Build
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+        os: [windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Set up repo
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install setuptools and wheel
+        run: pip install 'setuptools>=46.4.0' wheel
+
+      - name: Build package
+        run: python setup.py sdist bdist_wheel

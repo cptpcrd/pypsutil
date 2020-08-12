@@ -4,7 +4,6 @@ import enum
 import functools
 import ipaddress
 import os
-import resource
 import signal
 import socket
 import sys
@@ -28,14 +27,16 @@ from ._errors import AccessDenied, NoSuchProcess
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process  # pytype: disable=pyi-error
 
-RESOURCE_NUMS = set()
-for name in dir(resource):
-    if name.startswith("RLIMIT_"):
-        RESOURCE_NUMS.add(getattr(resource, name))
+if not sys.platform.startswith("win"):
+    import resource
 
+    RESOURCE_NUMS = set()
+    for name in dir(resource):
+        if name.startswith("RLIMIT_"):
+            RESOURCE_NUMS.add(getattr(resource, name))
 
-CLK_TCK = os.sysconf("SC_CLK_TCK")
-PAGESIZE = os.sysconf("SC_PAGESIZE")
+    CLK_TCK = os.sysconf("SC_CLK_TCK")
+    PAGESIZE = os.sysconf("SC_PAGESIZE")
 
 
 @enum.unique
@@ -478,8 +479,10 @@ cvt_endian_ntoh = cvt_endian_hton
 _ALL_FAMILIES = [
     socket.AF_INET,
     socket.AF_INET6,
-    socket.AF_UNIX,
 ]
+if not sys.platform.startswith("win32"):
+    _ALL_FAMILIES.append(socket.AF_UNIX)
+
 _ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
 
 

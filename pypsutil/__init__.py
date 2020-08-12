@@ -1,5 +1,5 @@
 from . import _process, _system
-from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
+from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD, UNIX, WINDOWS
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
     Connection,
@@ -8,11 +8,8 @@ from ._process import (
     Popen,
     Process,
     ProcessCPUTimes,
-    ProcessFd,
-    ProcessFdType,
     ProcessMemoryInfo,
     ProcessOpenFile,
-    ProcessSignalMasks,
     ProcessStatus,
     ThreadInfo,
     Uids,
@@ -57,7 +54,14 @@ _OPTIONAL_SYSTEM = [
     "net_connections",
 ]
 
-_OPTIONAL_PROCESS = ["ProcessMemoryMap", "ProcessMemoryMapGrouped"]
+_OPTIONAL_PROCESS = [
+    "ProcessMemoryMap",
+    "ProcessMemoryMapGrouped",
+    "PriorityClass",
+    "ProcessSignalMasks",
+    "ProcessFd",
+    "ProcessFdType",
+]
 
 __version__ = "0.1.0"
 
@@ -69,6 +73,8 @@ __all__ = [
     "NETBSD",
     "OPENBSD",
     "BSD",
+    "UNIX",
+    "WINDOWS",
     "boot_time",
     "time_since_boot",
     "physical_cpu_count",
@@ -77,11 +83,8 @@ __all__ = [
     "ProcessCPUTimes",
     "ProcessMemoryInfo",
     "ProcessOpenFile",
-    "ProcessFd",
-    "ProcessFdType",
     "Connection",
     "ConnectionStatus",
-    "ProcessSignalMasks",
     "ProcessStatus",
     "Popen",
     "ThreadInfo",
@@ -93,7 +96,6 @@ __all__ = [
     "CPUFrequencies",
     "CPUStats",
     "DiskUsage",
-    "ProcessSignalMasks",
     "SwapInfo",
     "VirtualMemoryInfo",
     "virtual_memory",

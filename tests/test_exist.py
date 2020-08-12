@@ -1,4 +1,5 @@
 import os
+import time
 
 import pytest
 
@@ -77,11 +78,13 @@ def test_proc_not_exists() -> None:
         assert pid >= 0
 
     proc = get_dead_process()
+    time.sleep(0.1)  # Windows seems to need a small delay
 
     # Process just exited
     assert not proc.is_running()
     assert not proc.is_running()
-    assert not pypsutil.pid_exists(proc.pid)
+    if pypsutil.UNIX:
+        assert not pypsutil.pid_exists(proc.pid)
 
     assert proc.pid not in pypsutil.pids()
     for iter_proc in pypsutil.process_iter():
