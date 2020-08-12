@@ -176,8 +176,15 @@ class Process:
         ) -> Union[List[pypsutil.ProcessMemoryMap], List[pypsutil.ProcessMemoryMapGrouped]]:
             return self._proc.memory_maps_grouped() if grouped else self._proc.memory_maps()
 
-    def num_fds(self) -> int:
-        return self._proc.num_fds()
+    if pypsutil.UNIX:
+
+        def num_fds(self) -> int:
+            return self._proc.num_fds()
+
+    else:
+
+        def num_handles(self) -> int:
+            return self._proc.num_handles()
 
     def open_files(self) -> List[pypsutil.ProcessOpenFile]:
         return self._proc.open_files()

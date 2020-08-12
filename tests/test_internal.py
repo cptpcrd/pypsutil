@@ -94,7 +94,7 @@ def test_read_file(tmp_path: pathlib.Path) -> None:
         pypsutil._util.read_file(str(tmp_path / "b.txt"))
 
 
-def test_expand_bitmask() -> None:
+def test_pack_expand_bitmask() -> None:
     def build_mask(values: Iterable[int]) -> int:
         mask = 0
         for val in values:
@@ -110,6 +110,9 @@ def test_expand_bitmask() -> None:
             assert set(pypsutil._util.expand_bitmask(build_mask(values), start=start)) == {
                 val + start for val in values
             }
+            assert pypsutil._util.pack_bitmask(
+                (val + start for val in values), start=start, end=max(values, default=0) + start + 1
+            ) == build_mask(values)
 
 
 def test_expand_sig_bitmask() -> None:

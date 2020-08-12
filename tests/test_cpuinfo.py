@@ -130,11 +130,10 @@ softirq 900 0 500 400
         )
 
 
-CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
-
-
 @linux_only
 def test_cpu_times(tmp_path: pathlib.Path) -> None:
+    CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])  # pylint: disable=invalid-name
+
     with open(tmp_path / "stat", "w", encoding="utf8") as file:
         # This has an extra field to test how pypsutil handles that
         file.write(
@@ -175,6 +174,7 @@ def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
 
 @linux_only
 def test_percpu_times(tmp_path: pathlib.Path) -> None:
+    CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])  # pylint: disable=invalid-name
     with open(tmp_path / "stat", "w", encoding="utf8") as file:
         # The second one has an extra field to test how pypsutil handles that
         file.write(

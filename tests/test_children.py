@@ -35,12 +35,13 @@ def test_children() -> None:
         # Our child only has one child
         assert len(grandchildren) == 1
 
-        # The child process has no grandchildren, so children(recursive=True) should report the same
-        # as children()
-        assert child_proc.children(recursive=True) == grandchildren
+        if not pypsutil.WINDOWS:
+            # The child process has no grandchildren, so children(recursive=True) should report the
+            # same as children()
+            assert child_proc.children(recursive=True) == grandchildren
 
-        # Make sure the grandchild gets pulled in by recursive=True
-        assert set(cur_proc.children(recursive=True)) == {child_proc, *grandchildren}
+            # Make sure the grandchild gets pulled in by recursive=True
+            assert set(cur_proc.children(recursive=True)) == {child_proc, *grandchildren}
 
     # The context manager will kill and reap the child, and the grandparent will be reparented to
     # PID 1 (which should reap it)

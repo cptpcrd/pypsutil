@@ -8,7 +8,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, managed_child_process, managed_zombie_process
+from .util import get_dead_process, managed_child_process, managed_zombie_process, unix_only
 
 
 def test_basic_info() -> None:
@@ -16,8 +16,10 @@ def test_basic_info() -> None:
 
     assert proc.pid == os.getpid()
     assert proc.ppid() == os.getppid()
-    assert proc.pgid() == os.getpgrp()
-    assert proc.sid() == os.getsid(0)
+
+    if pypsutil.UNIX:
+        assert proc.pgid() == os.getpgrp()
+        assert proc.sid() == os.getsid(0)
 
     assert proc.status() == pypsutil.ProcessStatus.RUNNING
 
@@ -37,8 +39,10 @@ def test_basic_info_oneshot() -> None:
     with proc.oneshot():
         assert proc.pid == os.getpid()
         assert proc.ppid() == os.getppid()
-        assert proc.pgid() == os.getpgrp()
-        assert proc.sid() == os.getsid(0)
+
+        if pypsutil.UNIX:
+            assert proc.pgid() == os.getpgrp()
+            assert proc.sid() == os.getsid(0)
 
         assert proc.status() == pypsutil.ProcessStatus.RUNNING
 
@@ -60,6 +64,7 @@ def test_oneshot_nested() -> None:
             assert proc.pid == os.getpid()
 
 
+@unix_only
 def test_basic_info_pid_0() -> None:
     try:
         proc = pypsutil.Process(0)
@@ -76,11 +81,12 @@ def test_basic_info_no_proc() -> None:
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.ppid()
 
-    with pytest.raises(pypsutil.NoSuchProcess):
-        proc.pgid()
+    if pypsutil.UNIX:
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.pgid()
 
-    with pytest.raises(pypsutil.NoSuchProcess):
-        proc.sid()
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.sid()
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.cwd()

@@ -1,6 +1,5 @@
 import os
 import pathlib
-import pty
 import sys
 
 import pytest
@@ -13,6 +12,11 @@ from .util import (
     populate_directory,
     replace_info_directories,
 )
+
+try:
+    import pty
+except ImportError:
+    pytest.skip("terminal tests only work on *nix", allow_module_level=True)
 
 
 def test_terminal(tmp_path: pathlib.Path) -> None:

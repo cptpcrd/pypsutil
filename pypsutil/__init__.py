@@ -2,7 +2,7 @@ import socket
 from typing import cast
 
 from . import _process, _system
-from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
+from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD, UNIX, WINDOWS
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
     Connection,
@@ -11,11 +11,9 @@ from ._process import (
     Popen,
     Process,
     ProcessCPUTimes,
-    ProcessFd,
-    ProcessFdType,
+    ProcessMemoryFullInfo,
     ProcessMemoryInfo,
     ProcessOpenFile,
-    ProcessSignalMasks,
     ProcessStatus,
     ThreadInfo,
     Uids,
@@ -55,6 +53,8 @@ __all__ = [
     "NETBSD",
     "OPENBSD",
     "BSD",
+    "UNIX",
+    "WINDOWS",
     "boot_time",
     "time_since_boot",
     "physical_cpu_count",
@@ -62,12 +62,10 @@ __all__ = [
     "Process",
     "ProcessCPUTimes",
     "ProcessMemoryInfo",
+    "ProcessMemoryFullInfo",
     "ProcessOpenFile",
-    "ProcessFd",
-    "ProcessFdType",
     "Connection",
     "ConnectionStatus",
-    "ProcessSignalMasks",
     "ProcessStatus",
     "Popen",
     "ThreadInfo",
@@ -79,7 +77,6 @@ __all__ = [
     "CPUFrequencies",
     "CPUStats",
     "DiskUsage",
-    "ProcessSignalMasks",
     "SwapInfo",
     "VirtualMemoryInfo",
     "virtual_memory",
@@ -160,6 +157,18 @@ if hasattr(_process, "ProcessMemoryMap"):
 if hasattr(_process, "ProcessMemoryMapGrouped"):
     ProcessMemoryMapGrouped = _process.ProcessMemoryMapGrouped
     __all__.append("ProcessMemoryMapGrouped")
+if hasattr(_process, "PriorityClass"):
+    PriorityClass = _process.PriorityClass
+    __all__.append("PriorityClass")
+if hasattr(_process, "ProcessSignalMasks"):
+    ProcessSignalMasks = _process.ProcessSignalMasks
+    __all__.append("ProcessSignalMasks")
+if hasattr(_process, "ProcessFd"):
+    ProcessFd = _process.ProcessFd
+    __all__.append("ProcessFd")
+if hasattr(_process, "ProcessFdType"):
+    ProcessFdType = _process.ProcessFdType
+    __all__.append("ProcessFdType")
 
 
 # Alias to help with net_if_addrs()

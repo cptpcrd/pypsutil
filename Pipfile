@@ -21,3 +21,4 @@ pytest-cov = "~=3.0.0"
 # Required by pytest, but not properly pulled in by Pipenv
 importlib-metadata = {version = ">=0.12,<4.9", markers = "python_version < '3.8'"}
 zipp = {version = ">=0.5,<3.6", markers = "python_version < '3.8'"}
+atomicwrites = {version = ">=1.0", markers = "sys_platform == 'win32'"}

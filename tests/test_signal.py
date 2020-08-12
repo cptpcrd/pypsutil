@@ -4,9 +4,10 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process
+from .util import get_dead_process, unix_only
 
 
+@unix_only
 def test_send_signal() -> None:
     pypsutil.Process().send_signal(0)
 

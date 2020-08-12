@@ -16,6 +16,7 @@ macos_bsd_only = pytest.mark.skipif(
 linux_only = pytest.mark.skipif(
     not sys.platform.startswith("linux"), reason="Tests Linux-specific behavior"
 )
+unix_only = pytest.mark.skipif(pypsutil.WINDOWS, reason="Tests Unix-specific behavior")
 
 
 def _rewrite_kwargs(kwargs: Dict[str, Any]) -> None:
@@ -91,6 +92,17 @@ def get_dead_process() -> pypsutil.Process:
         proc = pypsutil.Process(subproc.pid)
     finally:
         subproc.wait()
+
+    try:
+        while proc.status() != pypsutil.ProcessStatus.ZOMBIE:
+            time.sleep(0.01)
+    except pypsutil.NoSuchProcess:
+        pass
+    time.sleep(0.1)
+
+    if pypsutil.WINDOWS:
+        while proc.pid in pypsutil.pids():
+            time.sleep(0.01)
 
     return proc
 

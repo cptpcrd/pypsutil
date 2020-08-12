@@ -1,8 +1,12 @@
 import math
 import os
-import resource
 
 import pytest
+
+try:
+    import resource
+except ImportError:
+    pytest.skip("resource limit tests only work on *nix", allow_module_level=True)
 
 import pypsutil
 from pypsutil._util import RESOURCE_NUMS

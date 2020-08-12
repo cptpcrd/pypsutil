@@ -10,6 +10,9 @@ import pypsutil
 
 from .util import get_dead_process, managed_child_process2
 
+if pypsutil.WINDOWS:
+    pytest.skip("threading tests currently broken on Windows", allow_module_level=True)
+
 
 @contextlib.contextmanager
 def managed_background_thread() -> Iterator[threading.Thread]:
@@ -48,13 +51,10 @@ if hasattr(pypsutil.Process, "num_threads"):
             ],
             stdout=subprocess.PIPE,
         ) as proc:
-            try:
-                assert proc.stdout is not None
-                assert proc.stdout.read(1) == b"a"
+            assert proc.stdout is not None
+            assert proc.stdout.read(1) == b"a"
 
-                assert proc.num_threads() == 2
-            finally:
-                proc.terminate()
+            assert proc.num_threads() == 2
 
     def test_num_threads_no_proc() -> None:
         proc = get_dead_process()
@@ -122,18 +122,14 @@ if (
             ],
             stdout=subprocess.PIPE,
         ) as proc:
+            assert proc.stdout is not None
+            thread_ids = set(map(int, proc.stdout.readline().decode().split()))
+
             try:
-                assert proc.stdout is not None
-                thread_ids = set(map(int, proc.stdout.readline().decode().split()))
-
-                try:
-                    threads = proc.threads()
-                except pypsutil.AccessDenied:
-                    pytest.skip("Cannot list threads")
-                else:
-                    assert len(threads) >= 2
-                    assert len(threads) == len(thread_ids)
-                    assert {thread.id for thread in threads} == thread_ids
-
-            finally:
-                proc.terminate()
+                threads = proc.threads()
+            except pypsutil.AccessDenied:
+                pytest.skip("Cannot list threads")
+            else:
+                assert len(threads) >= 2
+                assert len(threads) == len(thread_ids)
+                assert {thread.id for thread in threads} == thread_ids

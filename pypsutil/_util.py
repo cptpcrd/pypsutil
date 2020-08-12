@@ -4,7 +4,6 @@ import enum
 import functools
 import ipaddress
 import os
-import resource
 import signal
 import socket
 import sys
@@ -13,6 +12,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -28,14 +28,16 @@ from ._errors import AccessDenied, NoSuchProcess
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process  # pytype: disable=pyi-error
 
-RESOURCE_NUMS = set()
-for name in dir(resource):
-    if name.startswith("RLIMIT_"):
-        RESOURCE_NUMS.add(getattr(resource, name))
+if not sys.platform.startswith("win"):
+    import resource
 
+    RESOURCE_NUMS = set()
+    for name in dir(resource):
+        if name.startswith("RLIMIT_"):
+            RESOURCE_NUMS.add(getattr(resource, name))
 
-CLK_TCK = os.sysconf("SC_CLK_TCK")
-PAGESIZE = os.sysconf("SC_PAGESIZE")
+    CLK_TCK = os.sysconf("SC_CLK_TCK")
+    PAGESIZE = os.sysconf("SC_PAGESIZE")
 
 
 @enum.unique
@@ -189,6 +191,7 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
 
     _power_plugged: Optional[bool] = None
     _secsleft: Optional[float] = None
+    _secsleft_full: Optional[float] = None
 
     @property
     def temperature_fahrenheit(self) -> Optional[float]:
@@ -230,7 +233,7 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
         ):
             return (self.energy_full - self.energy_now) * 3600 / self.power_now
         else:
-            return None
+            return self._secsleft_full
 
     def __repr__(self) -> str:
         return (
@@ -372,6 +375,15 @@ def expand_bitmask(mask: int, *, start: int) -> Iterator[int]:
             yield i
         mask >>= 1
         i += 1
+
+
+def pack_bitmask(values: Iterable[int], *, start: int, end: int) -> int:
+    mask = 0
+    for val in values:
+        if val < start or val >= end:
+            raise ValueError("invalid value for constructing bitmask")
+        mask |= 1 << (val - start)
+    return mask
 
 
 def expand_sig_bitmask(
@@ -550,8 +562,10 @@ cvt_endian_ntoh = cvt_endian_hton
 _ALL_FAMILIES = [
     socket.AF_INET,
     socket.AF_INET6,
-    socket.AF_UNIX,
 ]
+if not sys.platform.startswith("win32"):
+    _ALL_FAMILIES.append(socket.AF_UNIX)
+
 _ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
 
 

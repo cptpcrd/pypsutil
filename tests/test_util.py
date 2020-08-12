@@ -1,5 +1,4 @@
 import math
-import resource
 
 import pytest
 
@@ -217,10 +216,15 @@ def test_ps_sensor_info() -> None:
     assert psinfo.is_on_ac_power is True
 
 
-def test_check_rlimit_resource() -> None:
-    pypsutil._util.check_rlimit_resource(resource.RLIMIT_NOFILE)  # pylint: disable=protected-access
+if pypsutil.UNIX:
+    import resource
 
-    with pytest.raises(ValueError, match=r"^invalid resource specified$"):
+    def test_check_rlimit_resource() -> None:
         pypsutil._util.check_rlimit_resource(  # pylint: disable=protected-access
-            max(pypsutil._util.RESOURCE_NUMS) + 1  # pylint: disable=protected-access
+            resource.RLIMIT_NOFILE
         )
+
+        with pytest.raises(ValueError, match=r"^invalid resource specified$"):
+            pypsutil._util.check_rlimit_resource(  # pylint: disable=protected-access
+                max(pypsutil._util.RESOURCE_NUMS) + 1  # pylint: disable=protected-access
+            )

@@ -18,8 +18,8 @@ def test_environ() -> None:
     ) as proc:
         proc_env = proc.environ()
 
-    if pypsutil.MACOS:
-        # On macOS, proc.environ() includes some extra information
+    if pypsutil.MACOS or pypsutil.WINDOWS:
+        # On macOS (and Windows?), proc.environ() includes some extra information
         # Check that env is a subset of proc.environ()
         for name, val in env.items():
             assert val == proc_env[name]

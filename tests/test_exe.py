@@ -8,21 +8,36 @@ import pypsutil
 
 from .util import get_dead_process, linux_only, populate_directory, replace_info_directories
 
+sys_executable = sys.executable
+if pypsutil.WINDOWS and "VIRTUAL_ENV" in os.environ:
+    # On Windows, sys.executable points to python.exe inside the virtualenv. However, exe() returns
+    # the system-wide (or user-wide) installation path.
+    # sys._base_executable does what we want (i.e. original installation path), but it was added in
+    # 3.7 (and is semi-private, so it may disappear in the future).
+    # So we try to get sys._base_executable, but if that fails then we skip the exe() tests.
+    sys_executable = getattr(sys, "_base_executable", "")
 
+
+@pytest.mark.skipif(
+    not sys_executable, reason="sys.executable behaves differently in venvs on Windows"
+)
 def test_exe() -> None:
     proc = pypsutil.Process()
 
     exe = proc.exe()
     if exe:
-        assert os.path.samefile(exe, sys.executable)
+        assert os.path.samefile(exe, sys_executable)
 
 
+@pytest.mark.skipif(
+    not sys_executable, reason="sys.executable behaves differently in venvs on Windows"
+)
 def test_exe_no_cmdline() -> None:
     proc = pypsutil.Process()
 
     exe = proc.exe(fallback_cmdline=False)
     if exe:
-        assert os.path.samefile(exe, sys.executable)
+        assert os.path.samefile(exe, sys_executable)
 
 
 def test_exe_no_proc() -> None:

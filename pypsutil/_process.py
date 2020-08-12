@@ -1,14 +1,12 @@
 # Type checkers don't like the wrapper names not existing.
 # pylint: disable=too-many-lines
 # mypy: ignore-errors
-# pytype: disable=module-attr
+# pylint: disable=too-many-lines
 import collections
 import contextlib
 import dataclasses
 import datetime
 import os
-import pwd
-import resource
 import select
 import shutil
 import signal
@@ -18,19 +16,27 @@ import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _system, _util
-from ._detect import _psimpl
+from ._detect import UNIX, WINDOWS, _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._util import translate_proc_errors
+
+if UNIX:
+    import pwd
+    import resource
+
+    ProcessSignalMasks = _psimpl.ProcessSignalMasks
+    ProcessFd = _psimpl.ProcessFd
+    ProcessFdType = _psimpl.ProcessFdType
+
+else:
+    PriorityClass = _psimpl.PriorityClass
 
 ThreadInfo = _util.ThreadInfo
 
 ProcessStatus = _psimpl.ProcessStatus
-ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
 ProcessMemoryInfo = _psimpl.ProcessMemoryInfo
 ProcessOpenFile = _psimpl.ProcessOpenFile
-ProcessFd = _psimpl.ProcessFd
-ProcessFdType = _psimpl.ProcessFdType
 Connection = _util.Connection
 ConnectionStatus = _util.ConnectionStatus
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
@@ -123,11 +129,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
         return _psimpl.proc_ppid(self)
 
     def _parent_unchecked(self) -> Optional["Process"]:
-        ppid = self.ppid()
-        if ppid <= 0:
-            return None
-
         try:
+            ppid = self.ppid()
+            if ppid <= 0:
+                return None
             return Process(ppid)
         except NoSuchProcess:
             return None
@@ -233,13 +238,85 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         return self._create_time
 
-    @translate_proc_errors
-    def pgid(self) -> int:
-        return _psimpl.proc_pgid(self)
+    if UNIX:
 
-    @translate_proc_errors
-    def sid(self) -> int:
-        return _psimpl.proc_sid(self)
+        @translate_proc_errors
+        def pgid(self) -> int:
+            return _psimpl.proc_pgid(self)
+
+        @translate_proc_errors
+        def sid(self) -> int:
+            return _psimpl.proc_sid(self)
+
+        @translate_proc_errors
+        def uids(self) -> Uids:
+            return Uids(*_psimpl.proc_uids(self))
+
+        @translate_proc_errors
+        def gids(self) -> Gids:
+            return Gids(*_psimpl.proc_gids(self))
+
+        @translate_proc_errors
+        def getgroups(self) -> List[int]:
+            return _psimpl.proc_getgroups(self)
+
+        @translate_proc_errors
+        def has_terminal(self) -> bool:
+            return _psimpl.proc_tty_rdev(self) is not None
+
+        @translate_proc_errors
+        def terminal(self) -> Optional[str]:
+            tty_rdev = _psimpl.proc_tty_rdev(self)
+
+            if tty_rdev is not None:
+                try:
+                    with os.scandir(os.path.join(_util.get_devfs_path(), "pts")) as pts_names:
+                        for entry in pts_names:
+                            try:
+                                if entry.stat().st_rdev == tty_rdev:
+                                    return entry.path  # pytype: disable=bad-return-type
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+
+                try:
+                    with os.scandir(_util.get_devfs_path()) as dev_names:
+                        for entry in dev_names:
+                            if entry.name.startswith("tty") and len(entry.name) > 3:
+                                try:
+                                    if entry.stat().st_rdev == tty_rdev:
+                                        return entry.path  # pytype: disable=bad-return-type
+                                except OSError:
+                                    pass
+                except OSError:
+                    pass
+
+                return ""
+            else:
+                return None
+
+        @translate_proc_errors
+        def sigmasks(self, *, include_internal: bool = False) -> ProcessSignalMasks:
+            return _psimpl.proc_sigmasks(self, include_internal=include_internal)
+
+        @translate_proc_errors
+        def num_fds(self) -> int:
+            return _psimpl.proc_num_fds(self)
+
+        def iter_fds(self) -> Iterator[ProcessFd]:
+            try:
+                yield from _psimpl.proc_iter_fds(self)
+            except ProcessLookupError as ex:
+                raise NoSuchProcess(pid=self.pid) from ex
+            except PermissionError as ex:
+                raise AccessDenied(pid=self.pid) from ex
+
+    else:
+
+        @translate_proc_errors
+        def num_handles(self) -> int:
+            return _psimpl.proc_num_handles(self)
 
     @translate_proc_errors
     def status(self) -> ProcessStatus:
@@ -287,18 +364,6 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def environ(self) -> Dict[str, str]:
         return _psimpl.proc_environ(self)
 
-    @translate_proc_errors
-    def uids(self) -> Uids:
-        return Uids(*_psimpl.proc_uids(self))
-
-    @translate_proc_errors
-    def gids(self) -> Gids:
-        return Gids(*_psimpl.proc_gids(self))
-
-    @translate_proc_errors
-    def getgroups(self) -> List[int]:
-        return _psimpl.proc_getgroups(self)
-
     if hasattr(_psimpl, "proc_fsuid"):
 
         @translate_proc_errors
@@ -311,23 +376,27 @@ class Process:  # pylint: disable=too-many-instance-attributes
         def fsgid(self) -> int:
             return _psimpl.proc_fsgid(self)
 
-    def username(self) -> str:
-        ruid = self.uids()[0]
+    if hasattr(_psimpl, "proc_uids"):
 
-        try:
-            return pwd.getpwuid(ruid).pw_name
-        except KeyError:
-            return str(ruid)
+        def username(self) -> str:
+            ruid = self.uids()[0]
+
+            try:
+                return pwd.getpwuid(ruid).pw_name
+            except KeyError:
+                return str(ruid)
+
+    else:
+
+        @translate_proc_errors
+        def username(self) -> str:
+            return _psimpl.proc_username(self)
 
     if hasattr(_psimpl, "proc_umask"):
 
         @translate_proc_errors
         def umask(self) -> Optional[int]:
             return _psimpl.proc_umask(self)
-
-    @translate_proc_errors
-    def sigmasks(self, *, include_internal: bool = False) -> ProcessSignalMasks:
-        return _psimpl.proc_sigmasks(self, include_internal=include_internal)
 
     if hasattr(_psimpl, "proc_rlimit"):
 
@@ -362,23 +431,11 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         getrlimit.is_atomic = getattr(_psimpl.proc_getrlimit, "is_atomic", False)
 
-    def iter_fds(self) -> Iterator[ProcessFd]:
-        try:
-            yield from _psimpl.proc_iter_fds(self)
-        except ProcessLookupError as ex:
-            raise NoSuchProcess(pid=self.pid) from ex
-        except PermissionError as ex:
-            raise AccessDenied(pid=self.pid) from ex
-
     if hasattr(_psimpl, "proc_connections"):
 
         @translate_proc_errors
         def connections(self, kind: str = "inet") -> List[Connection]:
             return list(_psimpl.proc_connections(self, kind))
-
-    @translate_proc_errors
-    def num_fds(self) -> int:
-        return _psimpl.proc_num_fds(self)
 
     @translate_proc_errors
     def open_files(self) -> List[ProcessOpenFile]:
@@ -391,42 +448,6 @@ class Process:  # pylint: disable=too-many-instance-attributes
     @translate_proc_errors
     def threads(self) -> List[ThreadInfo]:
         return _psimpl.proc_threads(self)
-
-    @translate_proc_errors
-    def has_terminal(self) -> bool:
-        return _psimpl.proc_tty_rdev(self) is not None
-
-    @translate_proc_errors
-    def terminal(self) -> Optional[str]:
-        tty_rdev = _psimpl.proc_tty_rdev(self)
-
-        if tty_rdev is not None:
-            try:
-                with os.scandir(os.path.join(_util.get_devfs_path(), "pts")) as pts_names:
-                    for entry in pts_names:
-                        try:
-                            if entry.stat().st_rdev == tty_rdev:
-                                return entry.path  # pytype: disable=bad-return-type
-                        except OSError:
-                            pass
-            except OSError:
-                pass
-
-            try:
-                with os.scandir(_util.get_devfs_path()) as dev_names:
-                    for entry in dev_names:
-                        if entry.name.startswith("tty") and len(entry.name) > 3:
-                            try:
-                                if entry.stat().st_rdev == tty_rdev:
-                                    return entry.path  # pytype: disable=bad-return-type
-                            except OSError:
-                                pass
-            except OSError:
-                pass
-
-            return ""
-        else:
-            return None
 
     @translate_proc_errors
     def num_ctx_switches(self) -> int:
@@ -471,7 +492,9 @@ class Process:  # pylint: disable=too-many-instance-attributes
             return self.memory_info()
 
     def memory_percent(self, memtype: str = "rss") -> float:
-        if any(field.name == memtype for field in dataclasses.fields(ProcessMemoryInfo)):
+        if memtype in ("rss", "vms") or any(
+            field.name == memtype for field in dataclasses.fields(ProcessMemoryInfo)
+        ):
             proc_meminfo = self.memory_info()
         elif any(field.name == memtype for field in dataclasses.fields(ProcessMemoryFullInfo)):
             proc_meminfo = self.memory_full_info()
@@ -499,18 +522,30 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     for path in {mmap.path for mmap in maps}
                 ]
 
-    @translate_proc_errors
-    def getpriority(self) -> int:
-        return _psimpl.proc_getpriority(self)
+    if UNIX:
 
-    @translate_proc_errors
-    def setpriority(self, prio: int) -> None:
-        if self._pid == 0:
-            # Can't change the kernel's priority
-            raise PermissionError
+        @translate_proc_errors
+        def getpriority(self) -> int:
+            return _psimpl.proc_getpriority(self)
 
-        self._check_running()
-        os.setpriority(os.PRIO_PROCESS, self._pid, prio)
+        @translate_proc_errors
+        def setpriority(self, prio: int) -> None:
+            if self._pid == 0:
+                # Can't change the kernel's priority
+                raise PermissionError
+
+            self._check_running()
+            os.setpriority(os.PRIO_PROCESS, self._pid, prio)
+
+    else:
+
+        @translate_proc_errors
+        def getprioclass(self) -> PriorityClass:
+            return _psimpl.proc_getprioclass(self)
+
+        @translate_proc_errors
+        def setprioclass(self, priocls: PriorityClass) -> None:
+            _psimpl.proc_setprioclass(self, priocls)
 
     @translate_proc_errors
     def send_signal(self, sig: int) -> None:
@@ -521,19 +556,40 @@ class Process:  # pylint: disable=too-many-instance-attributes
         self._check_running()
         os.kill(self._pid, sig)
 
-    def suspend(self) -> None:
-        self.send_signal(signal.SIGSTOP)
-
-    def resume(self) -> None:
-        self.send_signal(signal.SIGCONT)
-
     def terminate(self) -> None:
         self.send_signal(signal.SIGTERM)
 
-    def kill(self) -> None:
-        self.send_signal(signal.SIGKILL)
+    if UNIX:
 
+        def suspend(self) -> None:
+            self.send_signal(signal.SIGSTOP)
+
+        def resume(self) -> None:
+            self.send_signal(signal.SIGCONT)
+
+        def kill(self) -> None:
+            self.send_signal(signal.SIGKILL)
+
+    else:
+
+        def suspend(self) -> None:
+            self._check_running()
+            _psimpl.proc_suspend(self)
+
+        def resume(self) -> None:
+            self._check_running()
+            _psimpl.proc_resume(self)
+
+        kill = terminate
+
+    @translate_proc_errors
     def wait(self, *, timeout: Union[int, float, None] = None) -> Optional[int]:
+        if WINDOWS:
+            code = _psimpl.proc_wait(self, timeout)
+            with self._lock:
+                self._exitcode = code
+            return code
+
         # We check is_running() up front so we don't run into PID reuse.
         # After that, we can safely just check pid_exists() or os.waitpid().
         if not self.is_running():
@@ -660,6 +716,16 @@ class Process:  # pylint: disable=too-many-instance-attributes
             time.sleep(interval)
 
     def _wait_child_poll(self) -> bool:
+        if WINDOWS:
+            with self._lock:
+                try:
+                    code = _psimpl.proc_wait(self, 0)
+                except TimeoutExpired:
+                    return False
+                else:
+                    self._exitcode = code
+                    return True
+
         with self._lock:
             wpid, wstatus = os.waitpid(self._pid, os.WNOHANG)
 
@@ -667,9 +733,12 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 return False
 
             self._dead = True
-            self._exitcode = (
-                -os.WTERMSIG(wstatus) if os.WIFSIGNALED(wstatus) else os.WEXITSTATUS(wstatus)
-            )
+            if UNIX:
+                self._exitcode = (
+                    -os.WTERMSIG(wstatus) if os.WIFSIGNALED(wstatus) else os.WEXITSTATUS(wstatus)
+                )
+            else:
+                self._exitcode = wstatus >> 8
             return True
 
     @contextlib.contextmanager
@@ -885,21 +954,26 @@ def _process_iter_impl(
             _process_iter_cache.pop(bad_pid, None)
 
 
-def pid_exists(pid: int) -> bool:
-    if pid < 0:
-        return False
+if hasattr(_psimpl, "pid_exists"):
+    pid_exists = _psimpl.pid_exists
 
-    try:
-        if pid > 0:
-            os.kill(pid, 0)
+else:
+
+    def pid_exists(pid: int) -> bool:
+        if pid < 0:
+            return False
+
+        try:
+            if pid > 0:
+                os.kill(pid, 0)
+            else:
+                _psimpl.pid_raw_create_time(pid)
+        except (ProcessLookupError, NoSuchProcess):
+            return False
+        except (PermissionError, AccessDenied):
+            return True
         else:
-            _psimpl.pid_raw_create_time(pid)
-    except (ProcessLookupError, NoSuchProcess):
-        return False
-    except (PermissionError, AccessDenied):
-        return True
-    else:
-        return True
+            return True
 
 
 def wait_procs(
@@ -907,25 +981,60 @@ def wait_procs(
     timeout: Union[int, float, None] = None,
     callback: Optional[Callable[[Process], None]] = None,
 ) -> Tuple[List[Process], List[Process]]:
+    def proc_died(proc: Process, retcode: Optional[int], *, remove_alive: bool = True) -> None:
+        if isinstance(proc, Popen):
+            proc._proc.returncode = retcode
+        else:
+            proc.returncode = retcode
+
+        if remove_alive:
+            alive.remove(proc)
+        gone.append(proc)
+
+        if callback is not None:
+            callback(proc)
+
     start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
 
     # We check is_running() up front so we don't run into PID reuse.
     # After that, we can safely just check pid_exists().
 
     gone = []
-    alive = []
-    for proc in procs:
-        if proc.is_running():
-            alive.append(proc)
-        else:
-            if not hasattr(proc, "returncode"):
-                with proc._lock, proc._exitcode_lock:  # pylint: disable=protected-access
-                    proc.returncode = proc._exitcode  # pylint: disable=protected-access
+    if WINDOWS:
+        alive = []
+        for proc in procs:
+            if proc.is_running():
+                alive.append(proc)
+            else:
+                if isinstance(proc, Popen):
+                    if proc.returncode is None:
+                        try:
+                            proc.wait(timeout=0)
+                        except (TimeoutExpired, ChildProcessError):
+                            pass
+                elif not hasattr(proc, "returncode"):
+                    try:
+                        proc.returncode = proc.wait(timeout=0)
+                    except (TimeoutExpired, NoSuchProcess):
+                        proc.returncode = None
 
-            if callback is not None:
-                callback(proc)
+                proc_died(proc, proc.returncode, remove_alive=False)
+    else:
+        alive = []
+        for proc in procs:
+            if proc.is_running():
+                alive.append(proc)
+            else:
+                if isinstance(proc, Popen):
+                    try:
+                        proc.wait(timeout=0)
+                    except TimeoutExpired:
+                        pass
+                elif not hasattr(proc, "returncode"):
+                    with proc._lock, proc._exitcode_lock:  # pylint: disable=protected-access
+                        proc.returncode = proc._exitcode  # pylint: disable=protected-access
 
-            gone.append(proc)
+                proc_died(proc, proc.returncode, remove_alive=False)
 
     if not alive:
         return gone, alive
@@ -944,7 +1053,6 @@ def wait_procs(
             else:
                 if not isinstance(proc, Popen):
                     proc.returncode = res
-
                 if callback is not None:
                     callback(proc)
 
@@ -952,6 +1060,10 @@ def wait_procs(
                 gone.append(proc)
 
             return gone, alive
+
+        elif WINDOWS and len(alive) <= _psimpl.wait_procs.max_procs:
+            _psimpl.wait_procs(list(alive), timeout, proc_died)
+            continue
 
         for proc in list(alive):
             res = None
@@ -998,14 +1110,7 @@ def wait_procs(
                             res = proc._exitcode  # pylint: disable=protected-access
 
             if dead:
-                if not isinstance(proc, Popen):
-                    proc.returncode = res
-
-                if callback is not None:
-                    callback(proc)
-
-                alive.remove(proc)
-                gone.append(proc)
+                proc_died(proc, res)
 
         if not alive:
             break
