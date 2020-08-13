@@ -371,15 +371,6 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return tdev if tdev != 2 ** 32 - 1 else None
 
 
-def pid_0_exists() -> bool:
-    try:
-        _get_kinfo_proc2_pid(0)
-    except (ProcessLookupError, PermissionError):
-        return False
-    else:
-        return True
-
-
 def boot_time() -> float:
     btime = Timespec()
     _bsd.sysctl([CTL_KERN, KERN_BOOTTIME], None, btime)

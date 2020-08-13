@@ -389,17 +389,18 @@ def _process_iter_impl(*, skip_perm_error: bool = False) -> Iterator[Process]:
 def pid_exists(pid: int) -> bool:
     if pid < 0:
         return False
-    elif pid > 0:
-        try:
+
+    try:
+        if pid > 0:
             os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
         else:
-            return True
+            _psimpl.pid_create_time(pid)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
     else:
-        return _psimpl.pid_0_exists()
+        return True
 
 
 def wait_procs(

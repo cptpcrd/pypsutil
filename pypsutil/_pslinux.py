@@ -230,10 +230,6 @@ def uptime() -> float:
     return time.clock_gettime(time.CLOCK_MONOTONIC)
 
 
-def pid_0_exists() -> bool:
-    return False
-
-
 proc_pgid = _psposix.proc_pgid
 proc_sid = _psposix.proc_sid
 
