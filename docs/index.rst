@@ -269,6 +269,15 @@ Process information
       Get the name of this process's controlling terminal. Returns ``None`` if the process has no
       controlling terminal, or if its name cannot be found.
 
+      .. note::
+          In most cases, the name returned by this function will be the same as with the ``tty``
+          command or ``os.ttyname(0)``. However, this function returns the name of the process's
+          *controlling terminal*; ``tty`` and ``os.ttyname(0)`` return the name of the terminal
+          connected to standard input (if the process's standard input is a terminal).
+
+          In most cases, these will be the same thing. However, they are not technically *required*
+          to be, and in some edge cases they may be different.
+
       :return: The name of this process's controlling terminal
       :rtype: str or None
 
