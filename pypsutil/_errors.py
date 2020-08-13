@@ -7,7 +7,7 @@ class Error(Exception):
 
 
 class NoSuchProcess(Error):
-    def __init__(self, pid: Optional[int]) -> None:
+    def __init__(self, pid: int) -> None:
         super().__init__()
         self.pid = pid
 
@@ -15,9 +15,7 @@ class NoSuchProcess(Error):
         return "pypsutil.NoSuchProcess(pid={!r})".format(self.pid)
 
     def __str__(self) -> str:
-        return "pypsutil.NoSuchProcess: PID{} no longer exists".format(
-            " " + str(self.pid) if self.pid is not None else ""
-        )
+        return "pypsutil.NoSuchProcess: process does not exist (pid={})".format(self.pid)
 
 
 class ZombieProcess(NoSuchProcess):
@@ -25,13 +23,11 @@ class ZombieProcess(NoSuchProcess):
         return "pypsutil.ZombieProcess(pid={!r})".format(self.pid)
 
     def __str__(self) -> str:
-        return "pypsutil.ZombieProcess: PID{} is a zombie process".format(
-            " " + str(self.pid) if self.pid is not None else ""
-        )
+        return "pypsutil.ZombieProcess: process exists but is a zombie (pid={})".format(self.pid)
 
 
 class AccessDenied(Error):
-    def __init__(self, pid: Optional[int]) -> None:
+    def __init__(self, pid: int) -> None:
         super().__init__()
         self.pid = pid
 
