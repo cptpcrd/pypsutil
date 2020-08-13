@@ -60,6 +60,7 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
 
 _clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
+
 @translate_proc_errors
 def pid_create_time(pid: int) -> float:
     ctime_ticks = int(_get_pid_stat_fields(pid)[21])

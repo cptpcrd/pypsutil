@@ -85,7 +85,6 @@ def trim_after_nul(data: bytes) -> bytes:
 
 
 def translate_proc_errors(func: Callable[..., Any]) -> Callable[..., Any]:
-
     @functools.wraps(func)
     def wrapper(proc: Union[int, "Process"], *args: Any, **kwargs: Any) -> Any:
         if isinstance(proc, int):

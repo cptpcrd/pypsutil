@@ -12,7 +12,7 @@ import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from ._detect import _psimpl
-from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
+from ._errors import AccessDenied, NoSuchProcess
 from ._util import translate_proc_errors
 
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
