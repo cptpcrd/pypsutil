@@ -8,6 +8,7 @@ class Error(Exception):
 
 class NoSuchProcess(Error):
     def __init__(self, pid: Optional[int]) -> None:
+        super().__init__()
         self.pid = pid
 
     def __repr__(self) -> str:
@@ -20,9 +21,6 @@ class NoSuchProcess(Error):
 
 
 class ZombieProcess(NoSuchProcess):
-    def __init__(self, pid: Optional[int]) -> None:
-        self.pid = pid
-
     def __repr__(self) -> str:
         return "pypsutil.ZombieProcess(pid={!r})".format(self.pid)
 
@@ -34,6 +32,7 @@ class ZombieProcess(NoSuchProcess):
 
 class AccessDenied(Error):
     def __init__(self, pid: Optional[int]) -> None:
+        super().__init__()
         self.pid = pid
 
     def __repr__(self) -> str:
@@ -47,6 +46,7 @@ class AccessDenied(Error):
 
 class TimeoutExpired(Error):
     def __init__(self, seconds: Union[int, float], pid: Optional[int] = None) -> None:
+        super().__init__()
         self.seconds = seconds
         self.pid = pid
 
