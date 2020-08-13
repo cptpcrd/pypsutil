@@ -286,7 +286,7 @@ Process information
       PID reuse.
 
       (Note: on systems where the kernel appears as PID 0, attempting to set the priority of PID 0
-      will always fail with a ``PermissionError``.)
+      will always fail with an :py:class:`AccessDenied` exception.)
 
       :param int prio: The new scheduling priority (a.k.a. nice value) for the process
 
@@ -324,7 +324,7 @@ Process information
       reuse.
 
       Note: The following methods preemptively check whether the process is still running and raise
-      ``ProcessLookupError`` if it has exited:
+      :py:class:`NoSuchProcess` if it has exited:
 
       - :py:meth:`parent()`
       - :py:meth:`parents()`
@@ -399,7 +399,7 @@ Process information
 
    Note: On Linux, if ``/proc`` is mounted with ``hidepid=1``, it is not possible to get the process
    creation time (or indeed, any information except the PID/UID/GID of the process) of other users'
-   processes when running an unprivileged user. This function will raise a ``PermissionError`` if that
+   processes when running an unprivileged user. This function will raise a :py:class:`AccessDenied` if that
    occurs; if you wish to simply skip these processes then use :py:func:`process_iter_available()`
    instead.
 
@@ -458,6 +458,37 @@ System information
    :rtype: float
 
    Availability: Linux, macOS, FreeBSD, OpenBSD
+
+
+Exceptions
+==========
+
+.. py:class:: Error
+
+   Base exception class
+
+
+.. py:class:: NoSuchProcess(pid)
+
+   Raised by methods of :py:class:`Process` when no process with the given PID is found.
+
+
+.. py:class:: ZombieProcess(pid)
+
+   Raised by methods of :py:class:`Process` if 1) the process has become a zombie process
+   and 2) it is not possible to retrieve the requested information for zombie processes.
+
+   This is a subclass of :py:class:`NoSuchProcess`.
+
+
+.. py:class:: AccessDenied(pid)
+
+   Raised by methods of :py:class:`Process` when permission to perform an action is denied.
+
+
+.. py:class:: TimeoutExpired(seconds, pid=None)
+
+   Raised if a timeout expires.
 
 
 Indices and tables

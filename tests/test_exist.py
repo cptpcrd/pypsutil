@@ -60,7 +60,7 @@ def test_proc_exists() -> None:
     else:
         # PID 0 doesn't show up
         assert 0 not in pypsutil.pids()
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             pypsutil.Process(0)
 
         for proc in pypsutil.process_iter():

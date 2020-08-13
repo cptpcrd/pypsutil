@@ -12,6 +12,8 @@ import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from ._detect import _psimpl
+from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
+from ._util import translate_proc_errors
 
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
@@ -26,7 +28,7 @@ class Process:
             pid = os.getpid()
 
         if pid < 0:
-            raise ProcessLookupError
+            raise NoSuchProcess(pid=pid)
 
         self._pid = pid
         self._dead = False
@@ -62,6 +64,7 @@ class Process:
     def pid(self) -> int:
         return self._pid
 
+    @translate_proc_errors
     def ppid(self) -> int:
         return _psimpl.proc_ppid(self)
 
@@ -72,7 +75,7 @@ class Process:
 
         try:
             return Process(ppid)
-        except ProcessLookupError:
+        except NoSuchProcess:
             return None
 
     def parent(self) -> Optional["Process"]:
@@ -107,7 +110,7 @@ class Process:
                         # We can skip the is_running() check because we literally just got this
                         # PID/create time from the OS
                         proc_parent = proc._parent_unchecked()  # pylint: disable=protected-access
-                    except ProcessLookupError:
+                    except NoSuchProcess:
                         pass
                     else:
                         if proc_parent in search_parents and proc not in children:
@@ -126,7 +129,7 @@ class Process:
             for proc in process_iter():
                 try:
                     proc_ppid = proc.ppid()
-                except ProcessLookupError:
+                except NoSuchProcess:
                     pass
                 else:
                     if proc_ppid == self.pid:
@@ -134,44 +137,56 @@ class Process:
 
         return children
 
+    @translate_proc_errors
     def create_time(self) -> float:
         if self._create_time is None:
             self._create_time = _psimpl.pid_create_time(self._pid)
 
         return self._create_time
 
+    @translate_proc_errors
     def pgid(self) -> int:
         return _psimpl.proc_pgid(self)
 
+    @translate_proc_errors
     def sid(self) -> int:
         return _psimpl.proc_sid(self)
 
+    @translate_proc_errors
     def name(self) -> str:
         return _psimpl.proc_name(self)
 
+    @translate_proc_errors
     def exe(self) -> str:
         return _psimpl.proc_exe(self)
 
+    @translate_proc_errors
     def cmdline(self) -> List[str]:
         return _psimpl.proc_cmdline(self)
 
+    @translate_proc_errors
     def cwd(self) -> str:
         return _psimpl.proc_cwd(self)
 
     if hasattr(_psimpl, "proc_root"):
 
+        @translate_proc_errors
         def root(self) -> str:
             return _psimpl.proc_root(self)
 
+    @translate_proc_errors
     def environ(self) -> Dict[str, str]:
         return _psimpl.proc_environ(self)
 
+    @translate_proc_errors
     def uids(self) -> Tuple[int, int, int]:
         return Uids(*_psimpl.proc_uids(self))
 
+    @translate_proc_errors
     def gids(self) -> Tuple[int, int, int]:
         return Gids(*_psimpl.proc_gids(self))
 
+    @translate_proc_errors
     def getgroups(self) -> List[int]:
         return _psimpl.proc_getgroups(self)
 
@@ -185,16 +200,19 @@ class Process:
 
     if hasattr(_psimpl, "proc_umask"):
 
+        @translate_proc_errors
         def umask(self) -> Optional[int]:
             return _psimpl.proc_umask(self)
 
     if hasattr(_psimpl, "proc_sigmasks"):
 
+        @translate_proc_errors
         def sigmasks(self) -> ProcessSignalMasks:
             return _psimpl.proc_sigmasks(self)
 
     if hasattr(_psimpl, "proc_rlimit"):
 
+        @translate_proc_errors
         def rlimit(self, res: int, new_limits: Optional[Tuple[int, int]] = None) -> Tuple[int, int]:
             if new_limits is not None:
                 self._check_running()
@@ -217,9 +235,11 @@ class Process:
 
     if hasattr(_psimpl, "proc_getrlimit"):
 
+        @translate_proc_errors
         def getrlimit(self, res: int) -> Tuple[int, int]:
             return _psimpl.proc_getrlimit(self, res)
 
+    @translate_proc_errors
     def terminal(self) -> Optional[str]:
         tty_rdev = _psimpl.proc_tty_rdev(self)
 
@@ -242,9 +262,11 @@ class Process:
 
         return None
 
+    @translate_proc_errors
     def getpriority(self) -> int:
         return _psimpl.proc_getpriority(self)
 
+    @translate_proc_errors
     def setpriority(self, prio: int) -> None:
         if self._pid == 0:
             # Can't change the kernel's priority
@@ -253,6 +275,7 @@ class Process:
         self._check_running()
         os.setpriority(os.PRIO_PROCESS, self._pid, prio)
 
+    @translate_proc_errors
     def send_signal(self, sig: int) -> None:
         if self._pid == 0:
             # Can't send signals to the kernel
@@ -283,6 +306,7 @@ class Process:
             else:
                 yield
 
+    @translate_proc_errors
     def _check_running(self) -> None:
         if not self.is_running():
             raise ProcessLookupError
@@ -294,7 +318,7 @@ class Process:
 
             try:
                 self._dead = self != Process(self._pid)
-            except ProcessLookupError:
+            except NoSuchProcess:
                 self._dead = True
 
             return not self._dead
@@ -395,9 +419,9 @@ def pid_exists(pid: int) -> bool:
             os.kill(pid, 0)
         else:
             _psimpl.pid_create_time(pid)
-    except ProcessLookupError:
+    except (ProcessLookupError, NoSuchProcess):
         return False
-    except PermissionError:
+    except (PermissionError, AccessDenied):
         return True
     else:
         return True

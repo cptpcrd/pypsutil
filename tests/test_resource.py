@@ -27,17 +27,17 @@ if hasattr(pypsutil.Process, "rlimit"):
         proc = fork_proc(lambda: sys.exit(0))
         os.waitpid(proc.pid, 0)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.rlimit(resource.RLIMIT_NOFILE)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.rlimit(resource.RLIMIT_NOFILE, resource.getrlimit(resource.RLIMIT_NOFILE))
 
         with proc.oneshot():
-            with pytest.raises(ProcessLookupError):
+            with pytest.raises(pypsutil.NoSuchProcess):
                 proc.rlimit(resource.RLIMIT_NOFILE)
 
-            with pytest.raises(ProcessLookupError):
+            with pytest.raises(pypsutil.NoSuchProcess):
                 proc.rlimit(resource.RLIMIT_NOFILE, resource.getrlimit(resource.RLIMIT_NOFILE))
 
     def test_proc_rlimit_error() -> None:
@@ -78,11 +78,11 @@ if hasattr(pypsutil.Process, "getrlimit"):
         proc = fork_proc(lambda: sys.exit(0))
         os.waitpid(proc.pid, 0)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.getrlimit(resource.RLIMIT_NOFILE)
 
         with proc.oneshot():
-            with pytest.raises(ProcessLookupError):
+            with pytest.raises(pypsutil.NoSuchProcess):
                 proc.getrlimit(resource.RLIMIT_NOFILE)
 
     def test_proc_getrlimit_error() -> None:

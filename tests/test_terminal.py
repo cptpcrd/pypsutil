@@ -6,6 +6,8 @@ import termios
 
 import pytest
 
+import pypsutil
+
 from .util import fork_proc
 
 
@@ -81,9 +83,9 @@ def test_terminal_no_proc() -> None:
     proc = fork_proc(lambda: sys.exit(0))
     os.waitpid(proc.pid, 0)
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.terminal()
 
     with proc.oneshot():
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.terminal()

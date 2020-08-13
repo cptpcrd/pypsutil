@@ -96,11 +96,11 @@ if sys.platform.startswith(("linux", "darwin", "freebsd", "openbsd", "netbsd")):
         proc = fork_proc(lambda: sys.exit(0))
         os.waitpid(proc.pid, 0)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.sigmasks()
 
         with proc.oneshot():
-            with pytest.raises(ProcessLookupError):
+            with pytest.raises(pypsutil.NoSuchProcess):
                 proc.sigmasks()
 
     def blank_signal_handler(sig: int, frame: Any) -> None:  # pylint: disable=unused-argument

@@ -38,27 +38,27 @@ def test_basic_info_no_proc() -> None:
     proc = fork_proc(lambda: sys.exit(0))
     os.waitpid(proc.pid, 0)
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.ppid()
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.pgid()
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.sid()
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.cwd()
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.exe()
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.environ()
 
 
 def test_negative_pid() -> None:
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         pypsutil.Process(-1)
 
 
@@ -95,7 +95,7 @@ if hasattr(pypsutil.Process, "umask"):
         proc = fork_proc(lambda: sys.exit(0))
         os.waitpid(proc.pid, 0)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.umask()
 
 
@@ -110,5 +110,5 @@ if hasattr(pypsutil.Process, "root"):
         proc = fork_proc(lambda: sys.exit(0))
         os.waitpid(proc.pid, 0)
 
-        with pytest.raises(ProcessLookupError):
+        with pytest.raises(pypsutil.NoSuchProcess):
             proc.root()

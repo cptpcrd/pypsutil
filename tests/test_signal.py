@@ -17,14 +17,14 @@ def test_send_signal_no_proc() -> None:
     proc = fork_proc(lambda: sys.exit(0))
     os.waitpid(proc.pid, 0)
 
-    with pytest.raises(ProcessLookupError):
+    with pytest.raises(pypsutil.NoSuchProcess):
         proc.send_signal(0)
 
 
 def test_priority_pid_0() -> None:
     try:
         proc = pypsutil.Process(0)
-    except ProcessLookupError:
+    except pypsutil.NoSuchProcess:
         # PID 0 doesn't show up
         return
 

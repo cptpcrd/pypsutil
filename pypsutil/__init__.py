@@ -1,5 +1,5 @@
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
-from ._errors import ZombieProcess
+from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
     Process,
     ProcessSignalMasks,
@@ -35,7 +35,11 @@ __all__ = [
     "process_iter",
     "process_iter_available",
     "wait_procs",
+    "Error",
+    "NoSuchProcess",
     "ZombieProcess",
+    "AccessDenied",
+    "TimeoutExpired",
 ]
 
 if "uptime" in globals():

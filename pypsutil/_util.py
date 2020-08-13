@@ -1,7 +1,13 @@
 import dataclasses
+import functools
 import resource
 import sys
-from typing import Dict, Iterator, List, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, Union
+
+from ._errors import AccessDenied, NoSuchProcess
+
+if TYPE_CHECKING:
+    from ._process import Process
 
 RESOURCE_NUMS = set()
 for name in dir(resource):
@@ -76,3 +82,22 @@ def parse_environ_bytes(env: bytes) -> Dict[str, str]:
 def trim_after_nul(data: bytes) -> bytes:
     index = data.find(b"\0")
     return data if index < 0 else data[:index]
+
+
+def translate_proc_errors(func: Callable[..., Any]) -> Callable[..., Any]:
+
+    @functools.wraps(func)
+    def wrapper(proc: Union[int, "Process"], *args: Any, **kwargs: Any) -> Any:
+        if isinstance(proc, int):
+            pid = proc
+        else:
+            pid = proc.pid
+
+        try:
+            return func(proc, *args, **kwargs)
+        except ProcessLookupError:
+            raise NoSuchProcess(pid=pid)
+        except PermissionError:
+            raise AccessDenied(pid=pid)
+
+    return wrapper
