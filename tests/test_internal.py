@@ -1,7 +1,11 @@
 # pylint: disable=protected-access
 import ctypes
 
+import pytest
+
+import pypsutil
 import pypsutil._ffi
+import pypsutil._util
 
 
 def test_ctypes_int_is_signed() -> None:
@@ -34,3 +38,15 @@ def test_ctypes_int_max() -> None:
     assert pypsutil._ffi.ctypes_int_max(ctypes.c_ubyte) == 255
     assert pypsutil._ffi.ctypes_int_max(ctypes.c_uint32) == 2 ** 32 - 1
     assert pypsutil._ffi.ctypes_int_max(ctypes.c_uint64) == 2 ** 64 - 1
+
+
+def test_translate_proc_errors() -> None:
+    @pypsutil._util.translate_proc_errors
+    def raise_helper(pid: int, ex: Exception) -> None:  # pylint: disable=unused-argument
+        raise ex
+
+    with pytest.raises(pypsutil.NoSuchProcess):
+        raise_helper(1, ProcessLookupError)
+
+    with pytest.raises(pypsutil.AccessDenied):
+        raise_helper(1, PermissionError)
