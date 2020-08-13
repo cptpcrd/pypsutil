@@ -36,5 +36,5 @@ def test_priority_pid_0() -> None:
         prio = proc.getpriority()
 
         # But not set it
-        with pytest.raises(PermissionError):
+        with pytest.raises(pypsutil.AccessDenied):
             proc.setpriority(prio)

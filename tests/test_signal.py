@@ -30,5 +30,5 @@ def test_priority_pid_0() -> None:
 
     # If it does, we shouldn't be able to send it signals
 
-    with pytest.raises(PermissionError):
+    with pytest.raises(pypsutil.AccessDenied):
         proc.send_signal(signal.SIGINT)
