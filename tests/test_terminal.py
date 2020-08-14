@@ -68,6 +68,9 @@ def test_no_terminal() -> None:
         ]
     )
 
+    os.close(child_r)
+    os.close(child_w)
+
     assert os.read(parent_r, 1) == b"\n"
 
     try:
