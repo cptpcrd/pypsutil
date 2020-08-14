@@ -281,7 +281,7 @@ def pid_create_time(pid: int) -> float:
 
 
 def proc_name(proc: "Process") -> str:
-    return _get_kinfo_proc2(proc).p_comm.decode()
+    return cast(str, _get_kinfo_proc2(proc).p_comm.decode())
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:

@@ -6,7 +6,7 @@ import shutil
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
-from . import _bsd, _cache, _ffi, _psposix, _util
+from . import _bsd, _cache, _psposix, _util
 from ._util import ProcessSignalMasks
 
 if TYPE_CHECKING:
@@ -211,7 +211,7 @@ def pid_create_time(pid: int) -> float:
 
 
 def proc_name(proc: "Process") -> str:
-    return _get_kinfo_proc(proc).p_comm.decode()
+    return cast(str, _get_kinfo_proc(proc).p_comm.decode())
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:

@@ -451,7 +451,7 @@ def proc_umask(proc: "Process") -> int:
 
 
 def proc_name(proc: "Process") -> str:
-    return _get_kinfo_proc(proc).ki_comm.decode()
+    return cast(str, _get_kinfo_proc(proc).ki_comm.decode())
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
