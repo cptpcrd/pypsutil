@@ -211,7 +211,7 @@ def pid_create_time(pid: int) -> float:
 
 
 def proc_name(proc: "Process") -> str:
-    return _ffi.char_array_to_bytes(_get_kinfo_proc(proc).p_comm).decode()
+    return _get_kinfo_proc(proc).p_comm.decode()
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
