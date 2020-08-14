@@ -17,8 +17,8 @@ def test_children() -> None:
         [
             sys.executable,
             "-c",
-            "import os, sys, time; os.spawnv(os.P_NOWAIT, sys.executable, [sys.executable, '-c', 'exit()']); "
-            "time.sleep(100)",
+            "import os, sys, time; os.spawnv(os.P_NOWAIT, sys.executable, "
+            "[sys.executable, '-c', 'exit()']); time.sleep(100)",
         ]
     ) as child_proc:
         # Now we have only one
