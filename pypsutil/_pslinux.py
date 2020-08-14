@@ -97,7 +97,7 @@ def proc_cmdline(proc: "Process") -> List[str]:
         raise ProcessLookupError
 
     if not cmdline:
-        raise ZombieProcess
+        raise ZombieProcess(proc.pid)
 
     return _util.parse_cmdline_bytes(cmdline)
 
@@ -141,7 +141,7 @@ def proc_umask(proc: "Process") -> Optional[int]:
         umask_str = proc_status["Umask"]
     except KeyError:
         if proc_status["State"].startswith("Z"):
-            raise ZombieProcess
+            raise ZombieProcess(proc.pid)
         else:
             return None
     else:
