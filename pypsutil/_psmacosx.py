@@ -376,6 +376,14 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
 
     items = buf.raw[ctypes.sizeof(ctypes.c_int): nbytes].lstrip(b"\0").split(b"\0")
 
+    # It appears the first item is the executable name.
+    # Skip that and any empty strings following it.
+    i = 1
+    while not items[i]:
+        i += 1
+
+    del items[:i]
+
     cmdline = [arg.decode() for arg in items[:argc]]
 
     environ = {}
