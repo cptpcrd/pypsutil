@@ -373,11 +373,10 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
             raise
 
     argc = struct.unpack("i", buf.raw[: ctypes.sizeof(ctypes.c_int)])[0]
-    data = buf.raw[ctypes.sizeof(ctypes.c_int): nbytes]
-    if data.endswith(b"\0"):
-        data = data[:-1]
 
-    items = data.split(b"\0")
+    items = buf.raw[ctypes.sizeof(ctypes.c_int): nbytes].lstrip(b"\0").split(b"\0")
+
+    cmdline = [arg.decode() for arg in items[:argc]]
 
     environ = {}
     for env_item in items[argc:]:
@@ -388,7 +387,7 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
         else:
             environ[key.decode()] = value.decode()
 
-    return [arg.decode() for arg in items[:argc]], environ
+    return cmdline, environ
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
