@@ -61,8 +61,6 @@ def _iter_null_split_pre(data: bytes) -> Iterator[bytes]:
         zero_index = data.find(b"\0", i)
         if zero_index < 0:
             break
-        elif zero_index == i:
-            i += 1
         else:
             yield data[i:zero_index]
             i = zero_index + 1
