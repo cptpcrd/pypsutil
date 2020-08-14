@@ -6,7 +6,7 @@ import pytest
 
 import pypsutil
 
-from .util import fork_proc
+from .util import get_dead_process, managed_child_process
 
 
 def test_basic_info() -> None:
@@ -27,8 +27,7 @@ def test_basic_info() -> None:
 
 
 def test_basic_info_no_proc() -> None:
-    proc = fork_proc(lambda: sys.exit(0))
-    os.waitpid(proc.pid, 0)
+    proc = get_dead_process()
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.ppid()
@@ -63,12 +62,10 @@ def test_parents() -> None:
 
 def test_parent() -> None:
     cur_proc = pypsutil.Process()
-    child_proc = fork_proc(lambda: sys.exit(0))
 
-    assert child_proc.ppid() == cur_proc.pid
-    assert child_proc.parent() == cur_proc
-
-    os.waitpid(child_proc.pid, 0)
+    with managed_child_process([sys.executable, "-c", "exit()"]) as child_proc:
+        assert child_proc.ppid() == cur_proc.pid
+        assert child_proc.parent() == cur_proc
 
 
 if hasattr(pypsutil.Process, "umask"):
@@ -81,8 +78,7 @@ if hasattr(pypsutil.Process, "umask"):
             assert os.umask(mask) == mask
 
     def test_umask_no_proc() -> None:
-        proc = fork_proc(lambda: sys.exit(0))
-        os.waitpid(proc.pid, 0)
+        proc = get_dead_process()
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.umask()
@@ -96,8 +92,7 @@ if hasattr(pypsutil.Process, "root"):
         assert proc.root() == "/"
 
     def test_root_no_proc() -> None:
-        proc = fork_proc(lambda: sys.exit(0))
-        os.waitpid(proc.pid, 0)
+        proc = get_dead_process()
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.root()

@@ -1,18 +1,28 @@
-import os
-from typing import Callable
+import contextlib
+import subprocess
+import sys
+from typing import Any, Iterator, List
 
 import pypsutil
 
 
-def fork_proc(child_func: Callable[[], None]) -> pypsutil.Process:
-    pid = os.fork()
-    if pid == 0:
-        try:
-            child_func()
-        except SystemExit as ex:
-            os._exit(ex.code)  # pylint: disable=protected-access
-        finally:
-            # Make sure we exit somehow
-            os._exit(1)  # pylint: disable=protected-access
+@contextlib.contextmanager
+def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Process]:
+    subproc = subprocess.Popen(args, **kwargs)
 
-    return pypsutil.Process(pid)
+    try:
+        yield pypsutil.Process(subproc.pid)
+    finally:
+        subproc.terminate()
+        subproc.wait()
+
+
+def get_dead_process() -> pypsutil.Process:
+    subproc = subprocess.Popen([sys.executable, "-c", "exit()"])
+
+    try:
+        proc = pypsutil.Process(subproc.pid)
+    finally:
+        subproc.wait()
+
+    return proc

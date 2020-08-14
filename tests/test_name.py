@@ -1,33 +1,20 @@
 import os
-import subprocess
 import sys
 
 import pytest
 
 import pypsutil
 
+from .util import get_dead_process, managed_child_process
+
 
 def test_cmdline() -> None:
-    args = [sys.executable, "-c", "import time; time.sleep(10)"]
-
-    subproc = subprocess.Popen(args)
-
-    try:
-        proc = pypsutil.Process(subproc.pid)
-
+    with managed_child_process([sys.executable, "-c", "import time; time.sleep(10)"]) as proc:
         assert proc.name() == os.path.basename(sys.executable)
-    finally:
-        subproc.terminate()
-        subproc.wait()
 
 
 def test_name_no_proc() -> None:
-    subproc = subprocess.Popen([sys.executable, "-c", "exit()"])
-
-    try:
-        proc = pypsutil.Process(subproc.pid)
-    finally:
-        subproc.wait()
+    proc = get_dead_process()
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.name()

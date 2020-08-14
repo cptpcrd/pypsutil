@@ -9,7 +9,7 @@ import pytest
 
 import pypsutil
 
-from .util import fork_proc
+from .util import get_dead_process
 
 if sys.platform.startswith(("linux", "darwin", "freebsd", "openbsd", "netbsd")):
 
@@ -93,8 +93,7 @@ if sys.platform.startswith(("linux", "darwin", "freebsd", "openbsd", "netbsd")):
             signal.signal(signal.SIGUSR2, signal.SIG_DFL)
 
     def test_sigmasks_no_proc() -> None:
-        proc = fork_proc(lambda: sys.exit(0))
-        os.waitpid(proc.pid, 0)
+        proc = get_dead_process()
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.sigmasks()

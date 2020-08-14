@@ -1,11 +1,10 @@
 import os
-import sys
 
 import pytest
 
 import pypsutil
 
-from .util import fork_proc
+from .util import get_dead_process
 
 
 def test_same_process() -> None:
@@ -75,8 +74,7 @@ def test_proc_not_exists() -> None:
     for pid in pypsutil.pids():
         assert pid >= 0
 
-    proc = fork_proc(lambda: sys.exit(0))
-    os.waitpid(proc.pid, 0)
+    proc = get_dead_process()
 
     # Process just exited
     assert not proc.is_running()

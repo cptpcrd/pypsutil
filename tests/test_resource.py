@@ -1,13 +1,11 @@
-import os
 import resource
-import sys
 
 import pytest
 
 import pypsutil
 from pypsutil._util import RESOURCE_NUMS
 
-from .util import fork_proc
+from .util import get_dead_process
 
 if hasattr(pypsutil.Process, "rlimit"):
 
@@ -24,8 +22,7 @@ if hasattr(pypsutil.Process, "rlimit"):
             assert proc.rlimit(resource.RLIMIT_NOFILE, limits) == limits
 
     def test_proc_rlimit_no_proc() -> None:
-        proc = fork_proc(lambda: sys.exit(0))
-        os.waitpid(proc.pid, 0)
+        proc = get_dead_process()
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.rlimit(resource.RLIMIT_NOFILE)
@@ -75,8 +72,7 @@ if hasattr(pypsutil.Process, "getrlimit"):
             )
 
     def test_proc_getrlimit_no_proc() -> None:
-        proc = fork_proc(lambda: sys.exit(0))
-        os.waitpid(proc.pid, 0)
+        proc = get_dead_process()
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.getrlimit(resource.RLIMIT_NOFILE)

@@ -1,12 +1,10 @@
-import os
 import signal
-import sys
 
 import pytest
 
 import pypsutil
 
-from .util import fork_proc
+from .util import get_dead_process
 
 
 def test_send_signal() -> None:
@@ -14,8 +12,7 @@ def test_send_signal() -> None:
 
 
 def test_send_signal_no_proc() -> None:
-    proc = fork_proc(lambda: sys.exit(0))
-    os.waitpid(proc.pid, 0)
+    proc = get_dead_process()
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.send_signal(0)
