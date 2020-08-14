@@ -245,20 +245,24 @@ class Process:
 
         if tty_rdev is not None:
             try:
-                pts_names = os.listdir("/dev/pts")
+                with os.scandir("/dev/pts") as pts_names:
+                    for entry in pts_names:
+                        try:
+                            if entry.stat().st_rdev == tty_rdev:
+                                return entry.path
+                        except OSError:
+                            pass
             except FileNotFoundError:
                 pass
-            else:
-                for fname in pts_names:
-                    fpath = os.path.join("/dev/pts", fname)
-                    if os.stat(fpath).st_rdev == tty_rdev:
-                        return fpath
 
-            for fname in os.listdir("/dev"):
-                if fname.startswith("tty") and len(fname) > 3:
-                    fpath = os.path.join("/dev", fname)
-                    if os.stat(fpath).st_rdev == tty_rdev:
-                        return fpath
+            with os.scandir("/dev") as dev_names:
+                for entry in dev_names:
+                    if entry.name.startswith("tty") and len(entry.name) > 3:
+                        try:
+                            if entry.stat().st_rdev == tty_rdev:
+                                return entry.path
+                        except OSError:
+                            pass
 
         return None
 
