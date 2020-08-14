@@ -1,8 +1,9 @@
 import dataclasses
 import os
 import resource
+import signal
 import time
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, no_type_check
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, no_type_check
 
 from . import _cache, _psposix, _util
 from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass
 class ProcessSignalMasks(_util.ProcessSignalMasks):
-    process_pending: Set[int]
+    process_pending: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
 
 
 def parse_sigmask(raw_mask: str) -> Set[int]:

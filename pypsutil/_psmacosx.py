@@ -2,6 +2,7 @@
 import ctypes
 import dataclasses
 import errno
+import signal
 import struct
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
@@ -64,8 +65,8 @@ off_t = ctypes.c_int64
 
 @dataclasses.dataclass
 class ProcessSignalMasks:
-    ignored: Set[int]
-    caught: Set[int]
+    ignored: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
+    caught: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
 
 
 class Timeval(ctypes.Structure):

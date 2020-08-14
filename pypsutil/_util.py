@@ -18,10 +18,10 @@ for name in dir(resource):
 
 @dataclasses.dataclass
 class ProcessSignalMasks:
-    pending: Set[int]
-    blocked: Set[int]
-    ignored: Set[int]
-    caught: Set[int]
+    pending: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
+    blocked: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
+    ignored: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
+    caught: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
 
 
 def get_procfs_path() -> str:
@@ -33,7 +33,7 @@ def check_rlimit_resource(res: int) -> None:
         raise ValueError("invalid resource specified")
 
 
-def expand_sig_bitmask(mask: int) -> Set[int]:
+def expand_sig_bitmask(mask: int) -> Set[Union[signal.Signals, int]]:  # pylint: disable=no-member
     # It seems that every OS uses the same binary representation
     # for signal sets. Only the size varies.
 
@@ -42,8 +42,9 @@ def expand_sig_bitmask(mask: int) -> Set[int]:
 
     while mask:
         if mask & 1:
+            sig_val: Union[signal.Signals, int]  # pylint: disable=no-member
             try:
-                sig_val = signal.Signals(sig)
+                sig_val = signal.Signals(sig)  # pylint: disable=no-member
             except ValueError:
                 sig_val = sig
             res.add(sig_val)
