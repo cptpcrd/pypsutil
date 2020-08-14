@@ -7,7 +7,7 @@ import pypsutil
 
 
 def test_cmdline() -> None:
-    args = [sys.executable, "-c", "import time; time.sleep(10)"]
+    args = [sys.executable, "-c", "import time; time.sleep(10)", "", "a", ""]
 
     subproc = subprocess.Popen(args)
 
