@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import resource
+import signal
 import sys
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, Union
 
@@ -41,7 +42,11 @@ def expand_sig_bitmask(mask: int) -> Set[int]:
 
     while mask:
         if mask & 1:
-            res.add(sig)
+            try:
+                sig_val = signal.Signals(sig)
+            except ValueError:
+                sig_val = sig
+            res.add(sig_val)
 
         mask >>= 1
         sig += 1
