@@ -15,10 +15,15 @@ def test_environ() -> None:
     try:
         proc = pypsutil.Process(subproc.pid)
 
-        assert proc.environ() == env
+        proc_env = proc.environ()
     finally:
         subproc.terminate()
         subproc.wait()
+
+    # Check that env is a subset of proc.environ()
+    # On macOS, proc.environ() includes some extra ifnormation
+    for name in env:
+        assert env[name] == proc_env[name]
 
 
 def test_environ_no_proc() -> None:
