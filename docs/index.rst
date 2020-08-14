@@ -235,7 +235,7 @@ Process information
 
            Aside from the potential race conditions this creates, if this method raises
            an error, one or both of the limits may have been changed before the error
-           occurred. In this case, no attempts to revert the changes.
+           occurred. In this case, no attempts are made to revert the changes.
 
       :param int res:
            The number of the resource to set (one of the :py:const:`resource.RLIMIT_*` constants)
