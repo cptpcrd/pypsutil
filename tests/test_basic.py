@@ -25,14 +25,6 @@ def test_basic_info() -> None:
     assert os.path.samefile(proc.cwd(), os.getcwd())
     assert os.path.samefile(proc.exe(), sys.executable)
 
-    # environ() may not reflect changes since startup,
-    # so we can't do a simple comparison.
-    proc_environ = proc.environ()
-    assert proc_environ
-    assert os.environ.get("PATH") == proc_environ.get("PATH")
-    assert os.environ.get("USER") == proc_environ.get("USER")
-    assert os.environ.get("LANG") == proc_environ.get("LANG")
-
 
 def test_basic_info_no_proc() -> None:
     proc = fork_proc(lambda: sys.exit(0))
@@ -52,9 +44,6 @@ def test_basic_info_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.exe()
-
-    with pytest.raises(pypsutil.NoSuchProcess):
-        proc.environ()
 
 
 def test_negative_pid() -> None:
