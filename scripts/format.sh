@@ -9,4 +9,4 @@ for cmd in black autopep8 isort; do
 done
 
 # Order is important. There are a few things that black and autopep8 disagree on.
-black pypsutil tests && autopep8 --in-place --recursive pypsutil tests && isort --recursive pypsutil tests
+black pypsutil tests && autopep8 --in-place --recursive pypsutil tests && isort pypsutil tests

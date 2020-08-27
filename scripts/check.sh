@@ -8,4 +8,4 @@ for cmd in flake8 isort mypy pylint pytype; do
     fi
 done
 
-flake8 pypsutil tests && isort --recursive --check pypsutil tests && mypy --strict -p pypsutil -p tests && pytype pypsutil tests && pylint pypsutil tests
+flake8 pypsutil tests && isort --check pypsutil tests && mypy --strict -p pypsutil -p tests && pytype pypsutil tests && pylint pypsutil tests
