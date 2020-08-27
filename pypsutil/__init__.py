@@ -1,8 +1,10 @@
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
+    Gids,
     Process,
     ProcessSignalMasks,
+    Uids,
     pid_exists,
     pids,
     process_iter,
@@ -35,6 +37,9 @@ __all__ = [
     "process_iter",
     "process_iter_available",
     "wait_procs",
+    "ProcessSignalMasks",
+    "Uids",
+    "Gids",
     "Error",
     "NoSuchProcess",
     "ZombieProcess",
