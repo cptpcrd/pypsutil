@@ -12,7 +12,7 @@ scikit-build = "~=0.11.1"
 flake8 = "~=3.8.3"
 pylint = "~=2.6.0"
 mypy = "~=0.782"
-pytype = {version = "~=2020.8.17", markers = "platform_system != 'FreeBSD'"}
+pytype = {version = "~=2020.7.30", markers = "platform_system != 'FreeBSD'"}
 
 isort = "~=5.4.2"
 black = "==20.8b1"
