@@ -194,7 +194,8 @@ def _list_kinfo_procs() -> List[KinfoProc]:
 
 
 def iter_pid_create_time(
-    *, skip_perm_error: bool = False,  # pylint: disable=unused-argument
+    *,
+    skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
         yield kinfo.p_pid, cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)

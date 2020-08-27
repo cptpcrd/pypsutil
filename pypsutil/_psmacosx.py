@@ -309,7 +309,8 @@ def _get_proc_vnode_info(proc: "Process") -> ProcVnodePathInfo:
 
 
 def iter_pid_create_time(
-    *, skip_perm_error: bool = False,  # pylint: disable=unused-argument
+    *,
+    skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
         yield kinfo.kp_proc.p_pid, kinfo.kp_proc.p_un.p_starttime.to_float()
