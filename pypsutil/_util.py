@@ -98,9 +98,9 @@ def translate_proc_errors(func: Callable[..., Any]) -> Callable[..., Any]:
 
         try:
             return func(proc, *args, **kwargs)
-        except ProcessLookupError:
-            raise NoSuchProcess(pid=pid)
-        except PermissionError:
-            raise AccessDenied(pid=pid)
+        except ProcessLookupError as ex:
+            raise NoSuchProcess(pid=pid) from ex
+        except PermissionError as ex:
+            raise AccessDenied(pid=pid) from ex
 
     return wrapper

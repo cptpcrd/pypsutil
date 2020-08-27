@@ -369,7 +369,7 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
         nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, buf)
     except OSError as ex:
         if ex.errno == errno.EINVAL:
-            raise ProcessLookupError
+            raise ProcessLookupError from ex
         else:
             raise
 

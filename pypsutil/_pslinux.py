@@ -35,8 +35,8 @@ def _get_pid_stat_fields(pid: int) -> List[str]:
         items.extend(line[rparen + 1:].split())
 
         return items
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 @_cache.CachedByProcess
@@ -55,8 +55,8 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
                 res[name] = value.rstrip("\n")
 
         return res
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 _clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
@@ -71,30 +71,30 @@ def pid_create_time(pid: int) -> float:
 def proc_cwd(proc: "Process") -> str:
     try:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "cwd"))
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 def proc_exe(proc: "Process") -> str:
     try:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "exe"))
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 def proc_root(proc: "Process") -> str:
     try:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "cmdline"), "rb") as file:
             cmdline = file.read()
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
     if not cmdline:
         raise ZombieProcess(proc.pid)
@@ -106,8 +106,8 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "environ"), "rb") as file:
             env_data = file.read()
-    except FileNotFoundError:
-        raise ProcessLookupError
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
     return _util.parse_environ_bytes(env_data)
 
@@ -141,7 +141,7 @@ def proc_umask(proc: "Process") -> Optional[int]:
         umask_str = proc_status["Umask"]
     except KeyError:
         if proc_status["State"].startswith("Z"):
-            raise ZombieProcess(proc.pid)
+            raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
         else:
             return None
     else:
