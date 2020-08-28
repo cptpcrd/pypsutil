@@ -1,3 +1,4 @@
+from . import _system
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
@@ -11,12 +12,21 @@ from ._process import (
     process_iter_available,
     wait_procs,
 )
-from ._system import boot_time, time_since_boot
+from ._system import CPUFrequencies, CPUStats, boot_time, physical_cpu_count, time_since_boot
 
-try:
-    from ._system import uptime  # noqa  # pytype: disable=import-error
-except ImportError:
-    pass
+_OPTIONAL_FUNCS = [
+    "uptime",
+    "cpu_freq",
+    "percpu_freq",
+    "cpu_stats",
+    "CPUTimes",
+    "cpu_times",
+    "percpu_times",
+]
+
+for name in _OPTIONAL_FUNCS:
+    if hasattr(_system, name):
+        globals()[name] = getattr(_system, name)
 
 __version__ = "0.2.0"
 
@@ -30,6 +40,7 @@ __all__ = [
     "BSD",
     "boot_time",
     "time_since_boot",
+    "physical_cpu_count",
     "Process",
     "ProcessSignalMasks",
     "pid_exists",
@@ -37,6 +48,8 @@ __all__ = [
     "process_iter",
     "process_iter_available",
     "wait_procs",
+    "CPUFrequencies",
+    "CPUStats",
     "ProcessSignalMasks",
     "Uids",
     "Gids",
@@ -47,7 +60,8 @@ __all__ = [
     "TimeoutExpired",
 ]
 
-if "uptime" in globals():
-    __all__.append("uptime")
+for name in _OPTIONAL_FUNCS:
+    if name in globals():
+        __all__.append(name)
 
 PROCFS_PATH = "/proc"

@@ -104,3 +104,8 @@ def translate_proc_errors(func: Callable[..., Any]) -> Callable[..., Any]:
             raise AccessDenied(pid=pid) from ex
 
     return wrapper
+
+
+def read_file(fname: str) -> str:
+    with open(fname) as file:
+        return file.read()

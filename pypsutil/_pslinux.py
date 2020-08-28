@@ -18,6 +18,21 @@ class ProcessSignalMasks(_util.ProcessSignalMasks):
     process_pending: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
 
 
+@dataclasses.dataclass
+class CPUTimes:  # pylint: disable=too-many-instance-attributes
+    # The order of these fields must match the order of the "cpu" entries in /proc/stat
+    user: float
+    nice: float
+    system: float
+    idle: float
+    iowait: float
+    irq: float
+    softirq: float
+    steal: float
+    guest: float
+    guest_nice: float
+
+
 def parse_sigmask(raw_mask: str) -> Set[int]:
     return _util.expand_sig_bitmask(int(raw_mask, 16))
 
@@ -206,6 +221,118 @@ def iter_pid_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int
                 raise
 
         yield (pid, ctime)
+
+
+def _iter_procfs_cpuinfo_entries() -> Iterator[Tuple[str, str]]:
+    with open(os.path.join(_util.get_procfs_path(), "cpuinfo")) as file:
+        for line in file:
+            if ":" in line:
+                name, value = line.split(":", maxsplit=1)
+                yield (name.strip(), value.strip())
+            else:
+                yield ("", "")
+
+
+def _iter_procfs_stat_entries() -> Iterator[List[str]]:
+    with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
+        for line in file:
+            yield line.split()
+
+
+def physical_cpu_count() -> Optional[int]:
+    try:
+        core_ids = {
+            int(value) for name, value in _iter_procfs_cpuinfo_entries() if name == "core id"
+        }
+    except FileNotFoundError:
+        return None
+    else:
+        return len(core_ids)
+
+
+def percpu_freq() -> List[Tuple[float, float, float]]:
+    # First, try looking in /sys/devices/system
+    # This allows us to get the current, minimum, and maximum frequencies.
+    try:
+        results = []
+
+        cpu_device_dir = "/sys/devices/system/cpu"
+        for name in os.listdir(cpu_device_dir):
+            if name.startswith("cpu") and name[3:].isdigit():
+                cpufreq_path = os.path.join(cpu_device_dir, name, "cpufreq")
+
+                results.append(
+                    (
+                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_cur_freq"))) / 1000,
+                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_min_freq"))) / 1000,
+                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_max_freq"))) / 1000,
+                    )
+                )
+
+    except (FileNotFoundError, PermissionError):
+        pass
+    else:
+        return results
+
+    # If that fails. try /proc/cpuinfo
+    # This only allows us to get the current frequency, but at least it's something.
+    try:
+        return [
+            (float(value), 0.0, 0.0)
+            for name, value in _iter_procfs_cpuinfo_entries()
+            if name == "cpu MHz"
+        ]
+    except (FileNotFoundError, PermissionError):
+        return []
+
+
+def cpu_freq() -> Optional[Tuple[float, float, float]]:
+    freqs = percpu_freq()
+    if not freqs:
+        return None
+
+    cur_total = 0.0
+    min_total = 0.0
+    max_total = 0.0
+
+    for cur_freq, min_freq, max_freq in freqs:
+        cur_total += cur_freq
+        min_total += min_freq
+        max_total += max_freq
+
+    return cur_total / len(freqs), min_total / len(freqs), max_total / len(freqs)
+
+
+def cpu_stats() -> Tuple[int, int, int, int]:
+    ctx_switches = 0
+    interrupts = 0
+    soft_interrupts = 0
+
+    for entry in _iter_procfs_stat_entries():
+        if entry[0] == "ctxt":
+            ctx_switches = int(entry[1])
+        elif entry[0] == "intr":
+            interrupts = int(entry[1])
+        elif entry[0] == "softirq":
+            soft_interrupts = int(entry[1])
+
+    return (ctx_switches, interrupts, soft_interrupts, 0)
+
+
+def cpu_times() -> CPUTimes:
+    for entry in _iter_procfs_stat_entries():
+        if entry[0] == "cpu":
+            return CPUTimes(*(int(item) / _clk_tck for item in entry[1:]))
+
+    raise RuntimeError("'cpu' entry not found in /proc/stat")
+
+
+def percpu_times() -> List[CPUTimes]:
+    return [
+        CPUTimes(*(int(item) / _clk_tck for item in entry[1:]))
+        for entry in _iter_procfs_stat_entries()
+        if entry[0].startswith("cpu") and len(entry[0]) > 3
+    ]
 
 
 _cached_boot_time = None
