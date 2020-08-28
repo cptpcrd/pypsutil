@@ -1,3 +1,6 @@
+# Type checkers don't like the wrapper names not existing.
+# mypy: ignore-errors
+# pytype: disable=module-attr
 import dataclasses
 from typing import List, Optional
 
