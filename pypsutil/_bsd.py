@@ -56,7 +56,7 @@ def sysctl_bytes_retry(mib: Collection[int], new: Optional[bytes], trim_nul: boo
         try:
             old_len = sysctl(mib, new, buf)
         except OSError as ex:
-            if ex.errno != errno.EINVAL:
+            if ex.errno != errno.ENOMEM:
                 raise
         else:
             return (buf.value if trim_nul else buf.raw)[:old_len]

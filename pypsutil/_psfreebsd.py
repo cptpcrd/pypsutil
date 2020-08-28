@@ -488,8 +488,8 @@ def proc_getgroups(proc: "Process") -> List[int]:
             # Get the actual group list
             groupsize = _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_GROUPS, proc.pid], None, groups)
         except OSError as ex:
-            # EINVAL means a range error; retry
-            if ex.errno != errno.EINVAL:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
                 raise
         else:
             # Return the group list

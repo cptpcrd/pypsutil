@@ -80,7 +80,7 @@ def proc_rlimit(
     try:
         old_soft = _proc_rlimit_getset(proc, res, new_soft, False)
     except OSError as ex:
-        if ex.errno == errno.EINVAL:
+        if ex.errno == errno.ENOMEM:
             old_soft = None
         else:
             raise
@@ -256,8 +256,8 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
                 // kinfo_size
             )
         except OSError as ex:
-            # EINVAL means a range error; retry
-            if ex.errno != errno.EINVAL:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
                 raise
         else:
             return proc_arr[:nprocs]

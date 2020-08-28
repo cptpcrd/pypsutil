@@ -186,8 +186,8 @@ def _list_kinfo_procs() -> List[KinfoProc]:
                 // kinfo_size
             )
         except OSError as ex:
-            # EINVAL means a range error; retry
-            if ex.errno != errno.EINVAL:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
                 raise
         else:
             return proc_arr[:nprocs]
