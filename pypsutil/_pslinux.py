@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Un
 
 from . import _cache, _psposix, _util
 from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
-from ._util import translate_proc_errors
+from ._util import ProcessCPUTimes, translate_proc_errors
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -172,6 +172,17 @@ def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
         blocked=parse_sigmask(proc_status["SigBlk"]),
         ignored=parse_sigmask(proc_status["SigIgn"]),
         caught=parse_sigmask(proc_status["SigCgt"]),
+    )
+
+
+def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
+    fields = _get_proc_stat_fields(proc)
+
+    return ProcessCPUTimes(
+        user=int(fields[13]) / _clk_tck,
+        system=int(fields[14]) / _clk_tck,
+        children_user=int(fields[15]) / _clk_tck,
+        children_system=int(fields[16]) / _clk_tck,
     )
 
 

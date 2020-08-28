@@ -24,6 +24,14 @@ class ProcessSignalMasks:
     caught: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
 
 
+@dataclasses.dataclass
+class ProcessCPUTimes:
+    user: float
+    system: float
+    children_user: float
+    children_system: float
+
+
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 

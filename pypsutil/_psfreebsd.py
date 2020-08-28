@@ -8,7 +8,7 @@ import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessSignalMasks
+from ._util import ProcessCPUTimes, ProcessSignalMasks
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -544,6 +544,17 @@ def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
         blocked=_util.expand_sig_bitmask(kinfo.ki_sigmask.pack()),
         ignored=_util.expand_sig_bitmask(kinfo.ki_sigignore.pack()),
         caught=_util.expand_sig_bitmask(kinfo.ki_sigcatch.pack()),
+    )
+
+
+def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
+    kinfo = _get_kinfo_proc(proc)
+
+    return ProcessCPUTimes(
+        user=kinfo.ki_rusage.ru_utime.to_float(),
+        system=kinfo.ki_rusage.ru_stime.to_float(),
+        children_user=kinfo.ki_rusage_ch.ru_utime.to_float(),
+        children_system=kinfo.ki_rusage_ch.ru_stime.to_float(),
     )
 
 

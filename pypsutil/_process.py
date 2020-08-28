@@ -16,6 +16,7 @@ from ._errors import AccessDenied, NoSuchProcess
 from ._util import translate_proc_errors
 
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
+ProcessCPUTimes = _psimpl.ProcessCPUTimes
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -265,6 +266,10 @@ class Process:
                             pass
 
         return None
+
+    @translate_proc_errors
+    def cpu_times(self) -> ProcessCPUTimes:
+        return _psimpl.proc_cpu_times(self)
 
     @translate_proc_errors
     def getpriority(self) -> int:

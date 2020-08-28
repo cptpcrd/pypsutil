@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Un
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
+from ._util import ProcessCPUTimes
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -79,6 +80,27 @@ class Timeval(ctypes.Structure):
         return cast(float, self.tv_sec + (self.tv_usec / 1000000.0))
 
 
+class Rusage(ctypes.Structure):
+    _fields_ = [
+        ("ru_utime", Timeval),
+        ("ru_stime", Timeval),
+        ("ru_maxrss", ctypes.c_long),
+        ("ru_ixrss", ctypes.c_long),
+        ("ru_idrss", ctypes.c_long),
+        ("ru_isrss", ctypes.c_long),
+        ("ru_minflt", ctypes.c_long),
+        ("ru_majflt", ctypes.c_long),
+        ("ru_nswap", ctypes.c_long),
+        ("ru_inblock", ctypes.c_long),
+        ("ru_oublock", ctypes.c_long),
+        ("ru_msgsnd", ctypes.c_long),
+        ("ru_msgrcv", ctypes.c_long),
+        ("ru_nsignals", ctypes.c_long),
+        ("ru_nvcsw", ctypes.c_long),
+        ("ru_nivcsw", ctypes.c_long),
+    ]
+
+
 class ITimerval(ctypes.Structure):
     _fields_ = [
         ("it_interval", Timeval),
@@ -142,7 +164,7 @@ class ExternProc(ctypes.Structure):
         ("p_addr", ctypes.c_void_p),
         ("p_xstat", ctypes.c_ushort),
         ("p_acflag", ctypes.c_ushort),
-        ("p_ru", ctypes.c_void_p),
+        ("p_ru", ctypes.POINTER(Rusage)),
     ]
 
 
@@ -421,6 +443,17 @@ def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
     return ProcessSignalMasks(
         ignored=_util.expand_sig_bitmask(kinfo.kp_proc.p_sigignore),
         caught=_util.expand_sig_bitmask(kinfo.kp_proc.p_sigcatch),
+    )
+
+
+def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
+    kinfo = _get_kinfo_proc(proc)
+
+    return ProcessCPUTimes(
+        user=kinfo.ki_ru.ru_utime.to_float(),
+        system=kinfo.ki_ru.ru_stime.to_float(),
+        children_user=0,
+        children_system=0,
     )
 
 
