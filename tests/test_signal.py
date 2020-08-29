@@ -22,8 +22,7 @@ def test_priority_pid_0() -> None:
     try:
         proc = pypsutil.Process(0)
     except pypsutil.NoSuchProcess:
-        # PID 0 doesn't show up
-        return
+        pytest.skip("PID 0 does not appear")
 
     # If it does, we shouldn't be able to send it signals
 

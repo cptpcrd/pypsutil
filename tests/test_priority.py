@@ -25,8 +25,7 @@ def test_priority_pid_0() -> None:
     try:
         proc = pypsutil.Process(0)
     except pypsutil.NoSuchProcess:
-        # PID 0 doesn't show up
-        pass
+        pytest.skip("PID 0 does not appear")
     else:
         # If it does, we should be able to get its priority
         prio = proc.getpriority()

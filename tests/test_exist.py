@@ -38,6 +38,8 @@ def test_proc_exists() -> None:
     else:
         raise ValueError("Current process not found")
 
+
+def test_pid_0_exists_or_not() -> None:
     # Make sure that all interfaces report that PID 0 either
     # exists or doesn't exist.
     if pypsutil.pid_exists(0):

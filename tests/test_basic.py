@@ -26,6 +26,16 @@ def test_basic_info() -> None:
     assert os.path.samefile(proc.exe(), sys.executable)
 
 
+def test_basic_info_pid_0() -> None:
+    try:
+        proc = pypsutil.Process(0)
+    except pypsutil.NoSuchProcess:
+        pytest.skip("PID 0 does not appear")
+
+    assert proc.pgid() == 0
+    assert proc.sid() == 0
+
+
 def test_basic_info_no_proc() -> None:
     proc = get_dead_process()
 
