@@ -252,13 +252,20 @@ def _iter_procfs_stat_entries() -> Iterator[List[str]]:
 
 def physical_cpu_count() -> Optional[int]:
     try:
-        core_ids = {
-            int(value) for name, value in _iter_procfs_cpuinfo_entries() if name == "core id"
-        }
+        cpu_infos = []
+        cur_info = {}
+
+        for name, value in _iter_procfs_cpuinfo_entries():
+            if name:
+                cur_info[name] = value
+            else:
+                cpu_infos.append(cur_info)
+                cur_info = {}
+
     except FileNotFoundError:
         return None
     else:
-        return len(core_ids)
+        return len({(info["physical id"], info["core id"]) for info in cpu_infos})
 
 
 def percpu_freq() -> List[Tuple[float, float, float]]:
