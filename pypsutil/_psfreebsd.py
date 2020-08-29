@@ -455,7 +455,7 @@ def proc_umask(proc: "Process") -> int:
         # Unlike the other FreeBSD functions, we can't accept pid=0, because the
         # KERN_PROC_UMASK sysctl uses that to mean the current process.
         # It won't produce the desired effect of actually operating on PID 0.
-        raise ProcessLookupError
+        raise PermissionError
 
     umask = ctypes.c_ushort()
 

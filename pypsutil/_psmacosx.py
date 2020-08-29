@@ -380,7 +380,7 @@ def proc_name(proc: "Process") -> str:
 @_cache.CachedByProcess
 def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     if proc.pid == 0:
-        raise ProcessLookupError
+        raise PermissionError
 
     argmax_arr = (ctypes.c_int * 1)()
     _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax_arr)
