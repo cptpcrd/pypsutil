@@ -6,6 +6,7 @@ import os
 import resource
 import sys
 import time
+import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
@@ -607,6 +608,20 @@ def proc_getpriority(proc: "Process") -> int:
 
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return _get_kinfo_proc(proc).get_tdev()
+
+
+def physical_cpu_count() -> Optional[int]:
+    # https://manpages.ubuntu.com/manpages/precise/man4/smp.4freebsd.html
+
+    topology_spec_dat = (
+        _bsd.sysctlbyname_bytes_retry("kern.sched.topology_spec", None, trim_nul=True)
+        .decode()
+        .strip()
+    )
+
+    root = ET.fromstring(topology_spec_dat)
+
+    return len(root.findall("group/children/group"))
 
 
 def cpu_times() -> CPUTimes:
