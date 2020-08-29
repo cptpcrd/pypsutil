@@ -80,7 +80,12 @@ def test_popen_context() -> None:
     # Popen.__exit__() will wait for the process, so proc.returncode should be set now
     assert proc.returncode is not None
 
-    with pypsutil.Popen([sys.executable, "-c", "import time; time.sleep(10)"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+    with pypsutil.Popen(
+        [sys.executable, "-c", "import time; time.sleep(10)"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as proc:
         proc.terminate()
 
         assert proc.returncode is None
