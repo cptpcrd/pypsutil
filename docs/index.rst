@@ -166,7 +166,7 @@ Process information
         Get the supplementary group list of this process.
 
         .. note::
-            Currently, on Windows Subsystem for Linux 1 (not tested on WSL 2), this
+            Currently, on Windows Subsystem for Linux 1 (not on WSL 2), this
             function succeeds but always returns an empty list.
 
         .. note::
@@ -218,7 +218,7 @@ Process information
         All of these are ``set`` objects.
 
         .. note::
-            Currently, on Windows Subsystem for Linux 1 (not tested on WSL 2), this
+            Currently, on Windows Subsystem for Linux 1 (not on WSL 2), this
             function succeeds but always returns empty sets for all fields.
 
         :return: The signal masks of this process.
