@@ -7,12 +7,25 @@ import os
 import pwd
 import resource
 import signal
+import subprocess
 import threading
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import (
+    Any,
+    AnyStr,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from ._detect import _psimpl
-from ._errors import AccessDenied, NoSuchProcess
+from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
 from ._util import translate_proc_errors
 
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
@@ -342,7 +355,69 @@ class Process:
         return hash((self._pid, self._create_time))
 
     def __repr__(self) -> str:
-        return "Process(pid={})".format(self._pid)
+        return "{}(pid={})".format(self.__class__.__name__, self._pid)
+
+
+class Popen(Process):
+    def __init__(
+        self, args: Union[List[Union[AnyStr, "os.PathLike[AnyStr]"]], AnyStr], **kwargs: Any
+    ) -> None:
+        proc = subprocess.Popen(args, **kwargs)
+        super().__init__(proc.pid)
+
+        self._proc = proc
+
+        self.args = proc.args
+        self.stdin = proc.stdin
+        self.stdout = proc.stdout
+        self.stderr = proc.stdout
+
+    def poll(self) -> Optional[int]:
+        res = self._proc.poll()
+        if res is not None:
+            self._dead = True
+        return res
+
+    def wait(self, timeout: Union[int, float, None] = None) -> int:
+        try:
+            res = self._proc.wait(timeout)
+        except subprocess.TimeoutExpired as ex:
+            raise TimeoutExpired(timeout, self.pid) from ex
+        else:
+            self._dead = True
+            return res
+
+    def communicate(
+        self,
+        input: Optional[AnyStr] = None,  # pylint: disable=redefined-builtin
+        timeout: Union[int, float, None] = None,
+    ) -> Tuple[Optional[AnyStr], Optional[AnyStr]]:
+        try:
+            res = self._proc.communicate(input, timeout)
+        except subprocess.TimeoutExpired as ex:
+            raise TimeoutExpired(timeout, self.pid) from ex
+        else:
+            self._dead = True
+            return res
+
+    @property
+    def returncode(self) -> Optional[int]:
+        return self._proc.returncode
+
+    def __enter__(self) -> "Popen":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        if self.stdin is not None:
+            self.stdin.close()
+
+        if self.stdout is not None:
+            self.stdout.close()
+
+        if self.stderr is not None:
+            self.stderr.close()
+
+        self.wait()
 
 
 def pids() -> List[int]:
@@ -447,7 +522,9 @@ def wait_procs(
     alive = list()
 
     for proc in procs:
-        if hasattr(proc, "returncode"):
+        if hasattr(proc, "returncode") and (
+            not isinstance(proc, Popen) or proc.returncode is not None
+        ):
             gone.append(proc)
             callback(proc)
         else:

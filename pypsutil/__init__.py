@@ -3,6 +3,7 @@ from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
     Gids,
+    Popen,
     Process,
     ProcessSignalMasks,
     Uids,
@@ -43,6 +44,7 @@ __all__ = [
     "physical_cpu_count",
     "Process",
     "ProcessSignalMasks",
+    "Popen",
     "pid_exists",
     "pids",
     "process_iter",
