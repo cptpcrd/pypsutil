@@ -97,3 +97,18 @@ def sysctl_bytes_retry(mib: Collection[int], new: Optional[bytes], trim_nul: boo
                 raise
         else:
             return (buf.value if trim_nul else buf.raw)[:old_len]
+
+
+def sysctlbyname_bytes_retry(name: str, new: Optional[bytes], trim_nul: bool = False) -> bytes:
+    while True:
+        old_len = sysctlbyname(name, None, None)
+
+        buf = (ctypes.c_char * old_len)()  # pytype: disable=not-callable
+
+        try:
+            old_len = sysctlbyname(name, new, buf)
+        except OSError as ex:
+            if ex.errno != errno.ENOMEM:
+                raise
+        else:
+            return (buf.value if trim_nul else buf.raw)[:old_len]
