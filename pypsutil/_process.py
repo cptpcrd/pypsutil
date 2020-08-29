@@ -10,19 +10,7 @@ import signal
 import subprocess
 import threading
 import time
-from typing import (
-    Any,
-    AnyStr,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
@@ -360,7 +348,9 @@ class Process:
 
 class Popen(Process):
     def __init__(
-        self, args: Union[List[Union[AnyStr, "os.PathLike[AnyStr]"]], AnyStr], **kwargs: Any
+        self,
+        args: Union[List[Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]], str, bytes],
+        **kwargs: Any
     ) -> None:
         proc = subprocess.Popen(args, **kwargs)
         super().__init__(proc.pid)
@@ -389,9 +379,9 @@ class Popen(Process):
 
     def communicate(
         self,
-        input: Optional[AnyStr] = None,  # pylint: disable=redefined-builtin
+        input: Union[str, bytes, None] = None,  # pylint: disable=redefined-builtin
         timeout: Union[int, float, None] = None,
-    ) -> Tuple[Optional[AnyStr], Optional[AnyStr]]:
+    ) -> Tuple[Union[str, bytes, None], Union[str, bytes, None]]:
         try:
             res = self._proc.communicate(input, timeout)
         except subprocess.TimeoutExpired as ex:
