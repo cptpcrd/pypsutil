@@ -25,12 +25,6 @@ def load_libc() -> ctypes.CDLL:
     return _libc
 
 
-def char_array_to_bytes(  # pytype: disable=missing-parameter
-    arr: "ctypes.Array[ctypes.c_char]",
-) -> bytes:
-    return bytes(b[0] for b in iter(iter(arr).__next__, b"\0"))
-
-
 def build_oserror(
     eno: int,
     filename: Union[str, bytes, None] = None,
