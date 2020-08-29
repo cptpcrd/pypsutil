@@ -1,5 +1,6 @@
 # pylint: disable=invalid-name,too-few-public-methods
 import ctypes
+import dataclasses
 import errno
 import os
 import resource
@@ -84,6 +85,19 @@ _SS_PAD2SIZE = (
 CAP_RIGHTS_VERSION = 0
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
+_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+
+
+@dataclasses.dataclass
+class CPUTimes:
+    # The order of these fields must match the order of the numbers returned by the kern.cp_time
+    # sysctl
+    user: float
+    nice: float
+    system: float
+    irq: float
+    idle: float
 
 
 class Rlimit(ctypes.Structure):
@@ -593,6 +607,27 @@ def proc_getpriority(proc: "Process") -> int:
 
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return _get_kinfo_proc(proc).get_tdev()
+
+
+def cpu_times() -> CPUTimes:
+    cptimes = (ctypes.c_long * 5)()
+
+    _bsd.sysctlbyname("kern.cp_time", None, cptimes)
+
+    return CPUTimes(*(int(item) / _clk_tck for item in cptimes))
+
+
+def percpu_times() -> List[CPUTimes]:
+    cptimes_len = _bsd.sysctlbyname("kern.cp_times", None, None) // ctypes.sizeof(ctypes.c_long)
+
+    cptimes = (ctypes.c_long * cptimes_len)()
+
+    _bsd.sysctlbyname("kern.cp_times", None, cptimes)
+
+    return [
+        CPUTimes(*(int(item) / _clk_tck for item in cptimes[i * 5: i * 5 + 5]))
+        for i in range(len(cptimes) // 5)
+    ]
 
 
 def boot_time() -> float:
