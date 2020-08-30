@@ -112,7 +112,10 @@ def proc_cmdline(proc: "Process") -> List[str]:
         raise ProcessLookupError from ex
 
     if not cmdline:
-        raise ZombieProcess(proc.pid)
+        if _get_proc_status_dict(proc)["State"].startswith("Z"):
+            raise ZombieProcess(proc.pid)
+        else:
+            return []
 
     return _util.parse_cmdline_bytes(cmdline)
 
