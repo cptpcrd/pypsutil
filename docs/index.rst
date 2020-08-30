@@ -224,6 +224,23 @@ Process information
         :return: The signal masks of this process.
         :rtype: ProcessSignalMasks
 
+   .. py:method:: cpu_times()
+
+        Get the accumulated process times.
+
+        This returns a dataclass with several attributes:
+
+        - ``user``: Time spent in user mode
+        - ``system``: Time spent in kernel mode
+        - ``children_user``: Time spent in user mode by child processes (0 on macOS)
+        - ``children_system``: Time spent in kernel mode (0 on macOS)
+
+        Note: On OpenBSD and NetBSD, ``children_user`` and ``children_system`` are both set to the
+        combined user + system time.
+
+        :return: The accumulated process times
+        :rtype: ProcessSignalMasks
+
    .. py:method:: rlimit(res, new_limits=None)
 
       Get/set the soft/hard resource limits of the process. Equivalent to
@@ -467,6 +484,87 @@ System information
    :rtype: float
 
    Availability: Linux, macOS, FreeBSD, OpenBSD
+
+.. py:function:: physical_cpu_count()
+
+   Get the number of physical CPUs in the system (i.e. excluding Hyper Threading cores) or``None``
+   if that cannot be determined.
+
+   Currently, this always returns ``None`` on OpenBSD and NetBSD.
+
+   :return: The number of physical CPUs in the system (or ``None`` if unable to determine)
+   :rtype: int or None
+
+.. py:function:: cpu_freq()
+
+   Returns an instance of a dataclass with ``current``, ``min`, and ``max`` attributes, representing
+   the current, minimum, and maximum CPU frequencies.
+
+   :return: An instance of a dataclass containing the current, minimum, and maximum CPU frequencies.
+   :rtype: CPUFrequencies
+
+   Availability: Linux
+
+
+.. py:function:: percpu_freq()
+
+   Identical to :py:func:`cpu_freq()`, but returns a list representing the frequency for each CPU.
+
+   :return: A list of the frequencies of each CPU.
+   :rtype: CPUFrequencies
+
+   Availability: Linux
+
+
+.. py:function:: cpu_times()
+
+   Returns a dataclass containing information about system CPU times. Each attribute represents the
+   time in seconds that the CPU has spent in the corresponding mode (since boot):
+
+   - ``user``: Time spent in user mode (includes `guest` time on Linux)
+   - ``system``: Time spent in kernel mode
+   - ``idle``: Time spent doing nothing
+
+   Extra platform-specific fields:
+
+   - ``nice`` (Linux/BSDs/macOS): Time spent by prioritized processes in user mode (includes
+     ``guest_nice`` time on Linux)
+   - ``iowait`` (Linux): Time spent waiting for I/O to complete
+   - ``irq`` (Linux/BSDs): Time spent servicing hardware interrupts
+   - ``softirq`` (Linux): Time spent servicing software interrupts
+   - ``steal`` (Linux): Time spent running other operating systems in a virtualize environment
+   - ``guest`` (Linux): Time spent running a virtual CPU for a guest operating system
+   - ``guest_nice`` (Linux): Time spent running a niced guest
+
+   :returns: A dataclass containing information about system CPU times.
+   :rtype: CPUTimes
+
+   Availability: Linux, FreeBSD
+
+
+.. py:function:: percpu_times()
+
+   Identical to :py:func:`cpu_times()`, but returns a list representing the times for each CPU.
+
+   :return: A list of the times of each CPU.
+   :rtype: CPUTimes
+
+   Availability: Linux, FreeBSD
+
+
+.. py:function:: cpu_stats()
+
+   Return a dataclass containing various statistics:
+
+   - ``ctx_switches``: The number of context switches since boot.
+   - ``interrupts``: The number of interrupts since boot.
+   - ``soft_interrupts``: The number of software interrupts since boot.
+   - ``syscalls``: The number of system calls since boot (always 0 on Linux)
+
+   :returns: A dataclass containing some CPU statistics.
+   :rtype: CPUStats
+
+   Availablity: Linux
 
 
 Exceptions
