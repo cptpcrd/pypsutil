@@ -296,7 +296,8 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
     except (FileNotFoundError, PermissionError):
         pass
     else:
-        return results
+        if results:
+            return results
 
     # If that fails. try /proc/cpuinfo
     # This only allows us to get the current frequency, but at least it's something.
