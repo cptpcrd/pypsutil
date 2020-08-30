@@ -532,6 +532,7 @@ System information
    - ``iowait`` (Linux): Time spent waiting for I/O to complete
    - ``irq`` (Linux/BSDs): Time spent servicing hardware interrupts
    - ``softirq`` (Linux): Time spent servicing software interrupts
+   - ``lock_spin`` (OpenBSD): Time spent "spinning" on a lock
    - ``steal`` (Linux): Time spent running other operating systems in a virtualize environment
    - ``guest`` (Linux): Time spent running a virtual CPU for a guest operating system
    - ``guest_nice`` (Linux): Time spent running a niced guest
@@ -539,7 +540,7 @@ System information
    :returns: A dataclass containing information about system CPU times.
    :rtype: CPUTimes
 
-   Availability: Linux, FreeBSD
+   Availability: Linux, FreeBSD, OpenBSD, NetBSD
 
 
 .. py:function:: percpu_times()
@@ -549,7 +550,7 @@ System information
    :return: A list of the times of each CPU.
    :rtype: CPUTimes
 
-   Availability: Linux, FreeBSD
+   Availability: Linux, FreeBSD, OpenBSD, NetBSD
 
 
 .. py:function:: cpu_stats()

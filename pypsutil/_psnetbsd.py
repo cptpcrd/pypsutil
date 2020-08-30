@@ -17,6 +17,7 @@ PROC_PID_LIMIT = 2
 PROC_PID_LIMIT_TYPE_SOFT = 1
 PROC_PID_LIMIT_TYPE_HARD = 2
 
+KERN_CP_TIME = 51
 KERN_BOOTTIME = 83
 KERN_PROC2 = 47
 KERN_PROC_ARGS = 48
@@ -94,6 +95,18 @@ def proc_rlimit(
 
 
 proc_getrlimit = proc_rlimit
+
+
+@dataclasses.dataclass
+class CPUTimes:
+    # The order of these fields must match the order of the numbers returned by the kern.cp_time
+    # sysctl
+    # https://github.com/IIJ-NetBSD/netbsd-src/blob/master/sys/sys/sched.h#L136
+    user: float
+    nice: float
+    system: float
+    irq: float
+    idle: float
 
 
 class Timespec(ctypes.Structure):
@@ -381,6 +394,30 @@ def proc_getpriority(proc: "Process") -> int:
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc2(proc).p_tdev
     return tdev if tdev != 2 ** 32 - 1 else None
+
+
+def cpu_times() -> CPUTimes:
+    cptimes = (ctypes.c_uint64 * 5)()
+
+    _bsd.sysctl([CTL_KERN, KERN_CP_TIME], None, cptimes)
+
+    return CPUTimes(*(int(item) / _clk_tck for item in cptimes))
+
+
+def percpu_times() -> List[CPUTimes]:
+    results = []
+
+    cptimes = (ctypes.c_uint64 * 5)()
+
+    while True:
+        try:
+            _bsd.sysctl([CTL_KERN, KERN_CP_TIME, len(results)], None, cptimes)
+        except FileNotFoundError:
+            break
+        else:
+            results.append(CPUTimes(*(int(item) / _clk_tck for item in cptimes)))
+
+    return results
 
 
 def boot_time() -> float:

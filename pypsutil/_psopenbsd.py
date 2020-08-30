@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 CTL_KERN = 1
 
+KERN_CPTIME = 40
+KERN_CPTIME2 = 71
 KERN_BOOTTIME = 21
 KERN_PROC = 66
 KERN_PROC_PID = 1
@@ -31,6 +33,21 @@ KI_MAXEMULLEN = 16
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
+
+_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+
+
+@dataclasses.dataclass
+class CPUTimes:
+    # The order of these fields must match the order of the numbers returned by the kern.cp_time
+    # sysctl
+    # https://github.com/openbsd/src/blob/master/sys/sys/sched.h#L83
+    user: float
+    nice: float
+    system: float
+    lock_spin: float
+    irq: float
+    idle: float
 
 
 class Timeval(ctypes.Structure):
@@ -327,6 +344,30 @@ def proc_getpriority(proc: "Process") -> int:
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc(proc).p_tdev
     return tdev if tdev != 2 ** 32 - 1 else None
+
+
+def cpu_times() -> CPUTimes:
+    cptimes = (ctypes.c_long * 6)()
+
+    _bsd.sysctl([CTL_KERN, KERN_CPTIME], None, cptimes)
+
+    return CPUTimes(*(int(item) / _clk_tck for item in cptimes))
+
+
+def percpu_times() -> List[CPUTimes]:
+    results = []
+
+    cptimes = (ctypes.c_long * 6)()
+
+    while True:
+        try:
+            _bsd.sysctl([CTL_KERN, KERN_CPTIME2, len(results)], None, cptimes)
+        except FileNotFoundError:
+            break
+        else:
+            results.append(CPUTimes(*(int(item) / _clk_tck for item in cptimes)))
+
+    return results
 
 
 def boot_time() -> float:
