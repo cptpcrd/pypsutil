@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 import ctypes
+import pathlib
 
 import pytest
 
@@ -50,3 +51,42 @@ def test_translate_proc_errors() -> None:
 
     with pytest.raises(pypsutil.AccessDenied):
         raise_helper(1, PermissionError)
+
+
+def test_parse_cmdline() -> None:
+    assert pypsutil._util.parse_cmdline_bytes(b"\0") == [""]
+    assert pypsutil._util.parse_cmdline_bytes(b"abc\0") == ["abc"]
+    assert pypsutil._util.parse_cmdline_bytes(b"abc\0def\0") == ["abc", "def"]
+
+    # If there isn't a trailing NUL, everything after it is ignored
+    assert pypsutil._util.parse_cmdline_bytes(b"") == []
+    assert pypsutil._util.parse_cmdline_bytes(b"abc") == []
+    assert pypsutil._util.parse_cmdline_bytes(b"abc\0def") == ["abc"]
+
+
+def test_parse_environ() -> None:
+    assert pypsutil._util.parse_environ_bytes(b"\0") == {}
+    assert pypsutil._util.parse_environ_bytes(b"abc=def\0") == {"abc": "def"}
+    assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi=jkl\0") == {"abc": "def", "ghi": "jkl"}
+
+    assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi\0") == {"abc": "def"}
+    assert pypsutil._util.parse_environ_bytes(b"abc\0def=ghi\0") == {"def": "ghi"}
+
+    # If there isn't a trailing NUL, everything after it is ignored
+    assert pypsutil._util.parse_environ_bytes(b"") == {}
+    assert pypsutil._util.parse_environ_bytes(b"abc=def") == {}
+    assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi=jkl") == {"abc": "def"}
+
+    assert pypsutil._util.parse_environ_bytes(b"abc") == {}
+    assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi") == {"abc": "def"}
+    assert pypsutil._util.parse_environ_bytes(b"abc\0def=ghi") == {}
+
+
+def test_read_file(tmp_path: pathlib.Path) -> None:
+    with open(tmp_path / "a.txt", "w") as file:
+        file.write("abc\ndef")
+
+    assert pypsutil._util.read_file(str(tmp_path / "a.txt")) == "abc\ndef"
+
+    with pytest.raises(FileNotFoundError):
+        pypsutil._util.read_file(str(tmp_path / "b.txt"))
