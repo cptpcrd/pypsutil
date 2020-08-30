@@ -2,8 +2,7 @@ from typing import Optional, Union
 
 
 class Error(Exception):
-    def __repr__(self) -> str:
-        return "pypsutil.Error()"
+    pass
 
 
 class NoSuchProcess(Error):
