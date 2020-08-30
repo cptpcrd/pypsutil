@@ -272,20 +272,26 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
     # First, try looking in /sys/devices/system
     # This allows us to get the current, minimum, and maximum frequencies.
     try:
+        cpu_device_dir = "/sys/devices/system/cpu"
+        names = [
+            name
+            for name in os.listdir(cpu_device_dir)
+            if name.startswith("cpu") and name[3:].isdigit()
+        ]
+        names.sort(key=lambda name: int(name[3:]))
+
         results = []
 
-        cpu_device_dir = "/sys/devices/system/cpu"
-        for name in os.listdir(cpu_device_dir):
-            if name.startswith("cpu") and name[3:].isdigit():
-                cpufreq_path = os.path.join(cpu_device_dir, name, "cpufreq")
+        for name in names:
+            cpufreq_path = os.path.join(cpu_device_dir, name, "cpufreq")
 
-                results.append(
-                    (
-                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_cur_freq"))) / 1000,
-                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_min_freq"))) / 1000,
-                        int(_util.read_file(os.path.join(cpufreq_path, "scaling_max_freq"))) / 1000,
-                    )
+            results.append(
+                (
+                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_cur_freq"))) / 1000,
+                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_min_freq"))) / 1000,
+                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_max_freq"))) / 1000,
                 )
+            )
 
     except (FileNotFoundError, PermissionError):
         pass
