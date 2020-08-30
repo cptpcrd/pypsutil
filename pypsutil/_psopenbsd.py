@@ -1,5 +1,6 @@
 # pylint: disable=too-few-public-methods
 import ctypes
+import dataclasses
 import errno
 import os
 import shutil
@@ -355,7 +356,7 @@ def cpu_times() -> CPUTimes:
 
 
 def percpu_times() -> List[CPUTimes]:
-    results = []
+    results: List[CPUTimes] = []
 
     cptimes = (ctypes.c_long * 6)()
 

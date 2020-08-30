@@ -1,6 +1,8 @@
 # pylint: disable=too-few-public-methods
 import ctypes
+import dataclasses
 import errno
+import os
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
@@ -39,6 +41,8 @@ rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
+_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
 
 def _proc_rlimit_getset(proc: "Process", res: int, new_limit: Optional[int], hard: bool) -> int:
@@ -405,7 +409,7 @@ def cpu_times() -> CPUTimes:
 
 
 def percpu_times() -> List[CPUTimes]:
-    results = []
+    results: List[CPUTimes] = []
 
     cptimes = (ctypes.c_uint64 * 5)()
 
