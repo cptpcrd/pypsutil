@@ -41,4 +41,4 @@ elif sys.platform.startswith("darwin"):
 
     MACOS = True
 else:
-    _psimpl = None
+    raise RuntimeError("Unsupported platform")
