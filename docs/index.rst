@@ -201,7 +201,7 @@ Process information
         :return: The umask of this process
         :rtype: int or None
 
-   .. py:method:: sigmasks()
+   .. py:method:: sigmasks(\*, include_internal=False)
 
         Get the signal masks of this process.
 
@@ -221,6 +221,10 @@ Process information
             Currently, on Windows Subsystem for Linux 1 (not on WSL 2), this
             function succeeds but always returns empty sets for all fields.
 
+        :param bool include_internal:
+            If this is ``True``, then implementation-internal signals may be included -- for
+            example, on Linux this affects the two or three signals used by the glibc/musl POSIX
+            threads implementations.
         :return: The signal masks of this process.
         :rtype: ProcessSignalMasks
 

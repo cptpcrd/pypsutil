@@ -33,8 +33,8 @@ class CPUTimes:  # pylint: disable=too-many-instance-attributes
     guest_nice: float
 
 
-def parse_sigmask(raw_mask: str) -> Set[int]:
-    return _util.expand_sig_bitmask(int(raw_mask, 16))
+def parse_sigmask(raw_mask: str, *, include_internal: bool = False) -> Set[int]:
+    return _util.expand_sig_bitmask(int(raw_mask, 16), include_internal=include_internal)
 
 
 def _get_pid_stat_fields(pid: int) -> List[str]:
@@ -166,15 +166,15 @@ def proc_umask(proc: "Process") -> Optional[int]:
         return int(umask_str, 8)
 
 
-def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
     proc_status = _get_proc_status_dict(proc)
 
     return ProcessSignalMasks(  # pytype: disable=wrong-keyword-args
-        process_pending=parse_sigmask(proc_status["ShdPnd"]),
-        pending=parse_sigmask(proc_status["SigPnd"]),
-        blocked=parse_sigmask(proc_status["SigBlk"]),
-        ignored=parse_sigmask(proc_status["SigIgn"]),
-        caught=parse_sigmask(proc_status["SigCgt"]),
+        process_pending=parse_sigmask(proc_status["ShdPnd"], include_internal=include_internal),
+        pending=parse_sigmask(proc_status["SigPnd"], include_internal=include_internal),
+        blocked=parse_sigmask(proc_status["SigBlk"], include_internal=include_internal),
+        ignored=parse_sigmask(proc_status["SigIgn"], include_internal=include_internal),
+        caught=parse_sigmask(proc_status["SigCgt"], include_internal=include_internal),
     )
 
 

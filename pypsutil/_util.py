@@ -41,21 +41,24 @@ def check_rlimit_resource(res: int) -> None:
         raise ValueError("invalid resource specified")
 
 
-def expand_sig_bitmask(mask: int) -> Set[Union[signal.Signals, int]]:  # pylint: disable=no-member
+def expand_sig_bitmask(
+    mask: int, *, include_internal: bool = False
+) -> Set[Union[signal.Signals, int]]:  # pylint: disable=no-member
     # It seems that every OS uses the same binary representation
     # for signal sets. Only the size varies.
 
-    res = set()
+    res: Set[Union[signal.Signals, int]] = set()  # pylint: disable=no-member
     sig = 1  # Bit 0 in the mask corresponds to signal 1
 
     while mask:
         if mask & 1:
-            sig_val: Union[signal.Signals, int]  # pylint: disable=no-member
             try:
-                sig_val = signal.Signals(sig)  # pylint: disable=no-member
+                res.add(signal.Signals(sig))  # pylint: disable=no-member
             except ValueError:
-                sig_val = sig
-            res.add(sig_val)
+                if include_internal or getattr(signal, "SIGRTMIN", float("inf")) <= sig <= getattr(
+                    signal, "SIGRTMAX", float("-inf")
+                ):
+                    res.add(sig)
 
         mask >>= 1
         sig += 1

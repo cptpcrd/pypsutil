@@ -437,12 +437,16 @@ def proc_exe(proc: "Process") -> str:
     return buf.value.decode()
 
 
-def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc(proc)
 
     return ProcessSignalMasks(
-        ignored=_util.expand_sig_bitmask(kinfo.kp_proc.p_sigignore),
-        caught=_util.expand_sig_bitmask(kinfo.kp_proc.p_sigcatch),
+        ignored=_util.expand_sig_bitmask(
+            kinfo.kp_proc.p_sigignore, include_internal=include_internal
+        ),
+        caught=_util.expand_sig_bitmask(
+            kinfo.kp_proc.p_sigcatch, include_internal=include_internal
+        ),
     )
 
 

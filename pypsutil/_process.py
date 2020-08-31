@@ -209,8 +209,8 @@ class Process:
     if hasattr(_psimpl, "proc_sigmasks"):
 
         @translate_proc_errors
-        def sigmasks(self) -> ProcessSignalMasks:
-            return _psimpl.proc_sigmasks(self)
+        def sigmasks(self, *, include_internal: bool = False) -> ProcessSignalMasks:
+            return _psimpl.proc_sigmasks(self, include_internal=include_internal)
 
     if hasattr(_psimpl, "proc_rlimit"):
 

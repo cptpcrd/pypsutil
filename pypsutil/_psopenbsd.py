@@ -281,14 +281,14 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
     return _util.parse_environ_bytes(env_data)
 
 
-def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc(proc)
 
     return ProcessSignalMasks(
-        pending=_util.expand_sig_bitmask(kinfo.p_siglist),
-        blocked=_util.expand_sig_bitmask(kinfo.p_sigmask),
-        ignored=_util.expand_sig_bitmask(kinfo.p_sigignore),
-        caught=_util.expand_sig_bitmask(kinfo.p_sigcatch),
+        pending=_util.expand_sig_bitmask(kinfo.p_siglist, include_internal=include_internal),
+        blocked=_util.expand_sig_bitmask(kinfo.p_sigmask, include_internal=include_internal),
+        ignored=_util.expand_sig_bitmask(kinfo.p_sigignore, include_internal=include_internal),
+        caught=_util.expand_sig_bitmask(kinfo.p_sigcatch, include_internal=include_internal),
     )
 
 

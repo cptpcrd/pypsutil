@@ -551,14 +551,22 @@ def proc_rlimit(
 proc_getrlimit = proc_rlimit
 
 
-def proc_sigmasks(proc: "Process") -> ProcessSignalMasks:
+def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
     kinfo = _get_kinfo_proc(proc)
 
     return ProcessSignalMasks(
-        pending=_util.expand_sig_bitmask(kinfo.ki_siglist.pack()),
-        blocked=_util.expand_sig_bitmask(kinfo.ki_sigmask.pack()),
-        ignored=_util.expand_sig_bitmask(kinfo.ki_sigignore.pack()),
-        caught=_util.expand_sig_bitmask(kinfo.ki_sigcatch.pack()),
+        pending=_util.expand_sig_bitmask(
+            kinfo.ki_siglist.pack(), include_internal=include_internal
+        ),
+        blocked=_util.expand_sig_bitmask(
+            kinfo.ki_sigmask.pack(), include_internal=include_internal
+        ),
+        ignored=_util.expand_sig_bitmask(
+            kinfo.ki_sigignore.pack(), include_internal=include_internal
+        ),
+        caught=_util.expand_sig_bitmask(
+            kinfo.ki_sigcatch.pack(), include_internal=include_internal
+        ),
     )
 
 
