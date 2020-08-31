@@ -523,4 +523,13 @@ def time_since_boot() -> float:
 
 
 def uptime() -> float:
-    return time.clock_gettime(CLOCK_UPTIME_RAW)
+    # CLOCK_UPTIME_RAW returns the system uptime, but we want a value that's affected by
+    # frequency/time adjustments so that it's comparable to time_since_boot().
+    # So we take the difference of the CLOCK_UPTIME_RAW and CLOCK_MONOTONIC_RAW clocks and add that
+    # to time_since_boot(). That should give us an approximate value.
+
+    return round(
+        time_since_boot()
+        + (time.clock_gettime(CLOCK_UPTIME_RAW) - time.clock_gettime(time.CLOCK_MONOTONIC_RAW)),
+        3,
+    )
