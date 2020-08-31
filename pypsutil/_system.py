@@ -89,3 +89,7 @@ if hasattr(_psimpl, "uptime"):
 
     def uptime() -> float:
         return _psimpl.uptime()
+
+
+DiskUsage = _psimpl.DiskUsage
+disk_usage = _psimpl.disk_usage

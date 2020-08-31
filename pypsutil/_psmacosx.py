@@ -533,3 +533,7 @@ def uptime() -> float:
         + (time.clock_gettime(CLOCK_UPTIME_RAW) - time.clock_gettime(time.CLOCK_MONOTONIC_RAW)),
         3,
     )
+
+
+DiskUsage = _psposix.DiskUsage
+disk_usage = _psposix.disk_usage

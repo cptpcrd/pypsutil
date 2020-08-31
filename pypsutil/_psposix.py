@@ -1,5 +1,6 @@
+import dataclasses
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -30,3 +31,24 @@ def proc_getpriority(proc: "Process") -> int:
         raise ProcessLookupError
 
     return os.getpriority(os.PRIO_PROCESS, pid)
+
+
+@dataclasses.dataclass
+class DiskUsage:
+    total: int
+    used: int
+    free: int
+
+    percent: float
+
+
+def disk_usage(path: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]) -> DiskUsage:
+    vfs_stat = os.statvfs(os.fspath(path))
+
+    total = vfs_stat.f_blocks * vfs_stat.f_frsize
+    free = vfs_stat.f_bavail * vfs_stat.f_frsize
+    used = total - vfs_stat.f_bfree * vfs_stat.f_frsize
+
+    percent = used * 100.0 / (used + free)
+
+    return DiskUsage(total=total, free=free, used=used, percent=percent)

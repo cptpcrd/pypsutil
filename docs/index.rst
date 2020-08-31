@@ -600,6 +600,22 @@ System information
 
    Availability: Linux, macOS, FreeBSD, OpenBSD
 
+.. py:function:: disk_usage(path)
+
+   Return disk usage statistics about the filesystem which contains the given ``path``.
+
+   Current attributes:
+
+   - ``total``: Total disk space in bytes
+   - ``used``: Total used disk space in bytes
+   - ``free``: Disk space in bytes that is free and available for use by unprivileged users
+   - ``percent``: Percentage of disk space used (out of the space available to unprivileged users)
+
+   :return:
+        A dataclass containing disk usage statistics about the filesystem which contains the given
+        ``path``
+   :rtype: DiskUsage
+
 .. py:function:: physical_cpu_count()
 
    Get the number of physical CPUs in the system (i.e. excluding Hyper Threading cores) or``None``

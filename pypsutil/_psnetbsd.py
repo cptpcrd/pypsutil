@@ -449,3 +449,7 @@ def boot_time() -> float:
 def time_since_boot() -> float:
     # Round the result to reduce small variations
     return round(time.time() - boot_time(), 4)
+
+
+DiskUsage = _psposix.DiskUsage
+disk_usage = _psposix.disk_usage

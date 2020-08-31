@@ -414,3 +414,6 @@ proc_pgid = _psposix.proc_pgid
 proc_sid = _psposix.proc_sid
 
 proc_getpriority = _psposix.proc_getpriority
+
+DiskUsage = _psposix.DiskUsage
+disk_usage = _psposix.disk_usage

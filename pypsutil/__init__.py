@@ -15,7 +15,15 @@ from ._process import (
     process_iter_available,
     wait_procs,
 )
-from ._system import CPUFrequencies, CPUStats, boot_time, physical_cpu_count, time_since_boot
+from ._system import (
+    CPUFrequencies,
+    CPUStats,
+    DiskUsage,
+    boot_time,
+    disk_usage,
+    physical_cpu_count,
+    time_since_boot,
+)
 
 _OPTIONAL_FUNCS = [
     "uptime",
@@ -44,6 +52,7 @@ __all__ = [
     "boot_time",
     "time_since_boot",
     "physical_cpu_count",
+    "disk_usage",
     "Process",
     "ProcessCPUTimes",
     "ProcessSignalMasks",
@@ -56,6 +65,7 @@ __all__ = [
     "wait_procs",
     "CPUFrequencies",
     "CPUStats",
+    "DiskUsage",
     "ProcessSignalMasks",
     "Uids",
     "Gids",
