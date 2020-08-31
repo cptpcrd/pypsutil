@@ -4,12 +4,14 @@ import functools
 import resource
 import signal
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, TypeVar, Union
 
 from ._errors import AccessDenied, NoSuchProcess
 
 if TYPE_CHECKING:
     from ._process import Process
+
+T = TypeVar("T")
 
 RESOURCE_NUMS = set()
 for name in dir(resource):
@@ -111,7 +113,7 @@ def parse_environ_bytes(env: bytes) -> Dict[str, str]:
     return res
 
 
-def translate_proc_errors(func: Callable[..., Any]) -> Callable[..., Any]:
+def translate_proc_errors(func: Callable[..., T]) -> Callable[..., T]:
     @functools.wraps(func)
     def wrapper(proc: Union[int, "Process"], *args: Any, **kwargs: Any) -> Any:
         if isinstance(proc, int):
