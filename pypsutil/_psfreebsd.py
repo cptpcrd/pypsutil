@@ -482,7 +482,7 @@ _PROC_STATUSES = {
 
 
 def proc_status(proc: "Process") -> ProcessStatus:
-    return _PROC_STATUSES[_get_kinfo_proc(proc).ki_stat]
+    return _PROC_STATUSES[_get_kinfo_proc(proc).ki_stat[0]]
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
