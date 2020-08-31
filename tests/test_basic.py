@@ -28,6 +28,34 @@ def test_basic_info() -> None:
     assert os.path.samefile(proc.exe(), sys.executable)
 
 
+def test_basic_info_oneshot() -> None:
+    proc = pypsutil.Process()
+
+    with proc.oneshot():
+        assert proc.pid == os.getpid()
+        assert proc.ppid() == os.getppid()
+        assert proc.pgid() == os.getpgrp()
+        assert proc.sid() == os.getsid(0)
+
+        assert proc.status() == pypsutil.ProcessStatus.RUNNING
+
+        assert proc.parent().pid == os.getppid()  # type: ignore
+
+        assert proc.create_time() <= time.time()
+        assert proc.create_time() >= pypsutil.boot_time()
+
+        assert os.path.samefile(proc.cwd(), os.getcwd())
+        assert os.path.samefile(proc.exe(), sys.executable)
+
+
+def test_oneshot_nested() -> None:
+    proc = pypsutil.Process()
+
+    with proc.oneshot():
+        with proc.oneshot():
+            assert proc.pid == os.getpid()
+
+
 def test_basic_info_pid_0() -> None:
     try:
         proc = pypsutil.Process(0)
