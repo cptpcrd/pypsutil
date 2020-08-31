@@ -197,11 +197,11 @@ class Process:
         return _psimpl.proc_environ(self)
 
     @translate_proc_errors
-    def uids(self) -> Tuple[int, int, int]:
+    def uids(self) -> Uids:
         return Uids(*_psimpl.proc_uids(self))
 
     @translate_proc_errors
-    def gids(self) -> Tuple[int, int, int]:
+    def gids(self) -> Gids:
         return Gids(*_psimpl.proc_gids(self))
 
     @translate_proc_errors
