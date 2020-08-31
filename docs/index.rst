@@ -201,7 +201,7 @@ Process information
         Returns ``None`` if it is not possible to get the umask on the current version of the
         operating system.
 
-        Note: On FreeBSD, this will raise ``ProcesssLookupError`` for PID 0.
+        Note: On FreeBSD, this will raise :py:class:`AccessDenied` for PID 0.
 
         Availability: Linux (4.7+), FreeBSD
 
