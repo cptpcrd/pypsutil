@@ -339,6 +339,13 @@ Process information
       may change if ``pypsutil`` adds supports for platforms that allow for getting, but not setting,
       resource limits for other processes.
 
+      .. note::
+            As with :py:meth:`rlimit()`, this method may not be able to get the soft and hard resource
+            limits together. As a result, there is a race condition: If the process's resource limits
+            are changed while this method is reading them, this method may return a combination such as
+            ``(old soft, new hard)`` or ``(new soft, old hard)`` (where "old" means the values before
+            the change and "new" means the values after the change).
+
       :param int res:
            The number of the resource to set (one of the :py:const:`resource.RLIMIT_*` constants)
       :return: A tuple of the current ``(soft, hard)`` resource limits
