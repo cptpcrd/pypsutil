@@ -6,6 +6,60 @@ Welcome to pypsutil's documentation!
    :caption: Contents:
 
 
+About
+=====
+
+``pypsutil`` is a partial reimplementation of the popular ``psutil``. It is written in pure
+Python (when necessary, it calls library functions using ``ctypes``).
+
+``pypsutil`` vs. ``psutil``
+===========================
+
+Reasons to use ``pypsutil`` instead of ``psutil``:
+
+- You do not want dependencies that require C extensions (for whatever reason)
+- You need some of the extra features that ``pypsutil`` provides (such as
+  :py:meth:`Process.getgroups()` and the increased availability of :py:meth:`Process.rlimit()`)
+- You are using a type checker in your project (all of ``pypsutil``'s public interfaces have type
+  annotations, unlike ``psutil``)
+
+Reasons **not** to use ``pypsutil`` instead of ``psutil``:
+
+- You need to support Windows, Solaris, and/or AIX (``pypsutil`` currently does not support these
+  platforms)
+- You need to support Python versions prior to 3.7 (``pypsutil`` is Python 3.7+ only)
+- You are concerned about speed (no benchmarks have been conducted, but ``psutil`` is likely faster
+  because it is partially written in C)
+- You need professional support
+- You need some of the features of ``psutil`` that ``pypsutil`` does not provide (check this
+  documentation to see if the features you need are present)
+- You want a drop-in replacement for ``psutil`` (see the note below)
+
+``pypsutil`` aims to implement many of the features of ``psutil``; however, support is currently
+incomplete.
+
+.. important::
+   ``pypsutil`` does **NOT** slavishly follow ``psutil``'s API. Specifically:
+
+   - When possible, ``pypsutil`` avoids having a single function perform multiple different
+     operations (mainly get vs. set) depending on the arguments it is passed. (Besides being better
+     from a design perspective, this simplifies type annotations.)
+
+     For example, ``Process.nice()`` (from ``psutil``) is split into two methods in ``pypsutil``:
+     :py:meth:`Process.getpriority()` and :py:meth:`Process.setpriority()`. Similarly, ``psutil``'s
+     ``cpu_times(percpu=True|False)`` is split into two functions: :py:func:`cpu_times()` and
+     :py:func:`percpu_times()`.
+
+   - If an interface has been added to the standard library that (at least partially) overlaps with
+     an interface from ``psutil``, ``pypsutil`` may either a) remove the interface entirely or b)
+     remove the portion that overlaps with the standard library, possibly renaming it in the
+     process.
+
+     For example, :py:func:`os.cpu_count()` was added in Python 3.4, and it retrieves the same
+     information as ``psutil.cpu_count(logical=True)``. As a result, ``pypsutil`` does not offer a
+     ``cpu_count()`` function; instead, it offers a :py:func:`physical_cpu_count()` function that
+     covers the case of ``psutil.cpu_count(logical=False)``.
+
 Platform Support
 ================
 
