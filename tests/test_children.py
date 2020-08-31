@@ -44,3 +44,7 @@ def test_children() -> None:
 
     # The context manager will kill and reap the child, and the grandparent will be reparented to
     # PID 1 (which should reap it)
+
+    # So now we have no children
+    assert cur_proc.children() == []
+    assert cur_proc.children(recursive=True) == []
