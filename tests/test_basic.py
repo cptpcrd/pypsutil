@@ -17,6 +17,8 @@ def test_basic_info() -> None:
     assert proc.pgid() == os.getpgrp()
     assert proc.sid() == os.getsid(0)
 
+    assert proc.status() == pypsutil.ProcessStatus.RUNNING
+
     assert proc.parent().pid == os.getppid()  # type: ignore
 
     assert proc.create_time() <= time.time()
