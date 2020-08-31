@@ -38,6 +38,14 @@ class Process:
         self._cache: Optional[Dict[str, Any]] = None
         self._lock = threading.RLock()
 
+        # Code that retrieves self._exitcode must hold both self._lock and self._exitcode_lock.
+        # Code that performs a *non-blocking* operation and then may assign to self._exitcode
+        # must hold self._lock.
+        # Code that performs a *blocking* operation and then may assign to self._exitcode must hold
+        # self._exitcode_lock.
+        self._exitcode: Optional[int] = None
+        self._exitcode_lock = threading.RLock()
+
         self.create_time()
 
     @classmethod
@@ -311,6 +319,68 @@ class Process:
     def kill(self) -> None:
         self.send_signal(signal.SIGKILL)
 
+    def wait(self, *, timeout: Union[int, float, None] = None) -> Optional[int]:
+        if not self.is_running():
+            # Simple case
+            # Also, checking is_running() up front means we can be sure that self.pid refers to the
+            # correct process, so we can call waitpid() with creating potential bugs
+            with self._lock, self._exitcode_lock:
+                return self._exitcode
+
+        start_time = time.monotonic()
+
+        if timeout is None:
+            # Wait with no timeout
+
+            # We don't lock on self._lock because this is blocking
+            with self._exitcode_lock:
+                try:
+                    wstatus = os.waitpid(self.pid, 0)[1]
+                except ChildProcessError:
+                    # Not a child of the current process
+                    # Fall through to the code that checks is_running()
+                    pass
+                else:
+                    self._dead = True
+                    self._exitcode = (
+                        -os.WTERMSIG(wstatus)
+                        if os.WIFSIGNALED(wstatus)
+                        else os.WEXITSTATUS(wstatus)
+                    )
+
+                    return self._exitcode
+
+        while True:
+            with self._lock:
+                try:
+                    wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
+                except ChildProcessError:
+                    # Not a child of the current process
+                    # Check is_running()
+                    if not self.is_running():
+                        with self._exitcode_lock:
+                            return self._exitcode
+                else:
+                    if wpid != 0:
+                        self._dead = True
+                        self._exitcode = (
+                            -os.WTERMSIG(wstatus)
+                            if os.WIFSIGNALED(wstatus)
+                            else os.WEXITSTATUS(wstatus)
+                        )
+
+                        return self._exitcode
+
+            interval = 0.01
+            if timeout is not None:
+                remaining_time = (start_time + timeout) - time.monotonic() if timeout > 0 else 0
+                if remaining_time <= 0:
+                    raise TimeoutExpired(timeout, pid=self.pid)
+
+                interval = min(interval, remaining_time / 2)
+
+            time.sleep(interval)
+
     @contextlib.contextmanager
     def oneshot(self) -> Iterator[None]:
         with self._lock:
@@ -373,7 +443,9 @@ class Popen(Process):
             self._dead = True
         return res
 
-    def wait(self, timeout: Union[int, float, None] = None) -> int:
+    def wait(  # pylint: disable=arguments-differ
+        self, timeout: Union[int, float, None] = None
+    ) -> int:
         try:
             res = self._proc.wait(timeout)
         except subprocess.TimeoutExpired as ex:
@@ -514,57 +586,26 @@ def wait_procs(
     start_time = time.monotonic()
 
     gone = list()
-    alive = list()
-
-    for proc in procs:
-        if hasattr(proc, "returncode") and (
-            not isinstance(proc, Popen) or proc.returncode is not None
-        ):
-            gone.append(proc)
-            if callback is not None:
-                callback(proc)
-        else:
-            alive.append(proc)
+    alive = list(procs)
 
     while alive:
         for proc in list(alive):
             try:
-                with proc.oneshot():
-                    # Relying on the fact that proc.ppid() checks proc.is_running()
-                    is_zombie_child = (
-                        proc.ppid() == os.getpid() and proc.status() == ProcessStatus.ZOMBIE
-                    )
+                res = proc.wait(timeout=0)
+            except TimeoutExpired:
+                pass
+            else:
+                proc.returncode = res
 
-            except NoSuchProcess:
-                proc.returncode = None
                 if callback is not None:
                     callback(proc)
 
                 alive.remove(proc)
                 gone.append(proc)
 
-            else:
-                if is_zombie_child:
-                    try:
-                        wstatus = os.waitpid(proc.pid, 0)[1]
-                    except ChildProcessError:
-                        proc.returncode = None
-                    else:
-                        proc.returncode = (
-                            -os.WTERMSIG(wstatus)
-                            if os.WIFSIGNALED(wstatus)
-                            else os.WEXITSTATUS(wstatus)
-                        )
-
-                    if callback is not None:
-                        callback(proc)
-
-                    alive.remove(proc)
-                    gone.append(proc)
-
         interval = 0.01
         if timeout is not None:
-            remaining_time = (start_time + timeout) - time.monotonic()
+            remaining_time = (start_time + timeout) - time.monotonic() if timeout > 0 else 0
             if remaining_time <= 0:
                 break
 
