@@ -4,6 +4,7 @@
 import dataclasses
 from typing import List, Optional
 
+from . import _util
 from ._detect import _psimpl
 
 
@@ -75,6 +76,18 @@ if hasattr(_psimpl, "percpu_times"):
 
     def percpu_times() -> List[CPUTimes]:
         return _psimpl.percpu_times()
+
+
+if hasattr(_psimpl, "virtual_memory"):
+    VirtualMemoryInfo = _psimpl.VirtualMemoryInfo
+
+    virtual_memory = _psimpl.virtual_memory
+
+
+if hasattr(_psimpl, "swap_memory"):
+    SwapInfo = _util.SwapInfo
+
+    swap_memory = _psimpl.swap_memory
 
 
 def boot_time() -> float:

@@ -33,6 +33,27 @@ class CPUTimes:  # pylint: disable=too-many-instance-attributes
     guest_nice: float
 
 
+@dataclasses.dataclass
+class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
+    total: int
+    available: int
+    used: int
+    free: int
+    active: int
+    inactive: int
+    buffers: int
+    cached: int
+    shared: int
+    slab: int
+
+    @property
+    def percent(self) -> float:
+        return 100 - self.available * 100.0 / self.total
+
+
+SwapInfo = _util.SwapInfo
+
+
 def parse_sigmask(raw_mask: str, *, include_internal: bool = False) -> Set[int]:
     return _util.expand_sig_bitmask(int(raw_mask, 16), include_internal=include_internal)
 
@@ -383,6 +404,68 @@ def percpu_times() -> List[CPUTimes]:
         for entry in _iter_procfs_stat_entries()
         if entry[0].startswith("cpu") and len(entry[0]) > 3
     ]
+
+
+VMEM_NAME_MAPPINGS = {
+    "total": "MemTotal",
+    "available": "MemAvailable",
+    "free": "MemFree",
+    "active": "Active",
+    "inactive": "Inactive",
+    "buffers": "Buffers",
+    "cached": "Cached",
+    "shared": "Shmem",
+    "slab": "Slab",
+}
+
+
+def virtual_memory() -> VirtualMemoryInfo:
+    raw_meminfo = {}
+    with open("/proc/meminfo") as file:
+        for line in file:
+            line = line.strip()
+            if line.endswith(" kB"):
+                key, value = line[:-3].split()
+                raw_meminfo[key.rstrip(":")] = int(value) * 1024
+
+    info_dict = {name: raw_meminfo[raw_name] for name, raw_name in VMEM_NAME_MAPPINGS.items()}
+
+    return VirtualMemoryInfo(
+        used=(
+            raw_meminfo["MemTotal"]
+            - raw_meminfo["MemFree"]
+            - raw_meminfo["Buffers"]
+            - raw_meminfo["Cached"]
+        ),
+        **info_dict,
+    )
+
+
+def swap_memory() -> SwapInfo:
+    raw_meminfo = {}
+    with open("/proc/meminfo") as file:
+        for line in file:
+            line = line.strip()
+            if line.endswith(" kB"):
+                key, value = line[:-3].split()
+                raw_meminfo[key.rstrip(":")] = int(value) * 1024
+
+    swap_in = 0
+    swap_out = 0
+    with open("/proc/vmstat") as file:
+        for line in file:
+            if line.startswith("pswpin "):
+                swap_in = int(line[7:].strip()) * 4096
+            elif line.startswith("pswpout "):
+                swap_out = int(line[8:].strip()) * 4096
+
+    return SwapInfo(
+        total=raw_meminfo["SwapTotal"],
+        free=raw_meminfo["SwapFree"],
+        used=raw_meminfo["SwapTotal"] - raw_meminfo["SwapFree"],
+        sin=swap_in,
+        sout=swap_out,
+    )
 
 
 _cached_boot_time = None

@@ -33,6 +33,10 @@ _OPTIONAL_FUNCS = [
     "CPUTimes",
     "cpu_times",
     "percpu_times",
+    "VirtualMemoryInfo",
+    "virtual_memory",
+    "SwapInfo",
+    "swap_memory",
 ]
 
 for name in _OPTIONAL_FUNCS:

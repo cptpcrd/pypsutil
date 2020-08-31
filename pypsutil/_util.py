@@ -51,6 +51,19 @@ class ProcessCPUTimes:
     children_system: float
 
 
+@dataclasses.dataclass
+class SwapInfo:
+    total: int
+    used: int
+    free: int
+    sin: int
+    sout: int
+
+    @property
+    def percent(self) -> float:
+        return (self.total - self.free) * 100.0 / self.total if self.total else 0
+
+
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 

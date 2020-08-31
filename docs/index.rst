@@ -607,6 +607,50 @@ System information
 
    Availability: Linux, macOS, FreeBSD, OpenBSD
 
+.. py:function:: virtual_memory()
+
+   Return a dataclass containing system memory statistics. Currently, the following fields are
+   available:
+
+   - ``total``: Total physical memory in bytes
+   - ``available``: Amount of memory that can be made available without using swap (or killing
+     programs)
+   - ``used``: Used memory in bytes
+   - ``free``: Free memory (immediately available) in bytes
+   - ``active``: Memory currently in use or recently used (unlikely to be reclaimed)
+   - ``inactive``: Memory not recently used (more likely to be reclaimed)
+   - ``buffers``: Temporary disk storage
+   - ``cached``: Disk cache
+   - ``shared``: Memory used for shared objects (``tmpfs``-es on Linux)
+   - ``slab``: In-kernel data structure cache
+
+   The dataclass also has a ``percent`` property that returns the usage percentage (0-100).
+
+   In most cases, you should only use ``total``, ``available`` and ``percent``.
+
+   :returns: A dataclass containing system memory statistics
+   :rtype: VirtualMemoryInfo
+
+   Availability: Linux
+
+.. py:function:: swap_memory()
+
+   Return a dataclass containing system swap memory statistics. Currently, the following fields are
+   available:
+
+   - ``total``: Total swap memory in bytes
+   - ``used``: Used swap memory in bytes
+   - ``free``: Free swap memory in bytes
+   - ``sin``: Cumulative number of bytes the system has swapped in from the disk
+   - ``sout``: Cumulative number of bytes the system has swapped out from the disk
+
+   The dataclass also has a ``percent`` property that returns the usage percentage (0-100).
+
+   :returns: A dataclass containing system swap memory statistics
+   :rtype: SwapInfo
+
+   Availability: Linux
+
 .. py:function:: disk_usage(path)
 
    Return disk usage statistics about the filesystem which contains the given ``path``.
