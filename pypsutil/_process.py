@@ -528,23 +528,39 @@ def wait_procs(
 
     while alive:
         for proc in list(alive):
-            if not proc.is_running():
-                try:
-                    wstatus = os.waitpid(proc.pid, os.WNOHANG)[1]
-                except ChildProcessError:
-                    proc.returncode = None
-                else:
-                    proc.returncode = (
-                        -os.WTERMSIG(wstatus)
-                        if os.WIFSIGNALED(wstatus)
-                        else os.WEXITSTATUS(wstatus)
+            try:
+                with proc.oneshot():
+                    # Relying on the fact that proc.ppid() checks proc.is_running()
+                    is_zombie_child = (
+                        proc.ppid() == os.getpid() and proc.status() == ProcessStatus.ZOMBIE
                     )
 
+            except NoSuchProcess:
+                proc.returncode = None
                 if callback is not None:
                     callback(proc)
 
                 alive.remove(proc)
                 gone.append(proc)
+
+            else:
+                if is_zombie_child:
+                    try:
+                        wstatus = os.waitpid(proc.pid, 0)[1]
+                    except ChildProcessError:
+                        proc.returncode = None
+                    else:
+                        proc.returncode = (
+                            -os.WTERMSIG(wstatus)
+                            if os.WIFSIGNALED(wstatus)
+                            else os.WEXITSTATUS(wstatus)
+                        )
+
+                    if callback is not None:
+                        callback(proc)
+
+                    alive.remove(proc)
+                    gone.append(proc)
 
         interval = 0.01
         if timeout is not None:
