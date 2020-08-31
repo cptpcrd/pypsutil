@@ -10,11 +10,14 @@ import pypsutil
 def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Process]:
     subproc = subprocess.Popen(args, **kwargs)
 
+    psproc = pypsutil.Process(subproc.pid)
+
     try:
-        yield pypsutil.Process(subproc.pid)
+        yield psproc
     finally:
-        subproc.terminate()
-        subproc.wait()
+        if psproc.is_running():
+            subproc.terminate()
+            subproc.wait()
 
 
 def get_dead_process() -> pypsutil.Process:
