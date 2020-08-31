@@ -516,7 +516,8 @@ def wait_procs(
             not isinstance(proc, Popen) or proc.returncode is not None
         ):
             gone.append(proc)
-            callback(proc)
+            if callback is not None:
+                callback(proc)
         else:
             alive.append(proc)
 
@@ -534,7 +535,8 @@ def wait_procs(
                         else os.WEXITSTATUS(wstatus)
                     )
 
-                callback(proc)
+                if callback is not None:
+                    callback(proc)
 
                 alive.remove(proc)
                 gone.append(proc)
