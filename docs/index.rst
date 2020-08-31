@@ -377,6 +377,20 @@ Process information
       :returns: Whether the process is still running
       :rtype: int
 
+   .. py:method:: wait(\*, timeout=None)
+
+      Wait for the process to exit. If this process was a child of the current process, its exit code is
+      returned.
+
+      Raises :py:class:`TimeoutExpired` if the timeout expires.
+
+      :param timeout:
+            The maximum amount of time to wait for the process to exit (``None`` signifies no limit).
+      :type timeout: int or float or None
+      :raises TimeoutExpired: If the timeout expires
+      :returns: The exit code of the process if it can be determined; otherwise ``None``
+      :rtype: int or None
+
    .. py:method:: oneshot()
 
       This is a context manager which enables caching pieces of information that can be obtained via the
@@ -482,6 +496,23 @@ Process information
    :param int pid: The PID to check for existence
    :return: Whether the process with the given PID exists
    :rtype: bool
+
+
+.. py:function:: wait_procs(procs, timeout=None, callback=None)
+
+   Wait for several :py:class:`Process` instances to terminate, and returns ``(gone, alive)`` tuple
+   indicating which have terminated and which are still alive.
+
+   If the ``timeout`` expires, this function will not raise :py:class:`TimeoutExpired`.
+
+   :param procs: The processes that should be waited for
+   :type procs: iterable[int]
+   :param timeout: The maximum amount of time to wait for the processes to terminate
+   :type timeout: int or float or None
+   :param callback:
+        A function which will be called with the :py:class:`Process` as an argument when one of the
+        processes exits.
+   :rtype: tuple[list[Process], list[Process]]
 
 
 System information
