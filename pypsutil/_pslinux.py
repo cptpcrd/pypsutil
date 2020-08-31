@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Un
 
 from . import _cache, _psposix, _util
 from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
-from ._util import ProcessCPUTimes, translate_proc_errors
+from ._util import ProcessCPUTimes, ProcessStatus, translate_proc_errors
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -83,6 +83,26 @@ def pid_create_time(pid: int) -> float:
     return _internal_boot_time() + ctime_ticks / _clk_tck
 
 
+_PROC_STATUSES = {
+    "R": ProcessStatus.RUNNING,
+    "S": ProcessStatus.SLEEPING,
+    "D": ProcessStatus.DISK_SLEEP,
+    "Z": ProcessStatus.ZOMBIE,
+    "T": ProcessStatus.STOPPED,
+    "t": ProcessStatus.TRACING_STOP,
+    "X": ProcessStatus.DEAD,
+    "x": ProcessStatus.DEAD,
+    "K": ProcessStatus.WAKE_KILL,
+    "W": ProcessStatus.WAKING,
+    "P": ProcessStatus.PARKED,
+    "I": ProcessStatus.IDLE,
+}
+
+
+def proc_status(proc: "Process") -> ProcessStatus:
+    return _PROC_STATUSES[_get_proc_stat_fields(proc)[2]]
+
+
 def proc_cwd(proc: "Process") -> str:
     try:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "cwd"))
@@ -112,7 +132,7 @@ def proc_cmdline(proc: "Process") -> List[str]:
         raise ProcessLookupError from ex
 
     if not cmdline:
-        if _get_proc_status_dict(proc)["State"].startswith("Z"):
+        if proc_status(proc) == ProcessStatus.ZOMBIE:
             raise ZombieProcess(proc.pid)
         else:
             return []
@@ -153,12 +173,12 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_umask(proc: "Process") -> Optional[int]:
-    proc_status = _get_proc_status_dict(proc)
+    proc_status_info = _get_proc_status_dict(proc)
 
     try:
-        umask_str = proc_status["Umask"]
+        umask_str = proc_status_info["Umask"]
     except KeyError:
-        if proc_status["State"].startswith("Z"):
+        if proc_status_info["State"].startswith("Z"):
             raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
         else:
             return None
@@ -167,14 +187,16 @@ def proc_umask(proc: "Process") -> Optional[int]:
 
 
 def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
-    proc_status = _get_proc_status_dict(proc)
+    proc_status_info = _get_proc_status_dict(proc)
 
     return ProcessSignalMasks(  # pytype: disable=wrong-keyword-args
-        process_pending=parse_sigmask(proc_status["ShdPnd"], include_internal=include_internal),
-        pending=parse_sigmask(proc_status["SigPnd"], include_internal=include_internal),
-        blocked=parse_sigmask(proc_status["SigBlk"], include_internal=include_internal),
-        ignored=parse_sigmask(proc_status["SigIgn"], include_internal=include_internal),
-        caught=parse_sigmask(proc_status["SigCgt"], include_internal=include_internal),
+        process_pending=parse_sigmask(
+            proc_status_info["ShdPnd"], include_internal=include_internal
+        ),
+        pending=parse_sigmask(proc_status_info["SigPnd"], include_internal=include_internal),
+        blocked=parse_sigmask(proc_status_info["SigBlk"], include_internal=include_internal),
+        ignored=parse_sigmask(proc_status_info["SigIgn"], include_internal=include_internal),
+        caught=parse_sigmask(proc_status_info["SigCgt"], include_internal=include_internal),
     )
 
 

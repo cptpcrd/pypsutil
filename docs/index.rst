@@ -100,6 +100,13 @@ Process information
         :return: The session ID of this process
         :rtype: int
 
+   .. py:method:: status()
+
+      Get the current process status as one of the members of the :py:class:`ProcessStatus` enum.
+
+      :return: The current process status
+      :rtype: ProcessStatus
+
    .. py:method:: name()
 
         Get the name of this process.
@@ -413,6 +420,25 @@ Process information
          the group list via a method that collects as much extra information as possible. However, this method may
          truncate the returned group list. In this case, :py:meth:`getgroups()` will fall back on the normal method,
          which avoids truncation.
+
+
+.. py:class:: ProcessStatus
+
+   An enum representing a process's status.
+
+   .. py:data:: RUNNING
+   .. py:data:: SLEEPING
+   .. py:data:: DISK_SLEEP
+   .. py:data:: ZOMBIE
+   .. py:data:: STOPPED
+   .. py:data:: TRACING_STOP
+   .. py:data:: DEAD
+   .. py:data:: WAKE_KILL
+   .. py:data:: WAKING
+   .. py:data:: PARKED
+   .. py:data:: IDLE
+   .. py:data:: LOCKED
+   .. py:data:: WAITING
 
 
 .. py:function:: pids()

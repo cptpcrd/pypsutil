@@ -7,7 +7,7 @@ import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessSignalMasks
+from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -296,6 +296,20 @@ def iter_pids() -> Iterator[int]:
 def pid_create_time(pid: int) -> float:
     kinfo = _get_kinfo_proc2_pid(pid)
     return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+
+
+_PROC_STATUSES = {
+    1: ProcessStatus.IDLE,
+    2: ProcessStatus.RUNNING,
+    3: ProcessStatus.STOPPED,
+    4: ProcessStatus.STOPPED,
+    5: ProcessStatus.ZOMBIE,
+    6: ProcessStatus.DEAD,
+}
+
+
+def proc_status(proc: "Process") -> ProcessStatus:
+    return _PROC_STATUSES[_get_kinfo_proc2(proc).p_stat]
 
 
 def proc_name(proc: "Process") -> str:

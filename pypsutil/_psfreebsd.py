@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessSignalMasks
+from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -468,6 +468,21 @@ def proc_umask(proc: "Process") -> int:
 
 def proc_name(proc: "Process") -> str:
     return cast(str, _get_kinfo_proc(proc).ki_comm.decode())
+
+
+_PROC_STATUSES = {
+    1: ProcessStatus.IDLE,
+    2: ProcessStatus.RUNNING,
+    3: ProcessStatus.SLEEPING,
+    4: ProcessStatus.STOPPED,
+    5: ProcessStatus.ZOMBIE,
+    6: ProcessStatus.WAITING,
+    7: ProcessStatus.LOCKED,
+}
+
+
+def proc_status(proc: "Process") -> ProcessStatus:
+    return _PROC_STATUSES[_get_kinfo_proc(proc).ki_stat]
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:

@@ -16,6 +16,7 @@ from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
 from ._util import translate_proc_errors
 
+ProcessStatus = _psimpl.ProcessStatus
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
@@ -153,6 +154,10 @@ class Process:
     @translate_proc_errors
     def sid(self) -> int:
         return _psimpl.proc_sid(self)
+
+    @translate_proc_errors
+    def status(self) -> ProcessStatus:
+        return _psimpl.proc_status(self)
 
     @translate_proc_errors
     def name(self) -> str:

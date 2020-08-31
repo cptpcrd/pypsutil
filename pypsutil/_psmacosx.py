@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Un
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
-from ._util import ProcessCPUTimes
+from ._util import ProcessCPUTimes, ProcessStatus
 
 if TYPE_CHECKING:
     from ._process import Process
@@ -345,6 +345,19 @@ def iter_pids() -> Iterator[int]:
 
 def pid_create_time(pid: int) -> float:
     return cast(float, _get_kinfo_proc_pid(pid).kp_proc.p_un.p_starttime.to_float())
+
+
+_PROC_STATUSES = {
+    1: ProcessStatus.IDLE,
+    2: ProcessStatus.RUNNING,
+    3: ProcessStatus.SLEEPING,
+    4: ProcessStatus.STOPPED,
+    5: ProcessStatus.ZOMBIE,
+}
+
+
+def proc_status(proc: "Process") -> ProcessStatus:
+    return _PROC_STATUSES[_get_kinfo_proc(proc).kp_proc.p_stat]
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:

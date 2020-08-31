@@ -1,4 +1,5 @@
 import dataclasses
+import enum
 import functools
 import resource
 import signal
@@ -14,6 +15,22 @@ RESOURCE_NUMS = set()
 for name in dir(resource):
     if name.startswith("RLIMIT_"):
         RESOURCE_NUMS.add(getattr(resource, name))
+
+
+class ProcessStatus(enum.Enum):
+    RUNNING = "running"
+    SLEEPING = "sleeping"
+    DISK_SLEEP = "disk-sleep"
+    ZOMBIE = "zombie"
+    STOPPED = "stopped"
+    TRACING_STOP = "tracing-stop"
+    DEAD = "dead"
+    WAKE_KILL = "wake-kill"
+    WAKING = "waking"
+    PARKED = "parked"
+    IDLE = "idle"
+    LOCKED = "locked"
+    WAITING = "waiting"
 
 
 @dataclasses.dataclass
