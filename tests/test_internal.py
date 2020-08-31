@@ -1,6 +1,8 @@
 # pylint: disable=protected-access
 import ctypes
 import pathlib
+import signal
+from typing import Iterable
 
 import pytest
 
@@ -90,3 +92,49 @@ def test_read_file(tmp_path: pathlib.Path) -> None:
 
     with pytest.raises(FileNotFoundError):
         pypsutil._util.read_file(str(tmp_path / "b.txt"))
+
+
+def test_expand_sig_bitmask() -> None:
+    def build_mask(signals: Iterable[int]) -> int:
+        mask = 0
+        for sig in signals:
+            mask |= 1 << (sig - 1)
+
+        return mask
+
+    external_signals = {1, signal.SIGTERM, max(signal.Signals)}  # pylint: disable=no-member
+
+    internal_signals = {
+        max(signal.Signals) + 1,  # pylint: disable=no-member
+        max(signal.Signals) + 2,  # pylint: disable=no-member
+    }
+
+    if hasattr(signal, "SIGRTMIN") and hasattr(signal, "SIGRTMAX"):
+        try:
+            signal.Signals(signal.SIGRTMIN - 1)  # pylint: disable=no-member
+        except ValueError:
+            internal_signals.add(signal.SIGRTMIN - 1)
+
+        external_signals.update(
+            {signal.SIGRTMIN, signal.SIGRTMIN + 1, signal.SIGRTMAX, signal.SIGRTMAX - 1}
+        )
+
+    internal_mask = build_mask(internal_signals)
+    external_mask = build_mask(external_signals)
+    combined_mask = build_mask(internal_signals | external_signals)
+
+    assert pypsutil._util.expand_sig_bitmask(internal_mask) == set()
+    assert (
+        pypsutil._util.expand_sig_bitmask(internal_mask, include_internal=True) == internal_signals
+    )
+
+    assert pypsutil._util.expand_sig_bitmask(external_mask) == external_signals
+    assert (
+        pypsutil._util.expand_sig_bitmask(external_mask, include_internal=True) == external_signals
+    )
+
+    assert pypsutil._util.expand_sig_bitmask(combined_mask) == external_signals
+    assert (
+        pypsutil._util.expand_sig_bitmask(combined_mask, include_internal=True)
+        == internal_signals | external_signals
+    )
