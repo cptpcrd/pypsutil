@@ -448,6 +448,9 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
         kfile = KinfoFile.from_buffer_copy(kfile_data)
         yield kfile
 
+        if kfile.kf_structsize == 0:
+            break
+
         i += kfile.kf_structsize
 
 
