@@ -6,6 +6,7 @@ import contextlib
 import os
 import pwd
 import resource
+import shutil
 import signal
 import subprocess
 import threading
@@ -175,8 +176,24 @@ class Process:
         return _psimpl.proc_name(self)
 
     @translate_proc_errors
-    def exe(self) -> str:
-        return _psimpl.proc_exe(self)
+    def exe(self, *, fallback_cmdline: bool = True) -> str:
+        if hasattr(_psimpl, "proc_exe"):
+            return _psimpl.proc_exe(self)
+        elif fallback_cmdline:
+            cmdline = self.cmdline()
+
+            if cmdline:
+                lookup_path: Optional[str]
+                try:
+                    lookup_path = self.environ()["PATH"]
+                except (OSError, KeyError):
+                    lookup_path = os.environ.get("PATH")
+
+                exe = shutil.which(cmdline[0], path=lookup_path)
+                if exe:
+                    return exe
+
+        return ""
 
     @translate_proc_errors
     def cmdline(self) -> List[str]:

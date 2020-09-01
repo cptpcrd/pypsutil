@@ -3,7 +3,6 @@ import ctypes
 import dataclasses
 import errno
 import os
-import shutil
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
@@ -266,22 +265,6 @@ def proc_cwd(proc: "Process") -> str:
     return _bsd.sysctl_bytes_retry(
         [CTL_KERN, KERN_PROC_CWD, proc.pid], None, trim_nul=True
     ).decode()
-
-
-def proc_exe(proc: "Process") -> str:
-    cmdline = proc_cmdline(proc)
-    if cmdline:
-        path: Optional[str]
-        try:
-            path = proc_environ(proc)["PATH"]
-        except (OSError, KeyError):
-            path = os.environ.get("PATH")
-
-        exe = shutil.which(cmdline[0], path=path)
-        if exe:
-            return exe
-
-    return ""
 
 
 def proc_cmdline(proc: "Process") -> List[str]:

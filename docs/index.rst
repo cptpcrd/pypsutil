@@ -168,11 +168,20 @@ Process information
         :return: The name of this process
         :rtype: str
 
-   .. py:method:: exe()
+   .. py:method:: exe(\*, fallback_cmdline=True)
 
-        Get the path to this process's executable. On some platforms (such as OpenBSD) this
-        may return an empty string if it cannot be obtained.
+        Get the path to this process's executable.
 
+        On some platforms (such as OpenBSD) this cannot be obtained directly. On those platforms,
+        if ``fallback_cmdline`` is ``True``, this method will return the first command-line
+        argument (if it is not an absolute path, a lookup will be performed on the system ``PATH``).
+
+        If the path to the process's executable cannot be determined (for example, if the ``PATH``
+        lookup fails on OpenBSD), this function will return an empty string.
+
+        :param fallback_cmdline bool:
+            Whether to fall back on checking the first command-line argument if the OS does not
+            provide a way to get the executable path. (This is much less reliable.)
         :return: The path to this process's executable
         :rtype: str
 
