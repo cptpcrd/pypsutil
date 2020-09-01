@@ -43,7 +43,7 @@ for name in _OPTIONAL_FUNCS:
     if hasattr(_system, name):
         globals()[name] = getattr(_system, name)
 
-__version__ = "0.2.0"
+__version__ = "0.1.0"
 
 __all__ = [
     "PROCFS_PATH",
