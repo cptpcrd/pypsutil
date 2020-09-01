@@ -132,10 +132,26 @@ def proc_cwd(proc: "Process") -> str:
 
 
 def proc_exe(proc: "Process") -> str:
+    # We need to distinguish between two meanings of ENOENT:
+    # 1. /proc/<pid> doesn't exist -> the process is dead
+    # 2. /proc/<pid>/exe doesn't exist (happens for some kernel processes; we should return an
+    #    empty string)
+    #
+    # So we open a directory file descriptor to /proc/<pid>, then call readlinkat().
+
     try:
-        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "exe"))
+        pid_fd = os.open(
+            os.path.join(_util.get_procfs_path(), str(proc.pid)), os.O_RDONLY | os.O_DIRECTORY
+        )
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
+
+    try:
+        return os.readlink("exe", dir_fd=pid_fd)
+    except FileNotFoundError:
+        return ""
+    finally:
+        os.close(pid_fd)
 
 
 def proc_root(proc: "Process") -> str:
