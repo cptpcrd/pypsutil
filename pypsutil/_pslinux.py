@@ -169,10 +169,7 @@ def proc_num_fds(proc: "Process") -> int:
 
 
 def proc_num_threads(proc: "Process") -> int:
-    try:
-        return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")))
-    except FileNotFoundError as ex:
-        raise ProcessLookupError from ex
+    return int(_get_proc_stat_fields(proc)[19])
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
