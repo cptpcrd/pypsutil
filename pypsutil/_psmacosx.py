@@ -49,6 +49,7 @@ KERN_PROC_PID = 1
 
 PROC_PIDVNODEPATHINFO = 9
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
+PROC_PIDTASKINFO = 4
 
 CLOCK_UPTIME_RAW = 8
 
@@ -68,6 +69,14 @@ off_t = ctypes.c_int64
 class ProcessSignalMasks:
     ignored: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
     caught: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
+
+
+@dataclasses.dataclass
+class ProcessMemoryInfo:
+    rss: int
+    vms: int
+    pfaults: int
+    pageins: int
 
 
 class Timeval(ctypes.Structure):
@@ -287,6 +296,29 @@ class ProcVnodePathInfo(ctypes.Structure):
     ]
 
 
+class ProcTaskInfo(ctypes.Structure):
+    _fields_ = [
+        ("pti_virtual_size", ctypes.c_uint64),
+        ("pti_resident_size", ctypes.c_uint64),
+        ("pti_total_user", ctypes.c_uint64),
+        ("pti_total_system", ctypes.c_uint64),
+        ("pti_threads_user", ctypes.c_uint64),
+        ("pti_threads_system", ctypes.c_uint64),
+        ("pti_policy", ctypes.c_int32),
+        ("pti_faults", ctypes.c_int32),
+        ("pti_pageins", ctypes.c_int32),
+        ("pti_cow_faults", ctypes.c_int32),
+        ("pti_messages_sent", ctypes.c_int32),
+        ("pti_messages_received", ctypes.c_int32),
+        ("pti_syscalls_mach", ctypes.c_int32),
+        ("pti_syscalls_unix", ctypes.c_int32),
+        ("pti_csw", ctypes.c_int32),
+        ("pti_threadnum", ctypes.c_int32),
+        ("pti_numrunning", ctypes.c_int32),
+        ("pti_priority", ctypes.c_int32),
+    ]
+
+
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
 
@@ -327,6 +359,13 @@ def _proc_pidinfo(
 def _get_proc_vnode_info(proc: "Process") -> ProcVnodePathInfo:
     info = ProcVnodePathInfo()
     _proc_pidinfo(proc.pid, PROC_PIDVNODEPATHINFO, 0, info)
+    return info
+
+
+@_cache.CachedByProcess
+def _get_proc_task_info(proc: "Process") -> ProcTaskInfo:
+    info = ProcTaskInfo()
+    _proc_pidinfo(proc.pid, PROC_PIDTASKINFO, 0, info)
     return info
 
 
@@ -471,6 +510,17 @@ def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
         system=kinfo.ki_ru.ru_stime.to_float(),
         children_user=0,
         children_system=0,
+    )
+
+
+def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
+    task_info = _get_proc_task_info(proc)
+
+    return ProcessMemoryInfo(
+        rss=task_info.pti_resident_size,
+        vms=task_info.pti_virtual_size,
+        pageins=task_info.pti_pageins,
+        pfaults=task_info.pti_faults,
     )
 
 

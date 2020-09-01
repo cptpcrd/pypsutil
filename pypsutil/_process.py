@@ -23,6 +23,7 @@ ThreadInfo = _util.ThreadInfo
 ProcessStatus = _psimpl.ProcessStatus
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
+ProcessMemoryInfo = _psimpl.ProcessMemoryInfo
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -325,6 +326,10 @@ class Process:
     @translate_proc_errors
     def cpu_times(self) -> ProcessCPUTimes:
         return _psimpl.proc_cpu_times(self)
+
+    @translate_proc_errors
+    def memory_info(self) -> ProcessMemoryInfo:
+        return _psimpl.proc_memory_info(self)
 
     @translate_proc_errors
     def getpriority(self) -> int:

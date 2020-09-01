@@ -21,6 +21,7 @@ for name in dir(resource):
 
 
 CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
+PAGESIZE = os.sysconf(os.sysconf_names["SC_PAGESIZE"])
 
 
 class ProcessStatus(enum.Enum):

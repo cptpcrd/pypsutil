@@ -51,6 +51,15 @@ class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
         return 100 - self.available * 100.0 / self.total
 
 
+@dataclasses.dataclass
+class ProcessMemoryInfo:
+    rss: int
+    vms: int
+    shared: int
+    text: int
+    data: int
+
+
 SwapInfo = _util.SwapInfo
 ThreadInfo = _util.ThreadInfo
 
@@ -309,6 +318,23 @@ proc_getrlimit = proc_rlimit
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tty_nr = int(_get_proc_stat_fields(proc)[6])
     return tty_nr if tty_nr != 0 else None
+
+
+def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
+    try:
+        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "statm")) as file:
+            items = list(map(int, file.readline().split()))
+
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+    else:
+        return ProcessMemoryInfo(
+            vms=items[0] * _util.PAGESIZE,
+            rss=items[1] * _util.PAGESIZE,
+            shared=items[2] * _util.PAGESIZE,
+            text=items[3] * _util.PAGESIZE,
+            data=items[5] * _util.PAGESIZE,
+        )
 
 
 def iter_pids() -> Iterator[int]:

@@ -100,6 +100,15 @@ class CPUTimes:
     idle: float
 
 
+@dataclasses.dataclass
+class ProcessMemoryInfo:
+    rss: int
+    vms: int
+    text: int
+    data: int
+    stack: int
+
+
 class Rlimit(ctypes.Structure):
     _fields_ = [
         ("rlim_cur", rlim_t),
@@ -620,6 +629,18 @@ def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
         system=kinfo.ki_rusage.ru_stime.to_float(),
         children_user=kinfo.ki_rusage_ch.ru_utime.to_float(),
         children_system=kinfo.ki_rusage_ch.ru_stime.to_float(),
+    )
+
+
+def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
+    kinfo = _get_kinfo_proc(proc)
+
+    return ProcessMemoryInfo(
+        rss=kinfo.ki_rssize * _util.PAGESIZE,
+        vms=kinfo.ki_size,
+        text=kinfo.ki_tsize * _util.PAGESIZE,
+        data=kinfo.ki_dsize * _util.PAGESIZE,
+        stack=kinfo.ki_ssize * _util.PAGESIZE,
     )
 
 

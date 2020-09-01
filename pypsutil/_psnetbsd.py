@@ -110,6 +110,15 @@ class CPUTimes:
     idle: float
 
 
+@dataclasses.dataclass
+class ProcessMemoryInfo:
+    rss: int
+    vms: int
+    text: int
+    data: int
+    stack: int
+
+
 class Timespec(ctypes.Structure):
     _fields_ = [
         ("tv_sec", time_t),
@@ -372,6 +381,18 @@ def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
         system=kinfo.p_ustime_sec + kinfo.p_ustime_usec / 1000000,
         children_user=kinfo.p_uctime_sec + kinfo.p_uctime_usec / 1000000,
         children_system=kinfo.p_uctime_sec + kinfo.p_uctime_usec / 1000000,
+    )
+
+
+def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
+    kinfo = _get_kinfo_proc2(proc)
+
+    return ProcessMemoryInfo(
+        rss=kinfo.p_vm_rssize * _util.PAGESIZE,
+        vms=kinfo.p_vm_msize * _util.PAGESIZE,
+        text=kinfo.p_vm_tsize * _util.PAGESIZE,
+        data=kinfo.p_vm_dsize * _util.PAGESIZE,
+        stack=kinfo.p_vm_ssize * _util.PAGESIZE,
     )
 
 
