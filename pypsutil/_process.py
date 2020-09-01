@@ -274,6 +274,18 @@ class Process:
         def getrlimit(self, res: int) -> Tuple[int, int]:
             return _psimpl.proc_getrlimit(self, res)
 
+    if hasattr(_psimpl, "proc_num_fds"):
+
+        @translate_proc_errors
+        def num_fds(self) -> int:
+            return _psimpl.proc_num_fds(self)
+
+    if hasattr(_psimpl, "proc_num_threads"):
+
+        @translate_proc_errors
+        def num_threads(self) -> int:
+            return _psimpl.proc_num_threads(self)
+
     @translate_proc_errors
     def terminal(self) -> Optional[str]:
         tty_rdev = _psimpl.proc_tty_rdev(self)

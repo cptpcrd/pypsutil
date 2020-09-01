@@ -161,6 +161,20 @@ def proc_root(proc: "Process") -> str:
         raise ProcessLookupError from ex
 
 
+def proc_num_fds(proc: "Process") -> int:
+    try:
+        return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "fd")))
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+
+
+def proc_num_threads(proc: "Process") -> int:
+    try:
+        return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")))
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+
+
 def proc_cmdline(proc: "Process") -> List[str]:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "cmdline"), "rb") as file:
