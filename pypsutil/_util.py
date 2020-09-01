@@ -5,14 +5,12 @@ import os
 import resource
 import signal
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, TypeVar, Union, cast
 
 from ._errors import AccessDenied, NoSuchProcess
 
 if TYPE_CHECKING:
     from ._process import Process
-
-T = TypeVar("T")
 
 RESOURCE_NUMS = set()
 for name in dir(resource):
@@ -144,7 +142,11 @@ def parse_environ_bytes(env: bytes) -> Dict[str, str]:
     return res
 
 
-def translate_proc_errors(func: Callable[..., T]) -> Callable[..., T]:
+# https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
+F = TypeVar("F", bound=Callable[..., Any])  # pylint: disable=invalid-name
+
+
+def translate_proc_errors(func: F) -> F:
     @functools.wraps(func)
     def wrapper(proc: Union[int, "Process"], *args: Any, **kwargs: Any) -> Any:
         if isinstance(proc, int):
@@ -159,7 +161,7 @@ def translate_proc_errors(func: Callable[..., T]) -> Callable[..., T]:
         except PermissionError as ex:
             raise AccessDenied(pid=pid) from ex
 
-    return wrapper
+    return cast(F, wrapper)
 
 
 def read_file(fname: str) -> str:
