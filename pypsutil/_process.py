@@ -20,6 +20,7 @@ from ._util import translate_proc_errors
 ProcessStatus = _psimpl.ProcessStatus
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
+ThreadInfo = _psimpl.ThreadInfo
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -285,6 +286,12 @@ class Process:
         @translate_proc_errors
         def num_threads(self) -> int:
             return _psimpl.proc_num_threads(self)
+
+    if hasattr(_psimpl, "proc_threads"):
+
+        @translate_proc_errors
+        def threads(self) -> List[ThreadInfo]:
+            return _psimpl.proc_threads(self)
 
     @translate_proc_errors
     def terminal(self) -> Optional[str]:

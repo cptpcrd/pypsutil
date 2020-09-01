@@ -52,27 +52,32 @@ class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
 
 
 SwapInfo = _util.SwapInfo
+ThreadInfo = _util.ThreadInfo
 
 
 def parse_sigmask(raw_mask: str, *, include_internal: bool = False) -> Set[int]:
     return _util.expand_sig_bitmask(int(raw_mask, 16), include_internal=include_internal)
 
 
+def _parse_procfs_stat_fields(line: str) -> List[str]:
+    lparen = line.index("(")
+    rparen = line.rindex(")")
+
+    items = line[:lparen].split()
+    items.append(line[lparen + 1: rparen])
+    items.extend(line[rparen + 1:].split())
+
+    return items
+
+
 def _get_pid_stat_fields(pid: int) -> List[str]:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(pid), "stat")) as file:
             line = file.readline().strip()
-
-        lparen = line.index("(")
-        rparen = line.rindex(")")
-
-        items = line[:lparen].split()
-        items.append(line[lparen + 1: rparen])
-        items.extend(line[rparen + 1:].split())
-
-        return items
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
+    else:
+        return _parse_procfs_stat_fields(line)
 
 
 @_cache.CachedByProcess
@@ -170,6 +175,36 @@ def proc_num_fds(proc: "Process") -> int:
 
 def proc_num_threads(proc: "Process") -> int:
     return int(_get_proc_stat_fields(proc)[19])
+
+
+def proc_threads(proc: "Process") -> List[ThreadInfo]:
+    threads = []
+
+    try:
+        with os.scandir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")) as task_it:
+            for entry in task_it:
+                tid = int(entry.name)
+
+                try:
+                    with open(os.path.join(entry.path, "stat")) as file:
+                        line = file.readline().strip()
+                except FileNotFoundError:
+                    pass
+                else:
+                    fields = _parse_procfs_stat_fields(line)
+
+                    threads.append(
+                        ThreadInfo(
+                            id=tid,
+                            user_time=int(fields[13]) / _clk_tck,
+                            system_time=int(fields[14]) / _clk_tck,
+                        )
+                    )
+
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+    else:
+        return threads
 
 
 def proc_cmdline(proc: "Process") -> List[str]:

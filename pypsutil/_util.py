@@ -52,6 +52,13 @@ class ProcessCPUTimes:
 
 
 @dataclasses.dataclass
+class ThreadInfo:
+    id: int  # pylint: disable=invalid-name
+    user_time: float
+    system_time: float
+
+
+@dataclasses.dataclass
 class SwapInfo:
     total: int
     used: int
