@@ -506,11 +506,11 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
 
 
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
-    kinfo = _get_kinfo_proc(proc)
+    task_info = _get_proc_task_info(proc)
 
     return ProcessCPUTimes(
-        user=kinfo.ki_ru.ru_utime.to_float(),
-        system=kinfo.ki_ru.ru_stime.to_float(),
+        user=task_info.pti_total_user / 1000000000,
+        system=task_info.pti_total_system / 1000000000,
         children_user=0,
         children_system=0,
     )
