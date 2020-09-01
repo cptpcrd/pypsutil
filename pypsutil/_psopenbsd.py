@@ -2,7 +2,6 @@
 import ctypes
 import dataclasses
 import errno
-import os
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
@@ -33,8 +32,6 @@ KI_MAXEMULLEN = 16
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
-
-_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
 
 @dataclasses.dataclass
@@ -350,7 +347,7 @@ def cpu_times() -> CPUTimes:
 
     _bsd.sysctl([CTL_KERN, KERN_CPTIME], None, cptimes)
 
-    return CPUTimes(*(int(item) / _clk_tck for item in cptimes))
+    return CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes))
 
 
 def percpu_times() -> List[CPUTimes]:
@@ -364,7 +361,7 @@ def percpu_times() -> List[CPUTimes]:
         except FileNotFoundError:
             break
         else:
-            results.append(CPUTimes(*(int(item) / _clk_tck for item in cptimes)))
+            results.append(CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes)))
 
     return results
 

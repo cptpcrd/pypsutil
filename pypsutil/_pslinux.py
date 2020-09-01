@@ -100,13 +100,10 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
         raise ProcessLookupError from ex
 
 
-_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
-
-
 @translate_proc_errors
 def pid_create_time(pid: int) -> float:
     ctime_ticks = int(_get_pid_stat_fields(pid)[21])
-    return _internal_boot_time() + ctime_ticks / _clk_tck
+    return _internal_boot_time() + ctime_ticks / _util.CLK_TCK
 
 
 _PROC_STATUSES = {
@@ -196,8 +193,8 @@ def proc_threads(proc: "Process") -> List[ThreadInfo]:
                     threads.append(
                         ThreadInfo(
                             id=tid,
-                            user_time=int(fields[13]) / _clk_tck,
-                            system_time=int(fields[14]) / _clk_tck,
+                            user_time=int(fields[13]) / _util.CLK_TCK,
+                            system_time=int(fields[14]) / _util.CLK_TCK,
                         )
                     )
 
@@ -287,10 +284,10 @@ def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
     fields = _get_proc_stat_fields(proc)
 
     return ProcessCPUTimes(
-        user=int(fields[13]) / _clk_tck,
-        system=int(fields[14]) / _clk_tck,
-        children_user=int(fields[15]) / _clk_tck,
-        children_system=int(fields[16]) / _clk_tck,
+        user=int(fields[13]) / _util.CLK_TCK,
+        system=int(fields[14]) / _util.CLK_TCK,
+        children_user=int(fields[15]) / _util.CLK_TCK,
+        children_system=int(fields[16]) / _util.CLK_TCK,
     )
 
 
@@ -454,14 +451,14 @@ def cpu_stats() -> Tuple[int, int, int, int]:
 def cpu_times() -> CPUTimes:
     for entry in _iter_procfs_stat_entries():
         if entry[0] == "cpu":
-            return CPUTimes(*(int(item) / _clk_tck for item in entry[1:]))
+            return CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:]))
 
     raise RuntimeError("'cpu' entry not found in /proc/stat")
 
 
 def percpu_times() -> List[CPUTimes]:
     return [
-        CPUTimes(*(int(item) / _clk_tck for item in entry[1:]))
+        CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:]))
         for entry in _iter_procfs_stat_entries()
         if entry[0].startswith("cpu") and len(entry[0]) > 3
     ]

@@ -1,6 +1,7 @@
 import dataclasses
 import enum
 import functools
+import os
 import resource
 import signal
 import sys
@@ -17,6 +18,9 @@ RESOURCE_NUMS = set()
 for name in dir(resource):
     if name.startswith("RLIMIT_"):
         RESOURCE_NUMS.add(getattr(resource, name))
+
+
+CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
 
 class ProcessStatus(enum.Enum):

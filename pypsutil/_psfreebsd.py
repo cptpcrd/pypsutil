@@ -88,8 +88,6 @@ CAP_RIGHTS_VERSION = 0
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
 
-_clk_tck = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
-
 
 @dataclasses.dataclass
 class CPUTimes:
@@ -681,7 +679,7 @@ def cpu_times() -> CPUTimes:
 
     _bsd.sysctlbyname("kern.cp_time", None, cptimes)
 
-    return CPUTimes(*(int(item) / _clk_tck for item in cptimes))
+    return CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes))
 
 
 def percpu_times() -> List[CPUTimes]:
@@ -692,7 +690,7 @@ def percpu_times() -> List[CPUTimes]:
     _bsd.sysctlbyname("kern.cp_times", None, cptimes)
 
     return [
-        CPUTimes(*(int(item) / _clk_tck for item in cptimes[i * 5: i * 5 + 5]))
+        CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes[i * 5: i * 5 + 5]))
         for i in range(len(cptimes) // 5)
     ]
 
