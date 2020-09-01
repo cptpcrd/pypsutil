@@ -338,10 +338,9 @@ def physical_cpu_count() -> Optional[int]:
                 cpu_infos.append(cur_info)
                 cur_info = {}
 
-    except FileNotFoundError:
-        return None
-    else:
         return len({(info["physical id"], info["core id"]) for info in cpu_infos})
+    except (FileNotFoundError, KeyError):
+        return None
 
 
 def percpu_freq() -> List[Tuple[float, float, float]]:
