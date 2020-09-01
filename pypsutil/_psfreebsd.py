@@ -22,6 +22,7 @@ KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
 KERN_PROC_ARGS = 7
 KERN_PROC_PATHNAME = 12
+KERN_PROC_FILEDESC = 33
 KERN_PROC_GROUPS = 34
 KERN_PROC_ENV = 35
 KERN_PROC_RLIMIT = 37
@@ -433,6 +434,14 @@ def _list_kinfo_procs() -> List[KinfoProc]:
     return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
 
 
+def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+    kinfo_file_data = _bsd.sysctl_bytes_retry(
+        [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None
+    )
+    nfiles = len(kinfo_file_data) // ctypes.sizeof(KinfoFile)
+    return list((KinfoFile * nfiles).from_buffer_copy(kinfo_file_data))
+
+
 def iter_pid_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
@@ -464,6 +473,16 @@ def proc_umask(proc: "Process") -> int:
     )
 
     return umask.value
+
+
+def proc_num_fds(proc: "Process") -> int:
+    return _bsd.sysctl(
+        [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None, None
+    ) // ctypes.sizeof(KinfoFile)
+
+
+def proc_num_threads(proc: "Process") -> int:
+    return cast(int, _get_kinfo_proc(proc).ki_numthreads)
 
 
 def proc_name(proc: "Process") -> str:
