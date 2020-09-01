@@ -441,8 +441,6 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
 
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
-    results = []
-
     i = 0
     while i < len(kinfo_file_data):
         kfile_data = kinfo_file_data[i: i + kinfo_file_size].ljust(kinfo_file_size, b"\0")
