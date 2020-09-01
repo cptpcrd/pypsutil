@@ -450,7 +450,7 @@ VMEM_NAME_MAPPINGS = {
 
 def virtual_memory() -> VirtualMemoryInfo:
     raw_meminfo = {}
-    with open("/proc/meminfo") as file:
+    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
         for line in file:
             line = line.strip()
             if line.endswith(" kB"):
@@ -472,7 +472,7 @@ def virtual_memory() -> VirtualMemoryInfo:
 
 def swap_memory() -> SwapInfo:
     raw_meminfo = {}
-    with open("/proc/meminfo") as file:
+    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
         for line in file:
             line = line.strip()
             if line.endswith(" kB"):
@@ -481,7 +481,7 @@ def swap_memory() -> SwapInfo:
 
     swap_in = 0
     swap_out = 0
-    with open("/proc/vmstat") as file:
+    with open(os.path.join(_util.get_procfs_path(), "vmstat")) as file:
         for line in file:
             if line.startswith("pswpin "):
                 swap_in = int(line[7:].strip()) * 4096
