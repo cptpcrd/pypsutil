@@ -673,7 +673,7 @@ def physical_cpu_count() -> Optional[int]:
 
     root = ET.fromstring(topology_spec_dat)
 
-    return len(root.findall("group/children/group"))
+    return len(root.findall("group/children/group")) or None
 
 
 def cpu_times() -> CPUTimes:

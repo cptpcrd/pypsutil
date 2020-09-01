@@ -508,7 +508,7 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
 def physical_cpu_count() -> Optional[int]:
     count = ctypes.c_int()
     _bsd.sysctlbyname("hw.physicalcpu", None, count)  # type: ignore
-    return count.value
+    return count.value or None
 
 
 def boot_time() -> float:

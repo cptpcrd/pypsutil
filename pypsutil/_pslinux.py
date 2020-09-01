@@ -370,7 +370,7 @@ def physical_cpu_count() -> Optional[int]:
                 cpu_infos.append(cur_info)
                 cur_info = {}
 
-        return len({(info["physical id"], info["core id"]) for info in cpu_infos})
+        return len({(info["physical id"], info["core id"]) for info in cpu_infos}) or None
     except (FileNotFoundError, KeyError):
         return None
 
