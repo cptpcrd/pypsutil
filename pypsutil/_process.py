@@ -13,7 +13,7 @@ import threading
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
-from . import _util
+from . import _system, _util
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
 from ._util import translate_proc_errors
@@ -330,6 +330,23 @@ class Process:
     @translate_proc_errors
     def memory_info(self) -> ProcessMemoryInfo:
         return _psimpl.proc_memory_info(self)
+
+    if hasattr(_system, "virtual_memory"):
+
+        def memory_percent(self, memtype: str = "rss") -> float:
+            proc_meminfo = self.memory_info()
+            sys_meminfo = _system.virtual_memory()
+
+            try:
+                proc_val = getattr(proc_meminfo, memtype)
+            except AttributeError as ex:
+                raise ValueError(
+                    "Bad process memory type {!r} (valid types: {})".format(
+                        memtype, list(proc_meminfo.__dict__.keys())
+                    )
+                ) from ex
+            else:
+                return proc_val * 100.0 / sys_meminfo.total
 
     @translate_proc_errors
     def getpriority(self) -> int:
