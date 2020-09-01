@@ -25,7 +25,6 @@ def test_basic_info() -> None:
     assert proc.create_time() >= pypsutil.boot_time()
 
     assert os.path.samefile(proc.cwd(), os.getcwd())
-    assert os.path.samefile(proc.exe(), sys.executable)
 
 
 def test_basic_info_oneshot() -> None:
@@ -45,7 +44,6 @@ def test_basic_info_oneshot() -> None:
         assert proc.create_time() >= pypsutil.boot_time()
 
         assert os.path.samefile(proc.cwd(), os.getcwd())
-        assert os.path.samefile(proc.exe(), sys.executable)
 
 
 def test_oneshot_nested() -> None:
@@ -80,9 +78,6 @@ def test_basic_info_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.cwd()
-
-    with pytest.raises(pypsutil.NoSuchProcess):
-        proc.exe()
 
 
 def test_negative_pid() -> None:
