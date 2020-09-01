@@ -1,3 +1,5 @@
+import math
+import os
 import resource
 
 import pytest
@@ -86,3 +88,30 @@ if hasattr(pypsutil.Process, "getrlimit"):
 
         with pytest.raises(ValueError, match=r"^invalid resource specified$"):
             proc.getrlimit(max(RESOURCE_NUMS) + 1)
+
+
+def test_proc_cpu_times_self() -> None:
+    proc = pypsutil.Process()
+
+    cpu_times: pypsutil.ProcessCPUTimes = proc.cpu_times()
+    os_times = os.times()
+
+    assert math.isclose(cpu_times.user, os_times.user, abs_tol=0.01)
+    assert math.isclose(cpu_times.system, os_times.system, abs_tol=0.01)
+
+
+def test_proc_cpu_times_children() -> None:
+    proc = pypsutil.Process()
+
+    cpu_times: pypsutil.ProcessCPUTimes = proc.cpu_times()
+    os_times = os.times()
+
+    if pypsutil.OPENBSD or pypsutil.NETBSD:
+        # Combined user + system
+        assert cpu_times.children_user == cpu_times.children_system
+        assert math.isclose(
+            cpu_times.children_user, os_times.children_user + os_times.children_system, abs_tol=0.01
+        )
+    else:
+        assert math.isclose(cpu_times.children_user, os_times.children_user, abs_tol=0.01)
+        assert math.isclose(cpu_times.children_system, os_times.children_system, abs_tol=0.01)
