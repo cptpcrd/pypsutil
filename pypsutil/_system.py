@@ -24,11 +24,7 @@ class CPUStats:
 
 
 if hasattr(_psimpl, "physical_cpu_count"):
-
-    def physical_cpu_count() -> Optional[int]:
-        return _psimpl.physical_cpu_count()
-
-
+    physical_cpu_count = _psimpl.physical_cpu_count
 else:
 
     def physical_cpu_count() -> Optional[int]:
@@ -65,17 +61,13 @@ if hasattr(_psimpl, "percpu_freq"):
 
 
 if hasattr(_psimpl, "cpu_times"):
-
     CPUTimes = _psimpl.CPUTimes
 
-    def cpu_times() -> CPUTimes:
-        return _psimpl.cpu_times()
+    cpu_times = _psimpl.cpu_times
 
 
 if hasattr(_psimpl, "percpu_times"):
-
-    def percpu_times() -> List[CPUTimes]:
-        return _psimpl.percpu_times()
+    percpu_times = _psimpl.percpu_times
 
 
 if hasattr(_psimpl, "virtual_memory"):
@@ -90,18 +82,14 @@ if hasattr(_psimpl, "swap_memory"):
     swap_memory = _psimpl.swap_memory
 
 
-def boot_time() -> float:
-    return _psimpl.boot_time()
+boot_time = _psimpl.boot_time
 
 
-def time_since_boot() -> float:
-    return _psimpl.time_since_boot()
+time_since_boot = _psimpl.time_since_boot
 
 
 if hasattr(_psimpl, "uptime"):
-
-    def uptime() -> float:
-        return _psimpl.uptime()
+    uptime = _psimpl.uptime
 
 
 DiskUsage = _psimpl.DiskUsage
