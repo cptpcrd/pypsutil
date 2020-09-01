@@ -109,20 +109,16 @@ def test_expand_sig_bitmask() -> None:
         max(signal.Signals) + 2,  # pylint: disable=no-member
     }
 
-    if hasattr(signal, "SIGRTMIN") and hasattr(signal, "SIGRTMAX"):
-        try:
-            signal.Signals(signal.SIGRTMIN - 1)  # type: ignore  # pylint: disable=no-member
-        except ValueError:
-            internal_signals.add(signal.SIGRTMIN - 1)  # type: ignore
+    sigrtmin = getattr(signal, "SIGRTMIN", None)
+    sigrtmax = getattr(signal, "SIGRTMAX", None)
 
-        external_signals.update(
-            {
-                signal.SIGRTMIN,  # type: ignore
-                signal.SIGRTMIN + 1,  # type: ignore
-                signal.SIGRTMAX,  # type: ignore
-                signal.SIGRTMAX - 1,  # type: ignore
-            }
-        )
+    if sigrtmin is not None and sigrtmax is not None:
+        try:
+            signal.Signals(sigrtmin - 1)  # pylint: disable=no-member
+        except ValueError:
+            internal_signals.add(sigrtmin - 1)
+
+        external_signals.update({sigrtmin, sigrtmin + 1, sigrtmax, sigrtmax + 1})
 
     internal_mask = build_mask(internal_signals)
     external_mask = build_mask(external_signals)
