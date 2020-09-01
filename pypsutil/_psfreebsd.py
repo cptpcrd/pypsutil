@@ -48,6 +48,8 @@ PATH_MAX = 1024
 
 KI_CRF_GRP_OVERFLOW = 0x80000000
 
+KF_TYPE_VNODE = 1
+
 gid_t = ctypes.c_uint32  # pylint: disable=invalid-name
 rlim_t = ctypes.c_int64  # pylint: disable=invalid-name
 
@@ -107,6 +109,9 @@ class ProcessMemoryInfo:
     text: int
     data: int
     stack: int
+
+
+ProcessOpenFile = _util.ProcessOpenFile
 
 
 class Rlimit(ctypes.Structure):
@@ -496,6 +501,17 @@ def proc_umask(proc: "Process") -> int:
 
 def proc_num_fds(proc: "Process") -> int:
     return sum(kfile.kf_fd >= 0 for kfile in _iter_kinfo_files(proc))
+
+
+def proc_open_fles(proc: "Process") -> List[ProcessOpenFile]:
+    return [
+        ProcessOpenFile(
+            fd=kfile.kf_fd,
+            path=kfile.kf_path.decode(),
+        )
+        for kfile in _iter_kinfo_files(proc)
+        if kfile.kf_fd >= 0 and kfile.kf_type == KF_TYPE_VNODE
+    ]
 
 
 def proc_num_threads(proc: "Process") -> int:

@@ -2,6 +2,7 @@ import dataclasses
 import os
 import resource
 import signal
+import stat
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, no_type_check
 
@@ -11,6 +12,27 @@ from ._util import ProcessCPUTimes, ProcessStatus, translate_proc_errors
 
 if TYPE_CHECKING:
     from ._process import Process
+
+
+@dataclasses.dataclass
+class ProcessOpenFile(_util.ProcessOpenFile):
+    position: int
+    flags: int
+
+    @property
+    def mode(self) -> str:
+        if self.flags & os.O_WRONLY == os.O_WRONLY:
+            if self.flags & os.O_APPEND == os.O_APPEND:
+                return "a"
+            else:
+                return "w"
+        elif self.flags & os.O_RDWR == os.O_RDWR:
+            if self.flags & os.O_APPEND == os.O_APPEND:
+                return "a+"
+            else:
+                return "r+"
+        else:
+            return "r"
 
 
 @dataclasses.dataclass
@@ -170,6 +192,48 @@ def proc_root(proc: "Process") -> str:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
+
+
+def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
+    results = []
+
+    proc_dir = os.path.join(_util.get_procfs_path(), str(proc.pid))
+
+    try:
+        for name in os.listdir(os.path.join(proc_dir, "fd")):
+            fd = int(name)
+
+            try:
+                path = os.readlink(os.path.join(proc_dir, "fd", name))
+                if path[0] != "/":
+                    continue
+
+                file_mode = os.stat(path).st_mode
+                if not stat.S_ISREG(file_mode):
+                    continue
+
+                position = None
+                flags = None
+                with open(os.path.join(proc_dir, "fdinfo", name)) as file:
+                    for line in file:
+                        if line.startswith("pos:"):
+                            position = int(line[4:].strip())
+                        elif line.startswith("flags:"):
+                            flags = int(line[6:].strip(), 8)
+
+                        if position is not None and flags is not None:
+                            break
+                    else:
+                        # "pos" and/or "flags" fields not found; skip
+                        continue
+            except FileNotFoundError:
+                pass
+            else:
+                results.append(ProcessOpenFile(fd=fd, path=path, flags=flags, position=position))
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+    else:
+        return results
 
 
 def proc_num_fds(proc: "Process") -> int:

@@ -24,6 +24,7 @@ ProcessStatus = _psimpl.ProcessStatus
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
 ProcessMemoryInfo = _psimpl.ProcessMemoryInfo
+ProcessOpenFile = _psimpl.ProcessOpenFile
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -283,6 +284,12 @@ class Process:
         @translate_proc_errors
         def num_fds(self) -> int:
             return _psimpl.proc_num_fds(self)
+
+    if hasattr(_psimpl, "proc_open_files"):
+
+        @translate_proc_errors
+        def open_files(self) -> List[ProcessOpenFile]:
+            return _psimpl.proc_open_files(self)
 
     if hasattr(_psimpl, "proc_num_threads"):
 

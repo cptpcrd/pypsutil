@@ -119,6 +119,9 @@ class ProcessMemoryInfo:
     stack: int
 
 
+ProcessOpenFile = _util.ProcessOpenFile
+
+
 class Timespec(ctypes.Structure):
     _fields_ = [
         ("tv_sec", time_t),

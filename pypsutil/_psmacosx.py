@@ -79,6 +79,9 @@ class ProcessMemoryInfo:
     pageins: int
 
 
+ProcessOpenFile = _util.ProcessOpenFile
+
+
 class Timeval(ctypes.Structure):
     _fields_ = [
         ("tv_sec", time_t),

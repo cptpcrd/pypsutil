@@ -41,6 +41,12 @@ class ProcessStatus(enum.Enum):
 
 
 @dataclasses.dataclass
+class ProcessOpenFile:
+    path: str
+    fd: int
+
+
+@dataclasses.dataclass
 class ProcessSignalMasks:
     pending: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
     blocked: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
