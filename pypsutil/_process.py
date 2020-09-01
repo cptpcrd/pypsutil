@@ -13,14 +13,16 @@ import threading
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
+from . import _util
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
 from ._util import translate_proc_errors
 
+ThreadInfo = _util.ThreadInfo
+
 ProcessStatus = _psimpl.ProcessStatus
 ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
-ThreadInfo = _psimpl.ThreadInfo
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
