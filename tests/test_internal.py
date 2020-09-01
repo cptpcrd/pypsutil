@@ -49,10 +49,10 @@ def test_translate_proc_errors() -> None:
         raise ex
 
     with pytest.raises(pypsutil.NoSuchProcess):
-        raise_helper(1, ProcessLookupError)
+        raise_helper(1, ProcessLookupError())
 
     with pytest.raises(pypsutil.AccessDenied):
-        raise_helper(1, PermissionError)
+        raise_helper(1, PermissionError())
 
 
 def test_parse_cmdline() -> None:
