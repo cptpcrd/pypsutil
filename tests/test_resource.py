@@ -112,6 +112,9 @@ def test_proc_cpu_times_children() -> None:
         assert math.isclose(
             cpu_times.children_user, os_times.children_user + os_times.children_system, abs_tol=0.01
         )
+    elif pypsutil.MACOS:
+        assert cpu_times.children_user == 0
+        assert cpu_times.children_system == 0
     else:
         assert math.isclose(cpu_times.children_user, os_times.children_user, abs_tol=0.01)
         assert math.isclose(cpu_times.children_system, os_times.children_system, abs_tol=0.01)
