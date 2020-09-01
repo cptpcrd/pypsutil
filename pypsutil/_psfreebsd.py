@@ -434,7 +434,7 @@ def _list_kinfo_procs() -> List[KinfoProc]:
     return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
 
 
-def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
     kinfo_file_data = _bsd.sysctl_bytes_retry(
         [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None
     )
@@ -448,11 +448,9 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         kfile_data = kinfo_file_data[i: i + kinfo_file_size].ljust(kinfo_file_size, b"\0")
 
         kfile = KinfoFile.from_buffer_copy(kfile_data)
-        results.append(kfile)
+        yield kfile
 
         i += kfile.kf_structsize
-
-    return results
 
 
 def iter_pid_create_time(
@@ -489,7 +487,7 @@ def proc_umask(proc: "Process") -> int:
 
 
 def proc_num_fds(proc: "Process") -> int:
-    return sum(kfile.kf_fd >= 0 for kfile in _list_kinfo_files(proc))
+    return sum(kfile.kf_fd >= 0 for kfile in _iter_kinfo_files(proc))
 
 
 def proc_num_threads(proc: "Process") -> int:
