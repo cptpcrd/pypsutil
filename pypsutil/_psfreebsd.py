@@ -429,9 +429,6 @@ def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
 
     length = _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid], None, proc_info)
 
-    if length == 0:
-        raise ProcessLookupError
-
     return proc_info
 
 
