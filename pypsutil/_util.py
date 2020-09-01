@@ -161,7 +161,7 @@ def translate_proc_errors(func: F) -> F:
         except PermissionError as ex:
             raise AccessDenied(pid=pid) from ex
 
-    return cast(F, wrapper)
+    return cast(F, wrapper)  # pytype: disable=invalid-typevar
 
 
 def read_file(fname: str) -> str:
