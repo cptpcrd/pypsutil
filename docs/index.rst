@@ -313,7 +313,7 @@ Process information
         combined user + system time.
 
         :return: The accumulated process times
-        :rtype: ProcessSignalMasks
+        :rtype: ProcessCPUTimes
 
    .. py:method:: rlimit(res, new_limits=None)
 
