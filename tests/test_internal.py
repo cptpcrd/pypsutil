@@ -118,7 +118,7 @@ def test_expand_sig_bitmask() -> None:
         except ValueError:
             internal_signals.add(sigrtmin - 1)
 
-        external_signals.update({sigrtmin, sigrtmin + 1, sigrtmax, sigrtmax + 1})
+        external_signals.update({sigrtmin, sigrtmin + 1, sigrtmax, sigrtmax - 1})
 
     internal_mask = build_mask(internal_signals)
     external_mask = build_mask(external_signals)
