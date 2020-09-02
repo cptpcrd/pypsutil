@@ -1,14 +1,34 @@
 import contextlib
+import os
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, List
+from typing import Any, Dict, Iterator, List
 
 import pypsutil
 
 
+def _rewrite_kwargs(kwargs: Dict[str, Any]) -> None:
+    if kwargs.pop("disable_coverage_env", True):
+        # Remove the environmental variables that enable subprocess coverage
+        # Subprocess coverage measurement doesn't work when passing programs with
+        # "python -c ...", and it leaves the data files around if the tests fail or the
+        # programs get killed.
+
+        env = kwargs.pop("env", None)
+        if env is None:
+            env = os.environ
+        env = dict(env)
+
+        env.pop("COV_CORE_DATAFILE", None)
+
+        kwargs["env"] = env
+
+
 @contextlib.contextmanager
 def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Process]:
+    _rewrite_kwargs(kwargs)
+
     subproc = subprocess.Popen(args, **kwargs)
 
     psproc = pypsutil.Process(subproc.pid)
@@ -23,6 +43,8 @@ def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.P
 
 @contextlib.contextmanager
 def managed_child_process2(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Popen]:
+    _rewrite_kwargs(kwargs)
+
     proc = pypsutil.Popen(args, **kwargs)  # type: ignore
 
     try:

@@ -12,7 +12,9 @@ def test_environ() -> None:
     env = dict(os.environ)
 
     with managed_child_process(
-        [sys.executable, "-c", "import time; time.sleep(10)", "", "a", ""], env=env
+        [sys.executable, "-c", "import time; time.sleep(10)", "", "a", ""],
+        env=env,
+        disable_coverage_env=False,
     ) as proc:
         proc_env = proc.environ()
 
