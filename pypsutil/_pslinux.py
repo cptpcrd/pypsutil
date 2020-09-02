@@ -686,10 +686,12 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
             else:
                 extra_names = []
 
-            for name in extra_names:
-                if name not in data:
+            for extra_name in extra_names:
+                if extra_name not in data:
                     try:
-                        data[name] = _util.read_file_first_line(os.path.join(dpath, name))
+                        data[extra_name] = _util.read_file_first_line(
+                            os.path.join(dpath, extra_name)
+                        )
                     except OSError:
                         pass
 
