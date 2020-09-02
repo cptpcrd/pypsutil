@@ -22,6 +22,18 @@ def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.P
 
 
 @contextlib.contextmanager
+def managed_child_process2(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Popen]:
+    proc = pypsutil.Popen(args, **kwargs)  # type: ignore
+
+    try:
+        yield proc
+    finally:
+        if proc.is_running():
+            proc.terminate()
+            proc.wait()
+
+
+@contextlib.contextmanager
 def managed_zombie_process() -> Iterator[pypsutil.Process]:
     subproc = subprocess.Popen([sys.executable, "-c", "exit()"])
 
