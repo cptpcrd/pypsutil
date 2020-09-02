@@ -87,6 +87,7 @@ class BatteryInfo:
     name: str
     percent: float
     secsleft: Optional[float]
+    secsleft_full: Optional[float]
     power_plugged: Optional[bool]
 
 
@@ -724,29 +725,61 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
 
             # Default to "unknown"
             secsleft: Optional[float] = None
+            secsleft_full: Optional[float] = None
 
             if power_plugged:
                 # If it's either "full" or "charging", then it shouldn't run out
                 secsleft = float("inf")
-            elif "current_now" in info and "charge_now" in info:
-                charge_now = int(info["charge_now"])
-                current_now = int(info["current_now"])
 
-                if current_now > 0:
-                    # Estimate the time left
-                    # Multiply by 3600 because charge_now is in uAh, so we need to convert
-                    # to seconds
-                    secsleft = (charge_now / current_now) * 3600
+                # We may be able to determine how long it will take to finish charging
+                # (We don't try this unless we're certain that the battery is actually plugged in)
 
-            elif power_plugged is False and "power_now" in info and "energy_now" in info:
-                energy_now = int(info["energy_now"])
-                power_now = int(info["power_now"])
+                if ps_status == "full":
+                    # Easy case
+                    secsleft_full = 0
 
-                if power_now > 0:
-                    # Estimate the time left
-                    # Multiply by 3600 because energy_now is in uWh, so we need to convert
-                    # to seconds
-                    secsleft = (energy_now / power_now) * 3600
+                elif "current_now" in info and "charge_now" in info and "charge_full" in info:
+                    charge_now = int(info["charge_now"])
+                    charge_full = int(info["charge_full"])
+                    current_now = int(info["current_now"])
+
+                    if current_now > 0:
+                        # Estimate the time left until it's full
+                        # Multiply by 3600 because charge_now is in uAh, so we need to convert
+                        # to seconds
+                        secsleft = ((charge_full - charge_now) / current_now) * 3600
+
+                elif "power_now" in info and "energy_now" in info and "energy_full" in info:
+                    energy_now = int(info["energy_now"])
+                    energy_full = int(info["energy_full"])
+                    power_now = int(info["power_now"])
+
+                    if power_now > 0:
+                        # Estimate the time left until it's full
+                        # Multiply by 3600 because energy_now and energy_full are in uWh, so
+                        # we need to convert to seconds
+                        secsleft_full = ((energy_full - energy_now) / power_now) * 3600
+
+            elif power_plugged is False:
+                if "current_now" in info and "charge_now" in info:
+                    charge_now = int(info["charge_now"])
+                    current_now = int(info["current_now"])
+
+                    if current_now > 0:
+                        # Estimate the time left
+                        # Multiply by 3600 because charge_now is in uAh, so we need to convert
+                        # to seconds
+                        secsleft = (charge_now / current_now) * 3600
+
+                elif "power_now" in info and "energy_now" in info:
+                    energy_now = int(info["energy_now"])
+                    power_now = int(info["power_now"])
+
+                    if power_now > 0:
+                        # Estimate the time left
+                        # Multiply by 3600 because energy_now is in uWh, so we need to convert
+                        # to seconds
+                        secsleft = (energy_now / power_now) * 3600
 
             # We can determine the percent capacity more accurately if the "charge"/"energy"
             # fields are present
@@ -761,7 +794,11 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 continue
 
             yield BatteryInfo(
-                name=name, percent=percent, secsleft=secsleft, power_plugged=power_plugged
+                name=name,
+                percent=percent,
+                secsleft=secsleft,
+                secsleft_full=secsleft_full,
+                power_plugged=power_plugged,
             )
 
         elif ps_type == "mains":
