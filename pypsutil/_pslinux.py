@@ -515,9 +515,12 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
 
             results.append(
                 (
-                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_cur_freq"))) / 1000,
-                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_min_freq"))) / 1000,
-                    int(_util.read_file(os.path.join(cpufreq_path, "scaling_max_freq"))) / 1000,
+                    int(_util.read_file_first_line(os.path.join(cpufreq_path, "scaling_cur_freq")))
+                    / 1000,
+                    int(_util.read_file_first_line(os.path.join(cpufreq_path, "scaling_min_freq")))
+                    / 1000,
+                    int(_util.read_file_first_line(os.path.join(cpufreq_path, "scaling_max_freq")))
+                    / 1000,
                 )
             )
 
@@ -671,7 +674,7 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
                     # The "type" field wasn't present in the "uevent" file.
                     try:
                         # Try looking at the "type" file.
-                        data["type"] = _util.read_file(os.path.join(entry.path, "type")).strip()
+                        data["type"] = _util.read_file_first_line(os.path.join(entry.path, "type"))
                     except OSError:
                         # We don't know the power supply type. Let's guess based on the name.
                         if data["name"].startswith("BAT"):
@@ -693,7 +696,7 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
                 for name in extra_names:
                     if name not in data:
                         try:
-                            data[name] = _util.read_file(os.path.join(entry.path, name)).strip()
+                            data[name] = _util.read_file_first_line(os.path.join(entry.path, name))
                         except OSError:
                             pass
 
@@ -753,16 +756,12 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 continue
 
             yield BatteryInfo(
-                name=name,
-                percent=percent,
-                secsleft=secsleft,
-                power_plugged=power_plugged,
+                name=name, percent=percent, secsleft=secsleft, power_plugged=power_plugged
             )
 
         elif ps_type == "mains":
             yield ACPowerInfo(
-                name=name,
-                is_online=(bool(int(info["online"])) if "online" in info else None),
+                name=name, is_online=(bool(int(info["online"])) if "online" in info else None)
             )
 
 
@@ -830,7 +829,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
     try:
         with os.scandir("/sys/class/hwmon") as hwmon_it:
             for hwmon_entry in hwmon_it:
-                name = _util.read_file(os.path.join(hwmon_entry.path, "name")).strip()
+                name = _util.read_file_first_line(os.path.join(hwmon_entry.path, "name"))
 
                 sensor_names = {
                     name.split("_")[0]
@@ -844,7 +843,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
 
                 for sensor_name in sorted(sensor_names, key=lambda name: int(name[4:])):
                     try:
-                        label = _util.read_file(
+                        label = _util.read_file_first_line(
                             os.path.join(hwmon_entry.path, sensor_name + "_label")
                         ).strip()
                     except FileNotFoundError:
@@ -852,9 +851,9 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
 
                     current = (
                         int(
-                            _util.read_file(
+                            _util.read_file_first_line(
                                 os.path.join(hwmon_entry.path, sensor_name + "_input")
-                            ).strip()
+                            )
                         )
                         / 1000
                     )
@@ -863,9 +862,9 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
                     try:
                         critical = (
                             int(
-                                _util.read_file(
+                                _util.read_file_first_line(
                                     os.path.join(hwmon_entry.path, sensor_name + "_crit")
-                                ).strip()
+                                )
                             )
                             / 1000
                         )
@@ -876,9 +875,9 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
                     try:
                         high = (
                             int(
-                                _util.read_file(
+                                _util.read_file_first_line(
                                     os.path.join(hwmon_entry.path, sensor_name + "_max")
-                                ).strip()
+                                )
                             )
                             / 1000
                         )
@@ -886,12 +885,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
                         high = critical
 
                     sensor_infos.append(
-                        TempSensorInfo(
-                            label=label,
-                            current=current,
-                            high=high,
-                            critical=critical,
-                        )
+                        TempSensorInfo(label=label, current=current, high=high, critical=critical)
                     )
 
                 results[name] = sensor_infos
