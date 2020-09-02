@@ -165,5 +165,16 @@ def translate_proc_errors(func: F) -> F:
 
 
 def read_file(fname: str) -> str:
+    """Read the contents of the given file to a string"""
     with open(fname) as file:
         return file.read()
+
+
+def read_file_first_line(fname: str) -> str:
+    """Read the first line of the given file to a string (removing a single trailing newline if
+    one is present)"""
+
+    with open(fname) as file:
+        line = file.readline()
+
+    return line[:-1] if line.endswith("\n") else line
