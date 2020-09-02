@@ -1,7 +1,8 @@
-# pylint: disable=invalid-name,too-few-public-methods
+# pylint: disable=invalid-name,too-few-public-methods,too-many-lines
 import ctypes
 import dataclasses
 import errno
+import fcntl
 import os
 import resource
 import sys
@@ -97,6 +98,34 @@ CAP_RIGHTS_VERSION = 0
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
 
+# https://github.com/freebsd/freebsd/blob/master/sys/sys/ioccom.h#L43
+IOCPARM_SHIFT = 13
+IOCPARM_MASK = (1 << IOCPARM_SHIFT) - 1
+IOC_OUT = 0x40000000
+IOC_IN = 0x80000000
+IOC_INOUT = IOC_IN | IOC_OUT
+
+
+def _IOC(inout: int, group: int, num: int, length: int) -> int:
+    return inout | ((length & IOCPARM_MASK) << 16) | (group << 8) | num
+
+
+# https://github.com/freebsd/freebsd/blob/master/sys/dev/acpica/acpiio.h
+ACPIIO_BATT_GET_UNITS = _IOC(IOC_OUT, ord("B"), 0x01, ctypes.sizeof(ctypes.c_int))
+
+ACPI_CMBAT_MAXSTRLEN = 32
+
+ACPI_BATT_STAT_DISCHARG = 0x0001
+ACPI_BATT_STAT_CHARGING = 0x0002
+ACPI_BATT_STAT_CRITICAL = 0x0004
+ACPI_BATT_STAT_INVALID = ACPI_BATT_STAT_DISCHARG | ACPI_BATT_STAT_CHARGING
+ACPI_BATT_STAT_BST_MASK = ACPI_BATT_STAT_INVALID | ACPI_BATT_STAT_CRITICAL
+ACPI_BATT_STAT_NOT_PRESENT = ACPI_BATT_STAT_BST_MASK
+
+ACPI_BATT_UNKNOWN = 0xFFFFFFFF
+
+ACPIIO_ACAD_GET_STATUS = _IOC(IOC_OUT, ord("A"), 1, ctypes.sizeof(ctypes.c_int))
+
 
 @dataclasses.dataclass
 class CPUTimes:
@@ -137,6 +166,9 @@ class ProcessMemoryInfo:
 
 
 ProcessOpenFile = _util.ProcessOpenFile
+
+BatteryInfo = _util.BatteryInfo
+ACPowerInfo = _util.ACPowerInfo
 
 
 class Rlimit(ctypes.Structure):
@@ -477,6 +509,45 @@ class VmTotal(ctypes.Structure):
         ("t_sw", ctypes.c_int16),
         ("t_pad", (ctypes.c_uint16 * 3)),
     ]
+
+
+class ACPIBif(ctypes.Structure):
+    _fields_ = [
+        ("units", ctypes.c_uint32),
+        ("dcap", ctypes.c_uint32),
+        ("lfcap", ctypes.c_uint32),
+        ("btech", ctypes.c_uint32),
+        ("dvol", ctypes.c_uint32),
+        ("wcap", ctypes.c_uint32),
+        ("lcap", ctypes.c_uint32),
+        ("gra1", ctypes.c_uint32),
+        ("gra2", ctypes.c_uint32),
+        ("model", (ctypes.c_char * ACPI_CMBAT_MAXSTRLEN)),
+        ("serial", (ctypes.c_char * ACPI_CMBAT_MAXSTRLEN)),
+        ("type", (ctypes.c_char * ACPI_CMBAT_MAXSTRLEN)),
+        ("oeminfo", (ctypes.c_char * ACPI_CMBAT_MAXSTRLEN)),
+    ]
+
+
+class ACPIBst(ctypes.Structure):
+    _fields_ = [
+        ("state", ctypes.c_uint32),
+        ("rate", ctypes.c_uint32),
+        ("cap", ctypes.c_uint32),
+        ("volt", ctypes.c_uint32),
+    ]
+
+
+class ACPIBatteryIoctlArg(ctypes.Union):
+    _fields_ = [
+        ("unit", ctypes.c_int),
+        ("bif", ACPIBif),
+        ("bst", ACPIBst),
+    ]
+
+
+ACPIIO_BATT_GET_BIF = _IOC(IOC_INOUT, ord("B"), 0x10, ctypes.sizeof(ACPIBatteryIoctlArg))
+ACPIIO_BATT_GET_BST = _IOC(IOC_INOUT, ord("B"), 0x11, ctypes.sizeof(ACPIBatteryIoctlArg))
 
 
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
@@ -859,6 +930,95 @@ def swap_memory() -> _util.SwapInfo:
         sin=swapin + vnodein,
         sout=swapout + vnodeout,
     )
+
+
+def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+    batteries = []
+    ac_adapters = []
+
+    try:
+        with open("/dev/acpi") as acpi_file:
+            # Get the number of batteries
+            c_bat_count = ctypes.c_int()
+            try:
+                fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_UNITS, c_bat_count)  # type: ignore
+            except PermissionError:
+                bat_count = 0
+            else:
+                bat_count = c_bat_count.value
+
+            # Get individual battery statistics
+            for i in range(bat_count):
+                try:
+                    arg = ACPIBatteryIoctlArg(unit=i)
+                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BIF, arg)  # type: ignore
+                    bif = ACPIBif.from_buffer_copy(arg.bif)
+
+                    arg = ACPIBatteryIoctlArg(unit=i)
+                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BST, arg)  # type: ignore
+                    bst = ACPIBst.from_buffer_copy(arg.bst)
+                except PermissionError:
+                    continue
+
+                name = "BAT{}".format(i)
+                percent = bst.cap * 100 / bif.lfcap
+
+                secsleft = None
+                secsleft_full = None
+
+                if bst.state & ACPI_BATT_STAT_INVALID == ACPI_BATT_STAT_INVALID:
+                    power_plugged = None
+                elif bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
+                    # Charging
+                    power_plugged = True
+                    if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                        secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
+                elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
+                    # Discharging
+                    power_plugged = False
+                    if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                        secsleft = (bif.lfcap / bst.rate) * 3600
+                elif bst.state == 0 and bst.cap == bif.lfcap:
+                    # Full
+                    power_plugged = True
+                else:
+                    power_plugged = None
+
+                batteries.append(
+                    BatteryInfo(
+                        name=name,
+                        percent=percent,
+                        secsleft=secsleft,
+                        secsleft_full=secsleft_full,
+                        power_plugged=power_plugged,
+                    )
+                )
+
+            # Get the status of the AC adapter
+            adapter_status = ctypes.c_int()
+            try:
+                fcntl.ioctl(acpi_file, ACPIIO_ACAD_GET_STATUS, adapter_status)  # type: ignore
+            except PermissionError:
+                pass
+            else:
+                ac_adapters.append(ACPowerInfo(name="ACAD", is_online=bool(adapter_status.value)))
+
+    except FileNotFoundError:
+        pass
+
+    return batteries, ac_adapters
+
+
+def sensors_battery() -> Optional[BatteryInfo]:
+    batteries, _ = sensors_power()
+    return batteries[0] if batteries else None
+
+
+def sensors_is_on_ac_power() -> Optional[bool]:
+    try:
+        return bool(_bsd.sysctlbyname_into("hw.acpi.acline", ctypes.c_int()).value)
+    except FileNotFoundError:
+        return None
 
 
 def boot_time() -> float:
