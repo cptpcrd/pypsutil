@@ -675,17 +675,17 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
                     except OSError:
                         # We don't know the power supply type. Let's guess based on the name.
                         if data["name"].startswith("BAT"):
-                            data["type"] = "battery"
+                            data["type"] = "Battery"
                         elif data["name"].startswith("AC"):
-                            data["type"] = "mains"
+                            data["type"] = "Mains"
                         else:
                             data["type"] = ""
 
                 # Depending on the power supply type, we may want to try to get certain extra
                 # information if it wasn't in the "uevent" file.
-                if data["type"] == "battery":
+                if data["type"].lower() == "battery":
                     extra_names = ["status", "capacity", "current_now", "charge_full", "charge_now"]
-                elif data["type"] == "mains":
+                elif data["type"].lower() == "mains":
                     extra_names = ["online"]
                 else:
                     extra_names = []
