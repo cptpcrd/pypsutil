@@ -832,7 +832,7 @@ def sensors_is_on_ac_power() -> Optional[bool]:
             if info.power_plugged:
                 # Battery that reports it's either "full" or "charging"
                 return True
-            elif info.power_plugged is None:
+            elif info.power_plugged is False:
                 # Battery that reports it's discharging
                 seen_discharging_batteries = True
         elif info.is_online:
