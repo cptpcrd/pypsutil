@@ -655,53 +655,56 @@ def swap_memory() -> SwapInfo:
 
 
 def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
+    power_supply_dir = "/sys/class/power_supply"
+
     try:
-        with os.scandir("/sys/class/power_supply") as ps_it:
-            for entry in ps_it:
-                data = {"name": entry.name}
+        for name in os.listdir(power_supply_dir):
+            dpath = os.path.join(power_supply_dir, name)
 
-                # The "uevent" file usually gives us a lot of information in one shot,
-                # so let's try that.
+            data = {"name": name}
+
+            # The "uevent" file usually gives us a lot of information in one shot,
+            # so let's try that.
+            try:
+                with open(os.path.join(dpath, "uevent")) as file:
+                    for line in file:
+                        key, value = line.strip().split("=")
+                        if key.startswith("POWER_SUPPLY_"):
+                            data[key[13:].lower()] = value
+            except OSError:
+                pass
+
+            if "type" not in data:
+                # The "type" field wasn't present in the "uevent" file.
                 try:
-                    with open(os.path.join(entry.path, "uevent")) as file:
-                        for line in file:
-                            key, value = line.strip().split("=")
-                            if key.startswith("POWER_SUPPLY_"):
-                                data[key[13:].lower()] = value
+                    # Try looking at the "type" file.
+                    data["type"] = _util.read_file_first_line(os.path.join(dpath, "type"))
                 except OSError:
-                    pass
+                    # We don't know the power supply type. Let's guess based on the name.
+                    if data["name"].startswith("BAT"):
+                        data["type"] = "Battery"
+                    elif data["name"].startswith("AC"):
+                        data["type"] = "Mains"
+                    else:
+                        data["type"] = ""
 
-                if "type" not in data:
-                    # The "type" field wasn't present in the "uevent" file.
+            # Depending on the power supply type, we may want to try to get certain extra
+            # information if it wasn't in the "uevent" file.
+            if data["type"].lower() == "battery":
+                extra_names = ["status", "capacity", "current_now", "charge_full", "charge_now"]
+            elif data["type"].lower() == "mains":
+                extra_names = ["online"]
+            else:
+                extra_names = []
+
+            for name in extra_names:
+                if name not in data:
                     try:
-                        # Try looking at the "type" file.
-                        data["type"] = _util.read_file_first_line(os.path.join(entry.path, "type"))
+                        data[name] = _util.read_file_first_line(os.path.join(dpath, name))
                     except OSError:
-                        # We don't know the power supply type. Let's guess based on the name.
-                        if data["name"].startswith("BAT"):
-                            data["type"] = "Battery"
-                        elif data["name"].startswith("AC"):
-                            data["type"] = "Mains"
-                        else:
-                            data["type"] = ""
+                        pass
 
-                # Depending on the power supply type, we may want to try to get certain extra
-                # information if it wasn't in the "uevent" file.
-                if data["type"].lower() == "battery":
-                    extra_names = ["status", "capacity", "current_now", "charge_full", "charge_now"]
-                elif data["type"].lower() == "mains":
-                    extra_names = ["online"]
-                else:
-                    extra_names = []
-
-                for name in extra_names:
-                    if name not in data:
-                        try:
-                            data[name] = _util.read_file_first_line(os.path.join(entry.path, name))
-                        except OSError:
-                            pass
-
-                yield data
+            yield data
 
     except FileNotFoundError:
         pass
