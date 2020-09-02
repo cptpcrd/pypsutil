@@ -29,6 +29,9 @@ KERN_PROC_RLIMIT = 37
 KERN_PROC_UMASK = 39
 KERN_PROC_CWD = 42
 
+CTL_HW = 6
+HW_PHYSMEM = 5
+
 KI_NSPARE_INT = 2
 KI_NSPARE_LONG = 12
 KI_NSPARE_PTR = 6
@@ -50,6 +53,8 @@ KI_CRF_GRP_OVERFLOW = 0x80000000
 
 KF_TYPE_VNODE = 1
 
+XSWDEV_VERSION = 2
+
 gid_t = ctypes.c_uint32  # pylint: disable=invalid-name
 rlim_t = ctypes.c_int64  # pylint: disable=invalid-name
 
@@ -64,6 +69,8 @@ else:
 
 fixpt_t = ctypes.c_uint32
 lwpid_t = ctypes.c_int32
+
+dev_t = ctypes.c_uint64
 
 if os.uname().machine.startswith("x86") and sys.maxsize <= 2 ** 32:
     # x86, 32-bit
@@ -100,6 +107,24 @@ class CPUTimes:
     system: float
     irq: float
     idle: float
+
+
+@dataclasses.dataclass
+class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
+    total: int
+    available: int
+    used: int
+    free: int
+    active: int
+    inactive: int
+    buffers: int
+    cached: int
+    shared: int
+    wired: int
+
+    @property
+    def percent(self) -> float:
+        return 100 - self.available * 100.0 / self.total
 
 
 @dataclasses.dataclass
@@ -424,6 +449,36 @@ class KinfoFile(ctypes.Structure):
     ]
 
 
+class XswDev(ctypes.Structure):
+    _fields_ = [
+        ("xsw_version", ctypes.c_uint),
+        ("xsw_dev", dev_t),
+        ("xsw_flags", ctypes.c_int),
+        ("xsw_nblks", ctypes.c_int),
+        ("xsw_used", ctypes.c_int),
+    ]
+
+
+class VmTotal(ctypes.Structure):
+    _fields_ = [
+        ("t_vm", ctypes.c_uint64),
+        ("t_avm", ctypes.c_uint64),
+        ("t_rm", ctypes.c_uint64),
+        ("t_arm", ctypes.c_uint64),
+        ("t_vmshr", ctypes.c_uint64),
+        ("t_avmshr", ctypes.c_uint64),
+        ("t_rmshr", ctypes.c_uint64),
+        ("t_armshr", ctypes.c_uint64),
+        ("t_free", ctypes.c_uint64),
+        ("t_rq", ctypes.c_int16),
+        ("t_dw", ctypes.c_int16),
+        ("t_pw", ctypes.c_int16),
+        ("t_sl", ctypes.c_int16),
+        ("t_sw", ctypes.c_int16),
+        ("t_pad", (ctypes.c_uint16 * 3)),
+    ]
+
+
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
 
@@ -727,6 +782,83 @@ def percpu_times() -> List[CPUTimes]:
         CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes[i * 5: i * 5 + 5]))
         for i in range(len(cptimes) // 5)
     ]
+
+
+def cpu_stats() -> Tuple[int, int, int, int]:
+    return (
+        _bsd.sysctlbyname_into("vm.stats.sys.v_switch", ctypes.c_uint64()).value,
+        _bsd.sysctlbyname_into("vm.stats.sys.v_intr", ctypes.c_uint64()).value,
+        _bsd.sysctlbyname_into("vm.stats.sys.v_soft", ctypes.c_uint64()).value,
+        _bsd.sysctlbyname_into("vm.stats.sys.v_syscall", ctypes.c_uint64()).value,
+    )
+
+
+def virtual_memory() -> VirtualMemoryInfo:
+    total = _bsd.sysctl_into([CTL_HW, HW_PHYSMEM], ctypes.c_ulong()).value
+
+    free_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_free_count", ctypes.c_uint()).value
+    active_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_active_count", ctypes.c_uint32()).value
+    inactive_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_inactive_count", ctypes.c_uint32()).value
+    wired_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_wire_count", ctypes.c_uint32()).value
+
+    bufspace = _bsd.sysctlbyname_into("vfs.bufspace", ctypes.c_ulong()).value
+
+    vmtotal = _bsd.sysctlbyname_into("vm.vmtotal", VmTotal())
+
+    return VirtualMemoryInfo(
+        total=total,
+        available=(inactive_pages + free_pages) * _util.PAGESIZE,
+        used=(active_pages + wired_pages) * _util.PAGESIZE,
+        free=free_pages * _util.PAGESIZE,
+        active=active_pages * _util.PAGESIZE,
+        inactive=inactive_pages * _util.PAGESIZE,
+        buffers=bufspace,
+        cached=0,
+        shared=(vmtotal.t_vmshr + vmtotal.t_rmshr) * _util.PAGESIZE,
+        wired=wired_pages * _util.PAGESIZE,
+    )
+
+
+def swap_memory() -> _util.SwapInfo:
+    dmmax = _bsd.sysctlbyname_into("vm.dmmax", ctypes.c_uint32()).value
+
+    swap_total_pages = 0
+    swap_used_pages = 0
+
+    swapdev = XswDev()
+
+    mib_prefix = _bsd.sysctlnametomib("vm.swap_info", maxlen=2)
+
+    i = 0
+    while True:
+        try:
+            _bsd.sysctl([*mib_prefix, i], None, swapdev)
+        except FileNotFoundError:
+            break
+
+        if swapdev.xsw_version != XSWDEV_VERSION:
+            raise _ffi.build_oserror(errno.EINVAL)
+
+        swap_total_pages += swapdev.xsw_nblks - dmmax
+        swap_used_pages += swapdev.xsw_used
+
+        i += 1
+
+    swap_free_pages = swap_total_pages - swap_used_pages
+
+    swapin = _bsd.sysctlbyname_into("vm.stats.vm.v_swapin", ctypes.c_uint32()).value
+    swapout = _bsd.sysctlbyname_into("vm.stats.vm.v_swapout", ctypes.c_uint32()).value
+
+    vnodein = _bsd.sysctlbyname_into("vm.stats.vm.v_vnodein", ctypes.c_uint32()).value
+    vnodeout = _bsd.sysctlbyname_into("vm.stats.vm.v_vnodeout", ctypes.c_uint32()).value
+
+    return _util.SwapInfo(
+        total=swap_total_pages * _util.PAGESIZE,
+        used=swap_used_pages * _util.PAGESIZE,
+        free=swap_free_pages * _util.PAGESIZE,
+        sin=swapin + vnodein,
+        sout=swapout + vnodeout,
+    )
 
 
 def boot_time() -> float:
