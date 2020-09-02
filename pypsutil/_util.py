@@ -5,7 +5,19 @@ import os
 import resource
 import signal
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Set, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from ._errors import AccessDenied, NoSuchProcess
 
@@ -78,6 +90,21 @@ class SwapInfo:
     @property
     def percent(self) -> float:
         return (self.total - self.free) * 100.0 / self.total if self.total else 0
+
+
+@dataclasses.dataclass
+class BatteryInfo:
+    name: str
+    percent: float
+    secsleft: Optional[float]
+    secsleft_full: Optional[float]
+    power_plugged: Optional[bool]
+
+
+@dataclasses.dataclass
+class ACPowerInfo:
+    name: str
+    is_online: Optional[bool]
 
 
 def get_procfs_path() -> str:

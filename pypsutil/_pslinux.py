@@ -82,19 +82,8 @@ class ProcessMemoryInfo:
     data: int
 
 
-@dataclasses.dataclass
-class BatteryInfo:
-    name: str
-    percent: float
-    secsleft: Optional[float]
-    secsleft_full: Optional[float]
-    power_plugged: Optional[bool]
-
-
-@dataclasses.dataclass
-class ACPowerInfo:
-    name: str
-    is_online: Optional[bool]
+BatteryInfo = _util.BatteryInfo
+ACPowerInfo = _util.ACPowerInfo
 
 
 @dataclasses.dataclass
