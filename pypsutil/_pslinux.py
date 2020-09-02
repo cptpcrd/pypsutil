@@ -722,7 +722,9 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 "unknown": None,
             }[ps_status]
 
-            secsleft: Optional[float]
+            # Default to "unknown"
+            secsleft: Optional[float] = None
+
             if power_plugged:
                 # If it's either "full" or "charging", then it shouldn't run out
                 secsleft = float("inf")
@@ -730,11 +732,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 charge_now = int(info["charge_now"])
                 current_now = int(info["current_now"])
 
-                if current_now == 0:
-                    # The battery says it's neither "full" nor "charging". but no current
-                    # appears to be flowing.
-                    secsleft = None
-                else:
+                if current_now > 0:
                     # Estimate the time left
                     # Multiply by 3600 because charge_now is in uAh, so we need to convert
                     # to seconds
@@ -744,19 +742,11 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 energy_now = int(info["energy_now"])
                 power_now = int(info["power_now"])
 
-                if power_now == 0:
-                    # The battery says it's neither "full" nor "charging". but no power
-                    # appears to be flowing.
-                    secsleft = None
-                else:
+                if power_now > 0:
                     # Estimate the time left
                     # Multiply by 3600 because energy_now is in uWh, so we need to convert
                     # to seconds
                     secsleft = (energy_now / power_now) * 3600
-
-            else:
-                # Unknown
-                secsleft = None
 
             # We can determine the percent capacity more accurately if the "charge"/"energy"
             # fields are present
