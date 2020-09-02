@@ -39,7 +39,8 @@ class DiskUsage:
     used: int
     free: int
 
-    percent: float
+    def percent(self) -> float:
+        return self.used * 100.0 / (self.used + self.free)
 
 
 def disk_usage(path: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]) -> DiskUsage:
@@ -49,6 +50,4 @@ def disk_usage(path: Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]
     free = vfs_stat.f_bavail * vfs_stat.f_frsize
     used = total - vfs_stat.f_bfree * vfs_stat.f_frsize
 
-    percent = used * 100.0 / (used + free)
-
-    return DiskUsage(total=total, free=free, used=used, percent=percent)
+    return DiskUsage(total=total, free=free, used=used)
