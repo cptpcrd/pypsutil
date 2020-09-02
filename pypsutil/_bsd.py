@@ -1,6 +1,6 @@
 import ctypes
 import errno
-from typing import Collection, Optional, Union
+from typing import Collection, List, Optional, TypeVar, Union
 
 from . import _ffi
 
@@ -24,6 +24,13 @@ libc.sysctlbyname.argtypes = (
     ctypes.c_size_t,
 )
 libc.sysctlbyname.restype = ctypes.c_int
+
+libc.sysctlnametomib.argtypes = (
+    ctypes.c_char_p,
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_size_t),
+)
+libc.sysctlnametomib.restype = ctypes.c_int
 
 
 def sysctl(
@@ -54,6 +61,24 @@ def sysctl(
         raise _ffi.build_oserror(ctypes.get_errno())
 
     return old_size.value
+
+
+def sysctlnametomib(name: str, *, maxlen: Optional[int] = None) -> List[int]:
+    miblen = ctypes.c_size_t()
+
+    if maxlen is None:
+        if libc.sysctlnametomib(name.encode(), None, ctypes.byref(miblen)) < 0:
+            raise _ffi.build_oserror(ctypes.get_errno())
+
+        maxlen = miblen.value
+
+    mib = (ctypes.c_int * maxlen)()
+    miblen.value = maxlen
+
+    if libc.sysctlnametomib(name.encode(), mib, ctypes.byref(miblen)) < 0:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    return mib[: miblen.value]
 
 
 def sysctlbyname(
@@ -112,3 +137,34 @@ def sysctlbyname_bytes_retry(name: str, new: Optional[bytes], trim_nul: bool = F
                 raise
         else:
             return (buf.value if trim_nul else buf.raw)[:old_len]
+
+
+C = TypeVar("C")  # pylint: disable=invalid-name
+
+
+def sysctl_into(
+    mib: Collection[int],
+    old: C,
+    *,
+    new: Union[None, bytes, ctypes.Array, ctypes.Structure] = None,  # type: ignore
+) -> C:
+    old_len = sysctl(mib, new, old)  # type: ignore
+
+    if old_len != ctypes.sizeof(old):  # type: ignore
+        raise _ffi.build_oserror(errno.ENOMEM)
+
+    return old
+
+
+def sysctlbyname_into(
+    name: str,
+    old: C,
+    *,
+    new: Union[None, bytes, ctypes.Array, ctypes.Structure] = None,  # type: ignore
+) -> C:
+    old_len = sysctlbyname(name, new, old)  # type: ignore
+
+    if old_len != ctypes.sizeof(old):  # type: ignore
+        raise _ffi.build_oserror(errno.ENOMEM)
+
+    return old
