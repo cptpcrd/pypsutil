@@ -739,6 +739,21 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                     # Multiply by 3600 because charge_now is in uAh, so we need to convert
                     # to seconds
                     secsleft = (charge_now / current_now) * 3600
+
+            elif power_plugged is False and "power_now" in info and "energy_now" in info:
+                energy_now = int(info["energy_now"])
+                power_now = int(info["power_now"])
+
+                if power_now == 0:
+                    # The battery says it's neither "full" nor "charging". but no power
+                    # appears to be flowing.
+                    secsleft = None
+                else:
+                    # Estimate the time left
+                    # Multiply by 3600 because energy_now is in uWh, so we need to convert
+                    # to seconds
+                    secsleft = (energy_now / power_now) * 3600
+
             else:
                 # Unknown
                 secsleft = None
