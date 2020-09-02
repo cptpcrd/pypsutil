@@ -81,6 +81,19 @@ if hasattr(_psimpl, "swap_memory"):
 
     swap_memory = _psimpl.swap_memory
 
+if hasattr(_psimpl, "sensors_power"):
+    ACPowerInfo = _psimpl.ACPowerInfo
+    BatteryInfo = _psimpl.BatteryInfo
+
+    sensors_power = _psimpl.sensors_power
+    sensors_battery = _psimpl.sensors_battery
+    sensors_is_on_ac_power = _psimpl.sensors_is_on_ac_power
+
+if hasattr(_psimpl, "sensors_temperatures"):
+    TempSensorInfo = _psimpl.TempSensorInfo
+
+    sensors_temperatures = _psimpl.sensors_temperatures
+
 
 boot_time = _psimpl.boot_time
 

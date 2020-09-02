@@ -82,6 +82,40 @@ class ProcessMemoryInfo:
     data: int
 
 
+@dataclasses.dataclass
+class BatteryInfo:
+    name: str
+    percent: float
+    secsleft: Optional[float]
+    power_plugged: Optional[bool]
+
+
+@dataclasses.dataclass
+class ACPowerInfo:
+    name: str
+    is_online: Optional[bool]
+
+
+@dataclasses.dataclass
+class TempSensorInfo:
+    label: str
+    current: float
+    high: Optional[float]
+    critical: Optional[float]
+
+    @property
+    def current_farenheit(self) -> float:
+        return self.current * 1.8 + 32
+
+    @property
+    def high_farenheit(self) -> Optional[float]:
+        return (self.high * 1.8 + 32) if self.high is not None else None
+
+    @property
+    def critical_farenheit(self) -> Optional[float]:
+        return (self.critical * 1.8 + 32) if self.critical is not None else None
+
+
 SwapInfo = _util.SwapInfo
 ThreadInfo = _util.ThreadInfo
 
@@ -614,6 +648,258 @@ def swap_memory() -> SwapInfo:
         sin=swap_in,
         sout=swap_out,
     )
+
+
+def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
+    try:
+        with os.scandir("/sys/class/power_supply") as ps_it:
+            for entry in ps_it:
+                data = {"name": entry.name}
+
+                # The "uevent" file usually gives us a lot of information in one shot,
+                # so let's try that.
+                try:
+                    with open(os.path.join(entry.path, "uevent")) as file:
+                        for line in file:
+                            key, value = line.strip().split("=")
+                            if key.startswith("POWER_SUPPLY_"):
+                                data[key[13:].lower()] = value
+                except OSError:
+                    pass
+
+                if "type" not in data:
+                    # The "type" field wasn't present in the "uevent" file.
+                    try:
+                        # Try looking at the "type" file.
+                        data["type"] = _util.read_file(os.path.join(entry.path, "type"))
+                    except OSError:
+                        # We don't know the power supply type. Let's guess based on the name.
+                        if data["name"].startswith("BAT"):
+                            data["type"] = "battery"
+                        elif data["name"].startswith("AC"):
+                            data["type"] = "mains"
+                        else:
+                            data["type"] = ""
+
+                # Depending on the power supply type, we may want to try to get certain extra
+                # information if it wasn't in the "uevent" file.
+                if data["type"] == "battery":
+                    extra_names = ["status", "capacity", "current_now", "charge_full", "charge_now"]
+                elif data["type"] == "mains":
+                    extra_names = ["online"]
+                else:
+                    extra_names = []
+
+                for name in extra_names:
+                    if name not in data:
+                        try:
+                            data[name] = _util.read_file(os.path.join(entry.path, name))
+                        except OSError:
+                            pass
+
+                yield data
+
+    except FileNotFoundError:
+        pass
+
+
+def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
+    for info in _iter_power_supply_info():
+        name = info["name"]
+        ps_type = info["type"].lower()
+
+        if ps_type == "battery":
+            ps_status = info.get("status", "unknown").lower()
+
+            power_plugged = {
+                "full": True,
+                "charging": True,
+                "discharging": False,
+                "not_charging": None,
+                "unknown": None,
+            }[ps_status]
+
+            secsleft: Optional[float]
+            if power_plugged:
+                # If it's either "full" or "charging", then it shouldn't run out
+                secsleft = float("inf")
+            elif "current_now" in info and "charge_now" in info:
+                charge_now = int(info["charge_now"])
+                current_now = int(info["current_now"])
+
+                if current_now == 0:
+                    # The battery says it's neither "full" nor "charging". but no current
+                    # appears to be flowing.
+                    secsleft = None
+                else:
+                    # Estimate the time left
+                    # Multiply by 3600 because charge_now is in uAh, so we need to convert
+                    # to seconds
+                    secsleft = (charge_now / current_now) * 3600
+            else:
+                # Unknown
+                secsleft = None
+
+            # We can determine the percent capacity more accurately if the "charge"/"energy"
+            # fields are present
+            if "charge_full" in info and "charge_now" in info:
+                percent = int(info["charge_now"]) * 100 / int(info["charge_full"])
+            elif "energy_full" in info and "energy_now" in info:
+                percent = int(info["energy_now"]) * 100 / int(info["energy_full"])
+            elif "capacity" in info:
+                percent = float(int(info["capacity"]))
+            else:
+                # We can't even determine the percent capacity. Something is wrong.
+                continue
+
+            yield BatteryInfo(
+                name=name,
+                percent=percent,
+                secsleft=secsleft,
+                power_plugged=power_plugged,
+            )
+
+        elif ps_type == "mains":
+            yield ACPowerInfo(
+                name=name,
+                is_online=(bool(int(info["online"])) if "online" in info else None),
+            )
+
+
+def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+    batteries = []
+    ac_powers = []
+
+    for info in _iter_sensors_power():
+        if isinstance(info, BatteryInfo):
+            batteries.append(info)
+        else:
+            ac_powers.append(info)
+
+    return batteries, ac_powers
+
+
+def sensors_battery() -> Optional[BatteryInfo]:
+    for info in _iter_sensors_power():
+        if isinstance(info, BatteryInfo):
+            return info
+
+    return None
+
+
+def sensors_is_on_ac_power() -> Optional[bool]:
+    seen_discharging_batteries = False
+    seen_offline_ac_adapters = False
+    seen_unknown_ac_adapters = False
+
+    for info in _iter_sensors_power():
+        if isinstance(info, BatteryInfo):
+            if info.power_plugged:
+                # Battery that reports it's either "full" or "charging"
+                return True
+            elif info.power_plugged is None:
+                # Battery that reports it's discharging
+                seen_discharging_batteries = True
+        elif info.is_online:
+            # AC adapter that reports it's online
+            return True
+        elif info.is_online is False:
+            # AC adapter that reports it's not online
+            seen_offline_ac_adapters = True
+        else:
+            # AC adapter that is in an unknown state
+            seen_unknown_ac_adapters = True
+
+    # Return False if we saw:
+    # 1. At least one AC power supply that was offline
+    # 2. No AC power supplies where we couldn't tell if they were online or offline
+    # 3. No batteries that were discharging
+    # Otherwise, return None.
+    return (
+        False
+        if seen_offline_ac_adapters
+        and not seen_unknown_ac_adapters
+        and not seen_discharging_batteries
+        else None
+    )
+
+
+def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
+    results = {}
+
+    try:
+        with os.scandir("/sys/class/hwmon") as hwmon_it:
+            for hwmon_entry in hwmon_it:
+                name = _util.read_file(os.path.join(hwmon_entry.path, "name")).strip()
+
+                sensor_names = {
+                    name.split("_")[0]
+                    for name in os.listdir(hwmon_entry.path)
+                    if name.startswith("temp")
+                }
+                if not sensor_names:
+                    continue
+
+                sensor_infos = []
+
+                for sensor_name in sorted(sensor_names, key=lambda name: int(name[4:])):
+                    try:
+                        label = _util.read_file(
+                            os.path.join(hwmon_entry.path, sensor_name + "_label")
+                        ).strip()
+                    except FileNotFoundError:
+                        label = ""
+
+                    current = (
+                        int(
+                            _util.read_file(
+                                os.path.join(hwmon_entry.path, sensor_name + "_input")
+                            ).strip()
+                        )
+                        / 1000
+                    )
+
+                    critical: Optional[float]
+                    try:
+                        critical = (
+                            int(
+                                _util.read_file(
+                                    os.path.join(hwmon_entry.path, sensor_name + "_crit")
+                                ).strip()
+                            )
+                            / 1000
+                        )
+                    except FileNotFoundError:
+                        critical = None
+
+                    high: Optional[float]
+                    try:
+                        high = (
+                            int(
+                                _util.read_file(
+                                    os.path.join(hwmon_entry.path, sensor_name + "_max")
+                                ).strip()
+                            )
+                            / 1000
+                        )
+                    except FileNotFoundError:
+                        high = critical
+
+                    sensor_infos.append(
+                        TempSensorInfo(
+                            label=label,
+                            current=current,
+                            high=high,
+                            critical=critical,
+                        )
+                    )
+
+                results[name] = sensor_infos
+
+    except FileNotFoundError:
+        pass
+
+    return results
 
 
 _cached_boot_time = None

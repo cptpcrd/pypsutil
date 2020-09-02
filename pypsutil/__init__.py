@@ -40,6 +40,13 @@ _OPTIONAL_FUNCS = [
     "virtual_memory",
     "SwapInfo",
     "swap_memory",
+    "ACPowerInfo",
+    "BatteryInfo",
+    "sensors_power",
+    "sensors_battery",
+    "sensors_is_on_ac_power",
+    "TempSensorInfo",
+    "sensors_temperatures",
 ]
 
 for name in _OPTIONAL_FUNCS:
