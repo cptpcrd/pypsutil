@@ -671,7 +671,7 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
                     # The "type" field wasn't present in the "uevent" file.
                     try:
                         # Try looking at the "type" file.
-                        data["type"] = _util.read_file(os.path.join(entry.path, "type"))
+                        data["type"] = _util.read_file(os.path.join(entry.path, "type")).strip()
                     except OSError:
                         # We don't know the power supply type. Let's guess based on the name.
                         if data["name"].startswith("BAT"):
@@ -693,7 +693,7 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
                 for name in extra_names:
                     if name not in data:
                         try:
-                            data[name] = _util.read_file(os.path.join(entry.path, name))
+                            data[name] = _util.read_file(os.path.join(entry.path, name)).strip()
                         except OSError:
                             pass
 
