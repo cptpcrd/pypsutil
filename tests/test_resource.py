@@ -96,8 +96,8 @@ def test_proc_cpu_times_self() -> None:
     cpu_times: pypsutil.ProcessCPUTimes = proc.cpu_times()
     os_times = os.times()
 
-    assert math.isclose(cpu_times.user, os_times.user, abs_tol=0.01)
-    assert math.isclose(cpu_times.system, os_times.system, abs_tol=0.01)
+    assert math.isclose(cpu_times.user, os_times.user, abs_tol=0.02)
+    assert math.isclose(cpu_times.system, os_times.system, abs_tol=0.02)
 
 
 def test_proc_cpu_times_children() -> None:
@@ -110,11 +110,11 @@ def test_proc_cpu_times_children() -> None:
         # Combined user + system
         assert cpu_times.children_user == cpu_times.children_system
         assert math.isclose(
-            cpu_times.children_user, os_times.children_user + os_times.children_system, abs_tol=0.01
+            cpu_times.children_user, os_times.children_user + os_times.children_system, abs_tol=0.02
         )
     elif pypsutil.MACOS:
         assert cpu_times.children_user == 0
         assert cpu_times.children_system == 0
     else:
-        assert math.isclose(cpu_times.children_user, os_times.children_user, abs_tol=0.01)
-        assert math.isclose(cpu_times.children_system, os_times.children_system, abs_tol=0.01)
+        assert math.isclose(cpu_times.children_user, os_times.children_user, abs_tol=0.02)
+        assert math.isclose(cpu_times.children_system, os_times.children_system, abs_tol=0.02)
