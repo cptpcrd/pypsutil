@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Optional
 
 import pypsutil
 
@@ -79,3 +79,37 @@ def get_dead_process() -> pypsutil.Process:
         subproc.wait()
 
     return proc
+
+
+@contextlib.contextmanager
+def replace_info_directories(
+    *, procfs: Optional[str] = None, sysfs: Optional[str] = None
+) -> Iterator[None]:
+    old_procfs = pypsutil.PROCFS_PATH
+    old_sysfs = getattr("pypsutil", "SYSFS_PATH", None)
+
+    try:
+        if procfs is not None:
+            pypsutil.PROCFS_PATH = procfs
+
+        if sysfs is not None:
+            pypsutil.SYSFS_PATH = sysfs
+
+        yield
+    finally:
+        pypsutil.PROCFS_PATH = old_procfs
+
+        if old_sysfs is not None:
+            pypsutil.SYSFS_PATH = old_sysfs
+
+
+def populate_directory(root_dir: str, structure: Dict[str, Any]) -> None:
+    for name, item in structure.items():
+        path = os.path.join(root_dir, name)
+
+        if isinstance(item, str):
+            with open(path, "x") as file:
+                file.write(item)
+        else:
+            os.mkdir(path)
+            populate_directory(path, item)
