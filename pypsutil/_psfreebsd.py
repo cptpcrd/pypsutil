@@ -1085,7 +1085,7 @@ def sensors_battery_total() -> Optional[BatteryInfo]:
             if (
                 bst.state & ACPI_BATT_STAT_NOT_PRESENT != ACPI_BATT_STAT_NOT_PRESENT
                 and bst.state & ACPI_BATT_STAT_INVALID != ACPI_BATT_STAT_INVALID
-            ):
+            ) and bst.rate != ACPI_BATT_UNKNOWN:
                 # See if the battery is charging or discharging and adjust the rates
                 if bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
                     total_charge_rate += power_flow
@@ -1104,7 +1104,7 @@ def sensors_battery_total() -> Optional[BatteryInfo]:
             combined_state_flags, total_energy_now == total_energy_full
         )
 
-        percent = total_energy_now / total_energy_full
+        percent = total_energy_now * 100 / total_energy_full
 
         secsleft = None
         secsleft_full = None
@@ -1140,7 +1140,7 @@ def sensors_battery_total() -> Optional[BatteryInfo]:
             secsleft = float("inf")
             secsleft_full = 0
         elif status == BatteryStatus.DISCHARGING:
-            minutes_remaining = _bsd.sysctlbyname_into("hw.acpi.battery.min", ctypes.c_int()).value
+            minutes_remaining = _bsd.sysctlbyname_into("hw.acpi.battery.time", ctypes.c_int()).value
             if minutes_remaining > 0:
                 secsleft = minutes_remaining * 60.0
 
