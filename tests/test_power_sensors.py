@@ -1,7 +1,8 @@
 # pylint: disable=no-member
 import pathlib
+import shutil
 import sys
-from typing import Dict
+from typing import Dict, Optional
 
 import pytest
 
@@ -164,10 +165,144 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
             pypsutil.ACPowerInfo(name="AC1", is_online=False),  # type: ignore
         ]
 
-        # Returns the first battery
-        assert pypsutil.sensors_battery() == batteries[0]  # type: ignore
-
         assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+def test_sensors_battery(tmp_path: pathlib.Path) -> None:
+    def test_info(
+        ps_info: Dict[str, Dict[str, str]],
+        battery_info: Optional[pypsutil.BatteryInfo],  # type: ignore
+    ) -> None:
+        populate_directory(str(tmp_path), {"class": {"power_supply": ps_info}})
+
+        assert pypsutil.sensors_battery() == battery_info  # type: ignore
+
+        shutil.rmtree(tmp_path / "class")
+
+    with replace_info_directories(sysfs=str(tmp_path)):
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "full",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "1",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=float("inf"),
+                secsleft_full=0,
+                power_plugged=True,
+            ),
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=None,
+                secsleft_full=None,
+                power_plugged=None,
+            ),
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "1",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=float("inf"),
+                secsleft_full=None,
+                power_plugged=True,
+            ),
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "0",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=None,
+                secsleft_full=None,
+                power_plugged=False,
+            ),
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "discharging",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=None,
+                secsleft_full=None,
+                power_plugged=False,
+            ),
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "charging",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            pypsutil.BatteryInfo(  # type: ignore
+                name="BAT0",
+                percent=100,
+                secsleft=float("inf"),
+                secsleft_full=None,
+                power_plugged=True,
+            ),
+        )
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore

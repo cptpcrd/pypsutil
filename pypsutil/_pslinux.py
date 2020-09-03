@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import dataclasses
 import os
 import resource
@@ -838,11 +839,35 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
 
 
 def sensors_battery() -> Optional[BatteryInfo]:
+    bat_info = None
+
+    ac_adapter_online = None
+
     for info in _iter_sensors_power():
         if isinstance(info, BatteryInfo):
-            return info
+            if info.power_plugged is not None:
+                # We know enough to return now
+                return info
 
-    return None
+            # Let's save it and try to collect more information
+            bat_info = info
+        elif info.is_online:
+            # At least one adapter is online
+            ac_adapter_online = True
+        elif ac_adapter_online is None:
+            # This adapter is offline, and we haven't encountered any
+            # other adapters yet.
+            ac_adapter_online = False
+
+    if bat_info is not None and bat_info.power_plugged is None:
+        # Unable to determine based on the battery status; use the AC adapter status
+        if ac_adapter_online:
+            bat_info.power_plugged = True
+            bat_info.secsleft = float("inf")
+        elif ac_adapter_online is False:
+            bat_info.power_plugged = False
+
+    return bat_info
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:
