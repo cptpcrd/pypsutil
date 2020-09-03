@@ -3,6 +3,7 @@ import os
 import resource
 import signal
 import stat
+import sys
 import time
 from typing import (
     TYPE_CHECKING,
@@ -121,6 +122,10 @@ class TempSensorInfo:
 
 SwapInfo = _util.SwapInfo
 ThreadInfo = _util.ThreadInfo
+
+
+def _get_sysfs_path() -> str:
+    return sys.modules[__package__].SYSFS_PATH  # type: ignore
 
 
 def parse_sigmask(raw_mask: str, *, include_internal: bool = False) -> Set[int]:
@@ -503,7 +508,7 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
     # First, try looking in /sys/devices/system
     # This allows us to get the current, minimum, and maximum frequencies.
     try:
-        cpu_device_dir = "/sys/devices/system/cpu"
+        cpu_device_dir = os.path.join(_get_sysfs_path(), "devices/system/cpu")
         names = [
             name
             for name in os.listdir(cpu_device_dir)
@@ -710,7 +715,7 @@ class PowerSupplyInfo:
 
 
 def _iter_power_supply_info() -> Iterator[PowerSupplyInfo]:
-    power_supply_dir = "/sys/class/power_supply"
+    power_supply_dir = os.path.join(_get_sysfs_path(), "class/power_supply")
 
     try:
         for name in sorted(os.listdir(power_supply_dir)):
@@ -881,7 +886,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
     results = {}
 
     try:
-        with os.scandir("/sys/class/hwmon") as hwmon_it:
+        with os.scandir(os.path.join(_get_sysfs_path(), "class/hwmon")) as hwmon_it:
             for hwmon_entry in hwmon_it:
                 name = _util.read_file_first_line(os.path.join(hwmon_entry.path, "name"))
 

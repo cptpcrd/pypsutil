@@ -95,3 +95,7 @@ for name in _OPTIONAL_FUNCS:
         __all__.append(name)
 
 PROCFS_PATH = "/proc"
+
+if LINUX:
+    SYSFS_PATH = "/sys"
+    __all__.append("SYSFS_PATH")
