@@ -319,6 +319,107 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
+    def test_info(
+        ps_info: Dict[str, Dict[str, str]],
+        ac_power_result: Optional[bool],
+    ) -> None:
+        populate_directory(str(tmp_path), {"class": {"power_supply": ps_info}})
+
+        assert pypsutil.sensors_is_on_ac_power() == ac_power_result  # type: ignore
+
+        shutil.rmtree(tmp_path / "class")
+
+    with replace_info_directories(sysfs=str(tmp_path)):
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "full",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "1",
+                },
+            },
+            True,
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            None,
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "1",
+                },
+            },
+            True,
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "unknown",
+                    "current_now": "100",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+                "AC0": {
+                    "type": "Mains\n",
+                    "online": "0",
+                },
+            },
+            False,
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "discharging",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            False,
+        )
+
+        test_info(
+            {
+                "BAT0": {
+                    "type": "Battery\n",
+                    "status": "charging",
+                    "charge_now": "10000",
+                    "charge_full": "10000",
+                },
+            },
+            True,
+        )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
 def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(sysfs=str(tmp_path)):
         assert pypsutil.sensors_power() == ([], [])  # type: ignore
