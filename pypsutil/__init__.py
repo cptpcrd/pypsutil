@@ -42,6 +42,7 @@ _OPTIONAL_FUNCS = [
     "swap_memory",
     "ACPowerInfo",
     "BatteryInfo",
+    "BatteryStatus",
     "sensors_power",
     "sensors_battery",
     "sensors_is_on_ac_power",

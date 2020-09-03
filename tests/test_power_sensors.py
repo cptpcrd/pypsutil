@@ -114,13 +114,15 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=100.0,
                 secsleft=float("inf"),
                 secsleft_full=0,
-                power_plugged=True,
+                status=pypsutil.BatteryStatus.FULL,  # type: ignore
+                power_plugged=None,
             ),
             pypsutil.BatteryInfo(  # type: ignore
                 name="BAT1",
                 percent=89.9,
                 secsleft=float("inf"),
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
                 power_plugged=True,
             ),
             pypsutil.BatteryInfo(  # type: ignore
@@ -128,6 +130,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=70,
                 secsleft=7200,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
                 power_plugged=False,
             ),
             pypsutil.BatteryInfo(  # type: ignore
@@ -135,6 +138,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=70,
                 secsleft=float("inf"),
                 secsleft_full=3600,
+                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
                 power_plugged=True,
             ),
             pypsutil.BatteryInfo(  # type: ignore
@@ -142,6 +146,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=70,
                 secsleft=7200,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
                 power_plugged=False,
             ),
             pypsutil.BatteryInfo(  # type: ignore
@@ -149,6 +154,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=70,
                 secsleft=None,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
                 power_plugged=None,
             ),
             pypsutil.BatteryInfo(  # type: ignore
@@ -156,6 +162,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 percent=70,
                 secsleft=float("inf"),
                 secsleft_full=3600,
+                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
                 power_plugged=True,
             ),
         ]
@@ -199,6 +206,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=float("inf"),
                 secsleft_full=0,
+                status=pypsutil.BatteryStatus.FULL,  # type: ignore
                 power_plugged=True,
             ),
         )
@@ -218,6 +226,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=None,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
                 power_plugged=None,
             ),
         )
@@ -241,6 +250,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=float("inf"),
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
                 power_plugged=True,
             ),
         )
@@ -264,6 +274,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=None,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
                 power_plugged=False,
             ),
         )
@@ -282,6 +293,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=None,
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
                 power_plugged=False,
             ),
         )
@@ -300,6 +312,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                 percent=100,
                 secsleft=float("inf"),
                 secsleft_full=None,
+                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
                 power_plugged=True,
             ),
         )

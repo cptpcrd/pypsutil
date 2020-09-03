@@ -92,12 +92,20 @@ class SwapInfo:
         return (self.total - self.free) * 100.0 / self.total if self.total else 0
 
 
+class BatteryStatus(enum.Enum):
+    CHARGING = "charging"
+    DISCHARGING = "discharging"
+    FULL = "full"
+    UNKNOWN = "unknown"
+
+
 @dataclasses.dataclass
 class BatteryInfo:
     name: str
     percent: float
     secsleft: Optional[float]
     secsleft_full: Optional[float]
+    status: BatteryStatus
     power_plugged: Optional[bool]
 
 

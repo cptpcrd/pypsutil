@@ -98,6 +98,7 @@ class ProcessMemoryInfo:
 
 
 BatteryInfo = _util.BatteryInfo
+BatteryStatus = _util.BatteryStatus
 ACPowerInfo = _util.ACPowerInfo
 
 
@@ -730,32 +731,34 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
         ps_type = supply.get("type", "").lower()
 
         if ps_type == "battery":
-            ps_status = supply.get("status", "unknown").lower()
+            ps_status_text = supply.get("status", "unknown").lower()
+
+            status = {
+                "full": BatteryStatus.FULL,
+                "charging": BatteryStatus.CHARGING,
+                "discharging": BatteryStatus.DISCHARGING,
+            }.get(ps_status_text, BatteryStatus.UNKNOWN)
 
             power_plugged = {
-                "full": True,
                 "charging": True,
                 "discharging": False,
-                "not_charging": None,
-                "unknown": None,
-            }[ps_status]
+            }.get(ps_status_text, None)
 
             # Default to "unknown"
             secsleft: Optional[float] = None
             secsleft_full: Optional[float] = None
 
-            if power_plugged:
-                # If it's either "full" or "charging", then it shouldn't run out
+            if status == BatteryStatus.FULL:
+                secsleft = float("inf")
+                secsleft_full = 0
+
+            elif status == BatteryStatus.CHARGING:
                 secsleft = float("inf")
 
                 # We may be able to determine how long it will take to finish charging
                 # (We don't try this unless we're certain that the battery is actually plugged in)
 
-                if ps_status == "full":
-                    # Easy case
-                    secsleft_full = 0
-
-                elif "current_now" in supply and "charge_now" in supply and "charge_full" in supply:
+                if "current_now" in supply and "charge_now" in supply and "charge_full" in supply:
                     charge_now = int(supply["charge_now"])
                     charge_full = int(supply["charge_full"])
                     current_now = int(supply["current_now"])
@@ -777,7 +780,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                         # we need to convert to seconds
                         secsleft_full = ((energy_full - energy_now) / power_now) * 3600
 
-            elif power_plugged is False:
+            elif status == BatteryStatus.DISCHARGING:
                 if "current_now" in supply and "charge_now" in supply:
                     charge_now = int(supply["charge_now"])
                     current_now = int(supply["current_now"])
@@ -816,6 +819,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 secsleft=secsleft,
                 secsleft_full=secsleft_full,
                 power_plugged=power_plugged,
+                status=status,
             )
 
         elif ps_type == "mains" and "online" in supply:
@@ -849,8 +853,10 @@ def sensors_battery() -> Optional[BatteryInfo]:
                 # We know enough to return now
                 return info
 
-            # Let's save it and try to collect more information
-            bat_info = info
+            if bat_info is None:
+                # Let's save it and try to collect more information
+                bat_info = info
+
         elif info.is_online:
             # At least one adapter is online
             ac_adapter_online = True
@@ -876,25 +882,25 @@ def sensors_is_on_ac_power() -> Optional[bool]:
 
     for info in _iter_sensors_power():
         if isinstance(info, BatteryInfo):
-            if info.power_plugged:
-                # Battery that reports it's either "full" or "charging"
+            if info.status == BatteryStatus.CHARGING:
+                # If we have at least one battery charging, power must be connected
                 return True
-            elif info.power_plugged is False:
-                # Battery that reports it's discharging
+            elif info.status == BatteryStatus.DISCHARGING:
                 seen_discharging_batteries = True
+
         elif info.is_online:
             # AC adapter that reports it's online
             return True
+
         else:
             # AC adapter that reports it's not online
             seen_offline_ac_adapters = True
 
     # Return False if we saw:
     # 1. At least one AC power supply that was offline
-    # 2. No AC power supplies where we couldn't tell if they were online or offline
-    # 3. No batteries that were discharging
+    # 2. No batteries that were discharging
     # Otherwise, return None.
-    return False if seen_offline_ac_adapters and not seen_discharging_batteries else None
+    return False if seen_offline_ac_adapters or seen_discharging_batteries else None
 
 
 def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:

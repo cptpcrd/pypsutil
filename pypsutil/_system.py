@@ -84,6 +84,7 @@ if hasattr(_psimpl, "swap_memory"):
 if hasattr(_psimpl, "sensors_power"):
     ACPowerInfo = _psimpl.ACPowerInfo
     BatteryInfo = _psimpl.BatteryInfo
+    BatteryStatus = _psimpl.BatteryStatus
 
     sensors_power = _psimpl.sensors_power
     sensors_battery = _psimpl.sensors_battery

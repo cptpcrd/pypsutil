@@ -167,6 +167,7 @@ class ProcessMemoryInfo:
 
 ProcessOpenFile = _util.ProcessOpenFile
 
+BatteryStatus = _util.BatteryStatus
 BatteryInfo = _util.BatteryInfo
 ACPowerInfo = _util.ACPowerInfo
 
@@ -968,21 +969,32 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
 
                 if bst.state & ACPI_BATT_STAT_INVALID == ACPI_BATT_STAT_INVALID:
                     power_plugged = None
+                    status = BatteryStatus.UNKNOWN
+
                 elif bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
                     # Charging
                     power_plugged = True
+                    status = BatteryStatus.CHARGING
+
                     if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
                         secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
+
                 elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
                     # Discharging
                     power_plugged = False
+                    status = BatteryStatus.DISCHARGING
+
                     if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
                         secsleft = (bif.lfcap / bst.rate) * 3600
+
                 elif bst.state == 0 and bst.cap == bif.lfcap:
                     # Full
-                    power_plugged = True
+                    power_plugged = None
+                    status = BatteryStatus.FULL
+
                 else:
                     power_plugged = None
+                    status = BatteryStatus.UNKNOWN
 
                 batteries.append(
                     BatteryInfo(
@@ -991,6 +1003,7 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
                         secsleft=secsleft,
                         secsleft_full=secsleft_full,
                         power_plugged=power_plugged,
+                        status=status,
                     )
                 )
 
@@ -1005,8 +1018,16 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
 
 
 def sensors_battery() -> Optional[BatteryInfo]:
-    batteries, _ = sensors_power()
-    return batteries[0] if batteries else None
+    batteries, ac_adapters = sensors_power()
+    if not batteries:
+        return None
+
+    battery = batteries[0]
+
+    if battery.power_plugged is None and ac_adapters:
+        battery.power_plugged = ac_adapters[0].is_online
+
+    return battery
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:
