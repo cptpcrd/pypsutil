@@ -45,6 +45,7 @@ _OPTIONAL_FUNCS = [
     "BatteryStatus",
     "sensors_power",
     "sensors_battery",
+    "sensors_battery_total",
     "sensors_is_on_ac_power",
     "TempSensorInfo",
     "sensors_temperatures",

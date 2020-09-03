@@ -115,6 +115,8 @@ ACPIIO_BATT_GET_UNITS = _IOC(IOC_OUT, ord("B"), 0x01, ctypes.sizeof(ctypes.c_int
 
 ACPI_CMBAT_MAXSTRLEN = 32
 
+ACPI_BIF_UNITS_MA = 1
+
 ACPI_BATT_STAT_DISCHARG = 0x0001
 ACPI_BATT_STAT_CHARGING = 0x0002
 ACPI_BATT_STAT_CRITICAL = 0x0004
@@ -933,9 +935,8 @@ def swap_memory() -> _util.SwapInfo:
     )
 
 
-def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+def _list_batteries_raw() -> List[Tuple[ACPIBif, ACPIBst]]:
     batteries = []
-    ac_adapters = []
 
     try:
         with open("/dev/acpi") as acpi_file:
@@ -948,62 +949,85 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
             else:
                 bat_count = c_bat_count.value
 
+            arg = ACPIBatteryIoctlArg()
+
             # Get individual battery statistics
             for i in range(bat_count):
                 try:
-                    arg = ACPIBatteryIoctlArg(unit=i)
+                    arg.unit = i  # pylint: disable=attribute-defined-outside-init
                     fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BIF, arg)  # type: ignore
                     bif = ACPIBif.from_buffer_copy(arg.bif)
 
-                    arg = ACPIBatteryIoctlArg(unit=i)
+                    arg.unit = i  # pylint: disable=attribute-defined-outside-init
                     fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BST, arg)  # type: ignore
                     bst = ACPIBst.from_buffer_copy(arg.bst)
                 except PermissionError:
-                    continue
-
-                name = "BAT{}".format(i)
-                percent = bst.cap * 100 / bif.lfcap
-
-                power_plugged = None
-                status = BatteryStatus.UNKNOWN
-
-                secsleft = None
-                secsleft_full = None
-
-                if bst.state & ACPI_BATT_STAT_INVALID != ACPI_BATT_STAT_INVALID:
-                    if bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
-                        # Charging
-                        power_plugged = True
-                        status = BatteryStatus.CHARGING
-
-                        if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
-                            secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
-
-                    elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
-                        # Discharging
-                        power_plugged = False
-                        status = BatteryStatus.DISCHARGING
-
-                        if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
-                            secsleft = (bif.lfcap / bst.rate) * 3600
-
-                    elif bst.state == 0 and bst.cap == bif.lfcap:
-                        # Full
-                        status = BatteryStatus.FULL
-
-                batteries.append(
-                    BatteryInfo(
-                        name=name,
-                        percent=percent,
-                        secsleft=secsleft,
-                        secsleft_full=secsleft_full,
-                        power_plugged=power_plugged,
-                        status=status,
-                    )
-                )
+                    pass
+                else:
+                    batteries.append((bif, bst))
 
     except FileNotFoundError:
         pass
+
+    return batteries
+
+
+def _extract_battery_status(state: int, is_full: bool) -> BatteryStatus:
+    if state & ACPI_BATT_STAT_NOT_PRESENT == ACPI_BATT_STAT_NOT_PRESENT:
+        return BatteryStatus.UNKNOWN
+    elif state & ACPI_BATT_STAT_INVALID == ACPI_BATT_STAT_INVALID:
+        return BatteryStatus.UNKNOWN
+    elif state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
+        return BatteryStatus.CHARGING
+    elif state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
+        return BatteryStatus.DISCHARGING
+    elif is_full:
+        return BatteryStatus.FULL
+    else:
+        return BatteryStatus.UNKNOWN
+
+
+def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+    batteries = []
+    ac_adapters = []
+
+    for i, (bif, bst) in enumerate(_list_batteries_raw()):
+        name = "BAT{}".format(i)
+        percent = bst.cap * 100 / bif.lfcap
+
+        power_plugged = None
+        status = _extract_battery_status(bst.state, bst.cap == bif.lfcap)
+
+        secsleft = None
+        secsleft_full = None
+
+        if status == BatteryStatus.FULL:
+            secsleft = float("inf")
+            secsleft_full = 0
+
+        elif status == BatteryStatus.CHARGING:
+            secsleft = float("inf")
+            power_plugged = True
+
+            if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
+
+        elif status == BatteryStatus.DISCHARGING:
+            power_plugged = False
+
+            if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                secsleft = (bif.lfcap / bst.rate) * 3600
+
+        batteries.append(
+            BatteryInfo(
+                name=name,
+                percent=percent,
+                secsleft=secsleft,
+                secsleft_full=secsleft_full,
+                power_plugged=power_plugged,
+                status=status,
+            )
+        )
 
     has_ac_power = sensors_is_on_ac_power()
     if has_ac_power is not None:
@@ -1023,6 +1047,111 @@ def sensors_battery() -> Optional[BatteryInfo]:
         battery.power_plugged = ac_adapters[0].is_online
 
     return battery
+
+
+def sensors_battery_total() -> Optional[BatteryInfo]:
+    power_plugged = sensors_is_on_ac_power()
+
+    secsleft = None
+    secsleft_full = None
+
+    raw_batteries = _list_batteries_raw()
+
+    if raw_batteries:
+        total_energy_full = 0
+        total_energy_now = 0
+        total_discharge_rate = 0
+        total_charge_rate = 0
+
+        # This holds all of the battery state flags
+        combined_state_flags = 0
+
+        for bif, bst in raw_batteries:
+            # Extract the current energy
+            energy_full = bif.lfcap
+            energy_now = bst.cap
+            power_flow = bst.rate
+
+            if bif.units == ACPI_BIF_UNITS_MA and bif.dvol > 0:
+                # Measurements are in current; convert to power
+                energy_full *= bif.dvol / 1000
+                energy_now *= bif.dvol / 1000
+                power_flow *= bif.dvol / 1000
+
+            # Add the totals
+            total_energy_full += energy_full
+            total_energy_now += energy_now
+
+            if (
+                bst.state & ACPI_BATT_STAT_NOT_PRESENT != ACPI_BATT_STAT_NOT_PRESENT
+                and bst.state & ACPI_BATT_STAT_INVALID != ACPI_BATT_STAT_INVALID
+            ):
+                # See if the battery is charging or discharging and adjust the rates
+                if bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
+                    total_charge_rate += power_flow
+                elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
+                    total_discharge_rate += power_flow
+
+            combined_state_flags |= bst.state
+
+        if total_energy_full == 0:
+            # Sanity check; should never happen
+            return None
+
+        # Try to extract the combined status
+        # There's a chance this will be UNKNOWN; oh well
+        status = _extract_battery_status(
+            combined_state_flags, total_energy_now == total_energy_full
+        )
+
+        percent = total_energy_now / total_energy_full
+
+        secsleft = None
+        secsleft_full = None
+
+        if total_discharge_rate > 0:
+            secsleft = (total_energy_full / total_discharge_rate) * 3600
+
+        elif total_charge_rate > 0:
+            secsleft = float("inf")
+            secsleft_full = ((total_energy_full - total_energy_now) / total_charge_rate) * 3600
+
+        else:
+            # Neither charging nor discharging (at least, not according to energy flow)
+            if status == BatteryStatus.FULL:
+                secsleft = float("inf")
+                secsleft_full = 0
+            elif power_plugged:
+                secsleft = float("inf")
+
+    else:
+        # It could be that /dev/acpi isn't available. Let's try the sysctls.
+
+        try:
+            percent = float(_bsd.sysctlbyname_into("hw.acpi.battery.life", ctypes.c_int()).value)
+            state = _bsd.sysctlbyname_into("hw.acpi.battery.state", ctypes.c_int()).value
+        except FileNotFoundError:
+            # The system just doesn't have a battery
+            return None
+
+        status = _extract_battery_status(state, percent == 100)
+
+        if status == BatteryStatus.FULL:
+            secsleft = float("inf")
+            secsleft_full = 0
+        elif status == BatteryStatus.DISCHARGING:
+            minutes_remaining = _bsd.sysctlbyname_into("hw.acpi.battery.min", ctypes.c_int()).value
+            if minutes_remaining > 0:
+                secsleft = minutes_remaining * 60.0
+
+    return BatteryInfo(
+        name="Combined",
+        percent=percent,
+        secsleft=secsleft,
+        secsleft_full=secsleft_full,
+        power_plugged=power_plugged,
+        status=status,
+    )
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:

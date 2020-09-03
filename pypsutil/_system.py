@@ -90,6 +90,9 @@ if hasattr(_psimpl, "sensors_power"):
     sensors_battery = _psimpl.sensors_battery
     sensors_is_on_ac_power = _psimpl.sensors_is_on_ac_power
 
+if hasattr(_psimpl, "sensors_battery_total"):
+    sensors_battery_total = _psimpl.sensors_battery_total
+
 if hasattr(_psimpl, "sensors_temperatures"):
     TempSensorInfo = _psimpl.TempSensorInfo
 
