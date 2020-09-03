@@ -4,7 +4,20 @@ import resource
 import signal
 import stat
 import time
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, no_type_check
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    no_type_check,
+)
 
 from . import _cache, _psposix, _util
 from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
@@ -643,71 +656,75 @@ def swap_memory() -> SwapInfo:
     )
 
 
-def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
+T = TypeVar("T")
+
+
+class PowerSupplyInfo:
+    _empty = object()
+
+    def __init__(self, name: str, path: str) -> None:
+        self.name = name
+        self.data = {"name": name}
+        self.path = path
+
+        # The "uevent" file usually gives us a lot of information in one shot,
+        # so let's try that.
+        try:
+            with open(os.path.join(self.path, "uevent")) as file:
+                for line in file:
+                    key, value = line.strip().split("=")
+                    if key.startswith("POWER_SUPPLY_"):
+                        self.data[key[13:].lower()] = value
+        except OSError:
+            pass
+
+    def get(self, key: str, default: T) -> Union[str, T]:
+        if "/" in key:
+            # Paranoid sanity check
+            return default
+
+        value: Any
+
+        if key in self.data:
+            value = self.data[key]
+        else:
+            try:
+                # Try reading the file with the corresponding name
+                value = _util.read_file_first_line(os.path.join(self.path, key))
+            except OSError:
+                value = self._empty
+
+            self.data[key] = value
+
+        return default if value is self._empty else cast(Union[str, T], value)
+
+    def __contains__(self, key: str) -> bool:
+        return self.get(key, None) is not None
+
+    def __getitem__(self, key: str) -> str:
+        value = self.get(key, None)
+        if value is None:
+            raise KeyError
+        else:
+            return value
+
+
+def _iter_power_supply_info() -> Iterator[PowerSupplyInfo]:
     power_supply_dir = "/sys/class/power_supply"
 
     try:
         for name in sorted(os.listdir(power_supply_dir)):
-            dpath = os.path.join(power_supply_dir, name)
-
-            data = {"name": name}
-
-            # The "uevent" file usually gives us a lot of information in one shot,
-            # so let's try that.
-            try:
-                with open(os.path.join(dpath, "uevent")) as file:
-                    for line in file:
-                        key, value = line.strip().split("=")
-                        if key.startswith("POWER_SUPPLY_"):
-                            data[key[13:].lower()] = value
-            except OSError:
-                pass
-
-            if "type" not in data:
-                # The "type" field wasn't present in the "uevent" file.
-                try:
-                    # Try looking at the "type" file.
-                    data["type"] = _util.read_file_first_line(os.path.join(dpath, "type"))
-                except OSError:
-                    # We don't know the power supply type. Let's guess based on the name.
-                    if data["name"].startswith("BAT"):
-                        data["type"] = "Battery"
-                    elif data["name"].startswith("AC"):
-                        data["type"] = "Mains"
-                    else:
-                        data["type"] = ""
-
-            # Depending on the power supply type, we may want to try to get certain extra
-            # information if it wasn't in the "uevent" file.
-            if data["type"].lower() == "battery":
-                extra_names = ["status", "capacity", "current_now", "charge_full", "charge_now"]
-            elif data["type"].lower() == "mains":
-                extra_names = ["online"]
-            else:
-                extra_names = []
-
-            for extra_name in extra_names:
-                if extra_name not in data:
-                    try:
-                        data[extra_name] = _util.read_file_first_line(
-                            os.path.join(dpath, extra_name)
-                        )
-                    except OSError:
-                        pass
-
-            yield data
-
+            yield PowerSupplyInfo(name, os.path.join(power_supply_dir, name))
     except FileNotFoundError:
         pass
 
 
 def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
-    for info in _iter_power_supply_info():
-        name = info["name"]
-        ps_type = info["type"].lower()
+    for supply in _iter_power_supply_info():
+        ps_type = supply.get("type", "").lower()
 
         if ps_type == "battery":
-            ps_status = info.get("status", "unknown").lower()
+            ps_status = supply.get("status", "unknown").lower()
 
             power_plugged = {
                 "full": True,
@@ -732,10 +749,10 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                     # Easy case
                     secsleft_full = 0
 
-                elif "current_now" in info and "charge_now" in info and "charge_full" in info:
-                    charge_now = int(info["charge_now"])
-                    charge_full = int(info["charge_full"])
-                    current_now = int(info["current_now"])
+                elif "current_now" in supply and "charge_now" in supply and "charge_full" in supply:
+                    charge_now = int(supply["charge_now"])
+                    charge_full = int(supply["charge_full"])
+                    current_now = int(supply["current_now"])
 
                     if current_now > 0:
                         # Estimate the time left until it's full
@@ -743,10 +760,10 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                         # to seconds
                         secsleft_full = ((charge_full - charge_now) / current_now) * 3600
 
-                elif "power_now" in info and "energy_now" in info and "energy_full" in info:
-                    energy_now = int(info["energy_now"])
-                    energy_full = int(info["energy_full"])
-                    power_now = int(info["power_now"])
+                elif "power_now" in supply and "energy_now" in supply and "energy_full" in supply:
+                    energy_now = int(supply["energy_now"])
+                    energy_full = int(supply["energy_full"])
+                    power_now = int(supply["power_now"])
 
                     if power_now > 0:
                         # Estimate the time left until it's full
@@ -755,9 +772,9 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                         secsleft_full = ((energy_full - energy_now) / power_now) * 3600
 
             elif power_plugged is False:
-                if "current_now" in info and "charge_now" in info:
-                    charge_now = int(info["charge_now"])
-                    current_now = int(info["current_now"])
+                if "current_now" in supply and "charge_now" in supply:
+                    charge_now = int(supply["charge_now"])
+                    current_now = int(supply["current_now"])
 
                     if current_now > 0:
                         # Estimate the time left
@@ -765,9 +782,9 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                         # to seconds
                         secsleft = (charge_now / current_now) * 3600
 
-                elif "power_now" in info and "energy_now" in info:
-                    energy_now = int(info["energy_now"])
-                    power_now = int(info["power_now"])
+                elif "power_now" in supply and "energy_now" in supply:
+                    energy_now = int(supply["energy_now"])
+                    power_now = int(supply["power_now"])
 
                     if power_now > 0:
                         # Estimate the time left
@@ -777,18 +794,18 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
 
             # We can determine the percent capacity more accurately if the "charge"/"energy"
             # fields are present
-            if "charge_full" in info and "charge_now" in info:
-                percent = int(info["charge_now"]) * 100 / int(info["charge_full"])
-            elif "energy_full" in info and "energy_now" in info:
-                percent = int(info["energy_now"]) * 100 / int(info["energy_full"])
-            elif "capacity" in info:
-                percent = float(int(info["capacity"]))
+            if "charge_full" in supply and "charge_now" in supply:
+                percent = int(supply["charge_now"]) * 100 / int(supply["charge_full"])
+            elif "energy_full" in supply and "energy_now" in supply:
+                percent = int(supply["energy_now"]) * 100 / int(supply["energy_full"])
+            elif "capacity" in supply:
+                percent = float(int(supply["capacity"]))
             else:
                 # We can't even determine the percent capacity. Something is wrong.
                 continue
 
             yield BatteryInfo(
-                name=name,
+                name=supply.name,
                 percent=percent,
                 secsleft=secsleft,
                 secsleft_full=secsleft_full,
@@ -797,7 +814,8 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
 
         elif ps_type == "mains":
             yield ACPowerInfo(
-                name=name, is_online=(bool(int(info["online"])) if "online" in info else None)
+                name=supply.name,
+                is_online=(bool(int(supply["online"])) if "online" in supply else None),
             )
 
 
