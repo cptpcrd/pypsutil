@@ -102,11 +102,68 @@ class BatteryStatus(enum.Enum):
 @dataclasses.dataclass
 class BatteryInfo:
     name: str
-    percent: float
-    secsleft: Optional[float]
-    secsleft_full: Optional[float]
+
     status: BatteryStatus
-    power_plugged: Optional[bool]
+    percent: float
+
+    energy_full: Optional[int]
+    energy_now: Optional[int]
+    power_now: Optional[int]
+
+    _power_plugged: Optional[bool] = None
+
+    @property
+    def power_plugged(self) -> Optional[bool]:
+        if self.status == BatteryStatus.CHARGING:
+            return True
+        elif self.status == BatteryStatus.DISCHARGING:
+            return False
+        else:
+            return self._power_plugged
+
+    @property
+    def secsleft(self) -> Optional[float]:
+        if self.status in (BatteryStatus.FULL, BatteryStatus.CHARGING) or self.power_plugged:
+            return float("inf")
+        elif (
+            self.status == BatteryStatus.DISCHARGING
+            and self.energy_full is not None
+            and self.energy_now is not None
+            and self.power_now is not None
+            and self.power_now > 0
+        ):
+            return self.energy_now * 3600 / self.power_now
+        else:
+            return None
+
+    @property
+    def secsleft_full(self) -> Optional[float]:
+        if self.status == BatteryStatus.FULL:
+            return 0
+        elif (
+            self.status == BatteryStatus.CHARGING
+            and self.energy_full is not None
+            and self.energy_now is not None
+            and self.power_now is not None
+            and self.power_now > 0
+        ):
+            return (self.energy_full - self.energy_now) * 3600 / self.power_now
+        else:
+            return None
+
+    def __repr__(self) -> str:
+        return (
+            "{}(name={!r}, status={!r}, power_plugged={!r}, percent={!r}, secsleft={!r}, "
+            "secsleft_full={!r})".format(
+                self.__class__.__name__,
+                self.name,
+                self.status,
+                self.power_plugged,
+                self.percent,
+                self.secsleft,
+                self.secsleft_full,
+            )
+        )
 
 
 @dataclasses.dataclass

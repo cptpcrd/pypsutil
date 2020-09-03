@@ -739,74 +739,35 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 "discharging": BatteryStatus.DISCHARGING,
             }.get(ps_status_text, BatteryStatus.UNKNOWN)
 
-            power_plugged = {
-                "charging": True,
-                "discharging": False,
-            }.get(ps_status_text, None)
+            voltage = None
+            for name in ["voltage_min_design", "voltage_min", "voltage_now", "voltage_boot"]:
+                if name in supply:
+                    voltage = int(supply[name]) / 1000000
+                    break
 
-            # Default to "unknown"
-            secsleft: Optional[float] = None
-            secsleft_full: Optional[float] = None
+            energy_now = None
+            energy_full = None
+            power_now = None
 
-            if status == BatteryStatus.FULL:
-                secsleft = float("inf")
-                secsleft_full = 0
+            if "power_now" in supply:
+                power_now = int(supply["power_now"])
+            elif "current_now" in supply and voltage is not None:
+                power_now = int(int(supply["current_now"]) * voltage)
 
-            elif status == BatteryStatus.CHARGING:
-                secsleft = float("inf")
+            if "energy_now" in supply:
+                energy_now = int(supply["energy_now"])
+            elif "current_now" in supply and voltage is not None:
+                energy_now = int(int(supply["charge_now"]) * voltage)
 
-                # We may be able to determine how long it will take to finish charging
-                # (We don't try this unless we're certain that the battery is actually plugged in)
-
-                if "current_now" in supply and "charge_now" in supply and "charge_full" in supply:
-                    charge_now = int(supply["charge_now"])
-                    charge_full = int(supply["charge_full"])
-                    current_now = int(supply["current_now"])
-
-                    if current_now > 0:
-                        # Estimate the time left until it's full
-                        # Multiply by 3600 because charge_now is in uAh, so we need to convert
-                        # to seconds
-                        secsleft_full = ((charge_full - charge_now) / current_now) * 3600
-
-                elif "power_now" in supply and "energy_now" in supply and "energy_full" in supply:
-                    energy_now = int(supply["energy_now"])
-                    energy_full = int(supply["energy_full"])
-                    power_now = int(supply["power_now"])
-
-                    if power_now > 0:
-                        # Estimate the time left until it's full
-                        # Multiply by 3600 because energy_now and energy_full are in uWh, so
-                        # we need to convert to seconds
-                        secsleft_full = ((energy_full - energy_now) / power_now) * 3600
-
-            elif status == BatteryStatus.DISCHARGING:
-                if "current_now" in supply and "charge_now" in supply:
-                    charge_now = int(supply["charge_now"])
-                    current_now = int(supply["current_now"])
-
-                    if current_now > 0:
-                        # Estimate the time left
-                        # Multiply by 3600 because charge_now is in uAh, so we need to convert
-                        # to seconds
-                        secsleft = (charge_now / current_now) * 3600
-
-                elif "power_now" in supply and "energy_now" in supply:
-                    energy_now = int(supply["energy_now"])
-                    power_now = int(supply["power_now"])
-
-                    if power_now > 0:
-                        # Estimate the time left
-                        # Multiply by 3600 because energy_now is in uWh, so we need to convert
-                        # to seconds
-                        secsleft = (energy_now / power_now) * 3600
+            if "energy_full" in supply:
+                energy_full = int(supply["energy_full"])
+            elif "charge_full" in supply and voltage is not None:
+                energy_full = int(int(supply["charge_full"]) * voltage)
 
             # We can determine the percent capacity more accurately if the "charge"/"energy"
             # fields are present
-            if "charge_full" in supply and "charge_now" in supply:
-                percent = int(supply["charge_now"]) * 100 / int(supply["charge_full"])
-            elif "energy_full" in supply and "energy_now" in supply:
-                percent = int(supply["energy_now"]) * 100 / int(supply["energy_full"])
+            if energy_now is not None and energy_full is not None:
+                percent = energy_now * 100 / energy_full
             elif "capacity" in supply:
                 percent = float(int(supply["capacity"]))
             else:
@@ -815,10 +776,10 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
 
             yield BatteryInfo(
                 name=supply.name,
+                power_now=power_now,
+                energy_now=energy_now,
+                energy_full=energy_full,
                 percent=percent,
-                secsleft=secsleft,
-                secsleft_full=secsleft_full,
-                power_plugged=power_plugged,
                 status=status,
             )
 
@@ -867,11 +828,7 @@ def sensors_battery() -> Optional[BatteryInfo]:
 
     if bat_info is not None and bat_info.power_plugged is None:
         # Unable to determine based on the battery status; use the AC adapter status
-        if ac_adapter_online:
-            bat_info.power_plugged = True
-            bat_info.secsleft = float("inf")
-        elif ac_adapter_online is False:
-            bat_info.power_plugged = False
+        bat_info._power_plugged = ac_adapter_online  # pylint: disable=protected-access
 
     return bat_info
 

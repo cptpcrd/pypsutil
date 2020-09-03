@@ -90,8 +90,64 @@ if hasattr(_psimpl, "sensors_power"):
     sensors_battery = _psimpl.sensors_battery
     sensors_is_on_ac_power = _psimpl.sensors_is_on_ac_power
 
-if hasattr(_psimpl, "sensors_battery_total"):
-    sensors_battery_total = _psimpl.sensors_battery_total
+    def sensors_battery_total() -> Optional[BatteryInfo]:
+        batteries, ac_supplies = sensors_power()
+        if not batteries:
+            return None
+
+        power_plugged = None
+        if ac_supplies:
+            power_plugged = any(supply.is_online for supply in ac_supplies)
+
+        status = None
+
+        total_energy_full = 0
+        total_energy_now = 0
+
+        total_discharge_rate = 0
+        total_charge_rate = 0
+
+        for battery in batteries:
+            total_energy_full += battery.energy_full or 0
+            total_energy_now += battery.energy_now or 0
+
+            if battery.status == BatteryStatus.CHARGING:
+                total_charge_rate += battery.power_now or 0
+            elif battery.status == BatteryStatus.DISCHARGING:
+                total_discharge_rate += battery.power_now or 0
+
+        if total_energy_full == 0:
+            return None
+        percent = total_energy_now * 100 / total_energy_full
+
+        power_now = None
+
+        if any(battery.status == BatteryStatus.CHARGING for battery in batteries) and all(
+            battery.status in (BatteryStatus.CHARGING, BatteryStatus.FULL) for battery in batteries
+        ):
+            status = BatteryStatus.CHARGING
+            power_now = total_charge_rate
+        elif any(battery.status == BatteryStatus.DISCHARGING for battery in batteries) and all(
+            battery.status in (BatteryStatus.DISCHARGING, BatteryStatus.FULL)
+            for battery in batteries
+        ):
+            status = BatteryStatus.DISCHARGING
+            power_now = total_discharge_rate
+        elif all(battery.status == BatteryStatus.FULL for battery in batteries):
+            status = BatteryStatus.FULL
+        else:
+            status = BatteryStatus.UNKNOWN
+
+        return BatteryInfo(
+            name="Combined",
+            percent=percent,
+            energy_full=total_energy_full,
+            energy_now=total_energy_now,
+            power_now=power_now,
+            _power_plugged=power_plugged,
+            status=status,
+        )
+
 
 if hasattr(_psimpl, "sensors_temperatures"):
     TempSensorInfo = _psimpl.TempSensorInfo
