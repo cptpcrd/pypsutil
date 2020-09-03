@@ -49,10 +49,6 @@ _OPTIONAL_FUNCS = [
     "sensors_temperatures",
 ]
 
-for name in _OPTIONAL_FUNCS:
-    if hasattr(_system, name):
-        globals()[name] = getattr(_system, name)
-
 __version__ = "0.1.0"
 
 __all__ = [
@@ -94,7 +90,8 @@ __all__ = [
 ]
 
 for name in _OPTIONAL_FUNCS:
-    if name in globals():
+    if hasattr(_system, name):
+        globals()[name] = getattr(_system, name)
         __all__.append(name)
 
 PROCFS_PATH = "/proc"
