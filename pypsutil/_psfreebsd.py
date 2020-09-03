@@ -994,17 +994,12 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
                     )
                 )
 
-            # Get the status of the AC adapter
-            adapter_status = ctypes.c_int()
-            try:
-                fcntl.ioctl(acpi_file, ACPIIO_ACAD_GET_STATUS, adapter_status)  # type: ignore
-            except PermissionError:
-                pass
-            else:
-                ac_adapters.append(ACPowerInfo(name="ACAD", is_online=bool(adapter_status.value)))
-
     except FileNotFoundError:
         pass
+
+    has_ac_power = sensors_is_on_ac_power()
+    if has_ac_power is not None:
+        ac_adapters.append(ACPowerInfo(name="ACAD", is_online=has_ac_power))
 
     return batteries, ac_adapters
 
