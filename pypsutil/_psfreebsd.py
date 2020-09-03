@@ -964,37 +964,32 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
                 name = "BAT{}".format(i)
                 percent = bst.cap * 100 / bif.lfcap
 
+                power_plugged = None
+                status = BatteryStatus.UNKNOWN
+
                 secsleft = None
                 secsleft_full = None
 
-                if bst.state & ACPI_BATT_STAT_INVALID == ACPI_BATT_STAT_INVALID:
-                    power_plugged = None
-                    status = BatteryStatus.UNKNOWN
+                if bst.state & ACPI_BATT_STAT_INVALID != ACPI_BATT_STAT_INVALID:
+                    if bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
+                        # Charging
+                        power_plugged = True
+                        status = BatteryStatus.CHARGING
 
-                elif bst.state & ACPI_BATT_STAT_CHARGING == ACPI_BATT_STAT_CHARGING:
-                    # Charging
-                    power_plugged = True
-                    status = BatteryStatus.CHARGING
+                        if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                            secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
 
-                    if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
-                        secsleft_full = ((bif.lfcap - bst.cap) / bst.rate) * 3600
+                    elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
+                        # Discharging
+                        power_plugged = False
+                        status = BatteryStatus.DISCHARGING
 
-                elif bst.state & ACPI_BATT_STAT_DISCHARG == ACPI_BATT_STAT_DISCHARG:
-                    # Discharging
-                    power_plugged = False
-                    status = BatteryStatus.DISCHARGING
+                        if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
+                            secsleft = (bif.lfcap / bst.rate) * 3600
 
-                    if bst.rate > 0 and bst.rate != ACPI_BATT_UNKNOWN:
-                        secsleft = (bif.lfcap / bst.rate) * 3600
-
-                elif bst.state == 0 and bst.cap == bif.lfcap:
-                    # Full
-                    power_plugged = None
-                    status = BatteryStatus.FULL
-
-                else:
-                    power_plugged = None
-                    status = BatteryStatus.UNKNOWN
+                    elif bst.state == 0 and bst.cap == bif.lfcap:
+                        # Full
+                        status = BatteryStatus.FULL
 
                 batteries.append(
                     BatteryInfo(
