@@ -741,7 +741,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                         # Estimate the time left until it's full
                         # Multiply by 3600 because charge_now is in uAh, so we need to convert
                         # to seconds
-                        secsleft = ((charge_full - charge_now) / current_now) * 3600
+                        secsleft_full = ((charge_full - charge_now) / current_now) * 3600
 
                 elif "power_now" in info and "energy_now" in info and "energy_full" in info:
                     energy_now = int(info["energy_now"])
