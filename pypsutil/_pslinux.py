@@ -756,7 +756,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
 
             if "energy_now" in supply:
                 energy_now = int(supply["energy_now"])
-            elif "current_now" in supply and voltage is not None:
+            elif "charge_now" in supply and voltage is not None:
                 energy_now = int(int(supply["charge_now"]) * voltage)
 
             if "energy_full" in supply:
