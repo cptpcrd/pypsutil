@@ -992,7 +992,7 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
     ac_adapters = []
 
     for i, (bif, bst) in enumerate(_list_batteries_raw()):
-        if bif.lfcap == 0:
+        if bif.lfcap == 0 or bif.lfcap == ACPI_BATT_UNKNOWN or bif.cap == ACPI_BATT_UNKNOWN:
             continue
 
         name = "BAT{}".format(i)
@@ -1002,21 +1002,15 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
         # Multiply it by 1000 to get uW/uA instead of mW/mA
         energy_full = bif.lfcap * 1000
         energy_now = bst.cap * 1000
-        power_now = bst.rate * 1000
-
-        if energy_full == ACPI_BATT_UNKNOWN:
-            energy_full = None
-        if energy_now == ACPI_BATT_UNKNOWN:
-            energy_now = None
-        if power_now == ACPI_BATT_UNKNOWN:
-            power_now = None
+        power_now = bst.rate * 1000 if bif.rate != ACPI_BATT_UNKNOWN else None
 
         if bif.units == ACPI_BIF_UNITS_MA:
+            if bif.dvol in (0, ACPI_BATT_UNKNOWN):
+                continue
+
             # Measurements are in current; convert to power
-            if energy_full is not None:
-                energy_full *= bif.dvol / 1000
-            if energy_now is not None:
-                energy_now *= bif.dvol / 1000
+            energy_full *= bif.dvol / 1000
+            energy_now *= bif.dvol / 1000
             if power_now is not None:
                 power_now *= bif.dvol / 1000
 
