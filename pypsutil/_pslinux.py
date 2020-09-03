@@ -647,7 +647,7 @@ def _iter_power_supply_info() -> Iterator[Dict[str, str]]:
     power_supply_dir = "/sys/class/power_supply"
 
     try:
-        for name in os.listdir(power_supply_dir):
+        for name in sorted(os.listdir(power_supply_dir)):
             dpath = os.path.join(power_supply_dir, name)
 
             data = {"name": name}
