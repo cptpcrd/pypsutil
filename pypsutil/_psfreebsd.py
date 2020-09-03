@@ -1004,18 +1004,21 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
         energy_now = bst.cap * 1000
         power_now = bst.rate * 1000
 
+        if energy_full == ACPI_BATT_UNKNOWN:
+            energy_full = None
+        if energy_now == ACPI_BATT_UNKNOWN:
+            energy_now = None
+        if power_now == ACPI_BATT_UNKNOWN:
+            power_now = None
+
         if bif.units == ACPI_BIF_UNITS_MA:
             # Measurements are in current; convert to power
-            energy_full *= bif.dvol / 1000
-            energy_now *= bif.dvol / 1000
-            power_now *= bif.dvol / 1000
-
-        if energy_full == 0:
-            energy_full = None
-        if energy_now == 0:
-            energy_now = None
-        if power_now == 0:
-            power_now = None
+            if energy_full is not None:
+                energy_full *= bif.dvol / 1000
+            if energy_now is not None:
+                energy_now *= bif.dvol / 1000
+            if power_now is not None:
+                power_now *= bif.dvol / 1000
 
         status = _extract_battery_status(bst.state, bst.cap == bif.lfcap)
 
