@@ -104,7 +104,7 @@ class BatteryInfo:
 @dataclasses.dataclass
 class ACPowerInfo:
     name: str
-    is_online: Optional[bool]
+    is_online: bool
 
 
 def get_procfs_path() -> str:

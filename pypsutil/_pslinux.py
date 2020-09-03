@@ -817,10 +817,10 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 power_plugged=power_plugged,
             )
 
-        elif ps_type == "mains":
+        elif ps_type == "mains" and "online" in supply:
             yield ACPowerInfo(
                 name=supply.name,
-                is_online=(bool(int(supply["online"])) if "online" in supply else None),
+                is_online=bool(int(supply["online"])),
             )
 
 
@@ -848,7 +848,6 @@ def sensors_battery() -> Optional[BatteryInfo]:
 def sensors_is_on_ac_power() -> Optional[bool]:
     seen_discharging_batteries = False
     seen_offline_ac_adapters = False
-    seen_unknown_ac_adapters = False
 
     for info in _iter_sensors_power():
         if isinstance(info, BatteryInfo):
@@ -861,25 +860,16 @@ def sensors_is_on_ac_power() -> Optional[bool]:
         elif info.is_online:
             # AC adapter that reports it's online
             return True
-        elif info.is_online is False:
+        else:
             # AC adapter that reports it's not online
             seen_offline_ac_adapters = True
-        else:
-            # AC adapter that is in an unknown state
-            seen_unknown_ac_adapters = True
 
     # Return False if we saw:
     # 1. At least one AC power supply that was offline
     # 2. No AC power supplies where we couldn't tell if they were online or offline
     # 3. No batteries that were discharging
     # Otherwise, return None.
-    return (
-        False
-        if seen_offline_ac_adapters
-        and not seen_unknown_ac_adapters
-        and not seen_discharging_batteries
-        else None
-    )
+    return False if seen_offline_ac_adapters and not seen_discharging_batteries else None
 
 
 def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:

@@ -95,6 +95,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                         # The "online=1" line should be ignored
                         "uevent": "POWER_SUPPLY_TYPE=Mains\nPOWER_SUPPLY_ONLINE=0\nonline=1\n",
                     },
+                    # Will be ignored for lack of information
                     "AC2": {
                         "type": "Mains\n",
                     },
@@ -161,7 +162,6 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         assert mains == [
             pypsutil.ACPowerInfo(name="AC0", is_online=True),  # type: ignore
             pypsutil.ACPowerInfo(name="AC1", is_online=False),  # type: ignore
-            pypsutil.ACPowerInfo(name="AC2", is_online=None),  # type: ignore
         ]
 
         # Returns the first battery
