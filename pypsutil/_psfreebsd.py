@@ -993,7 +993,7 @@ def sensors_power() -> PowerSupplySensorInfo:
     ac_adapters = []
 
     for i, (bif, bst) in enumerate(_list_batteries_raw()):
-        if bif.lfcap == 0 or bif.lfcap == ACPI_BATT_UNKNOWN or bif.cap == ACPI_BATT_UNKNOWN:
+        if bif.lfcap == 0 or bif.lfcap == ACPI_BATT_UNKNOWN or bst.cap == ACPI_BATT_UNKNOWN:
             continue
 
         name = "BAT{}".format(i)
