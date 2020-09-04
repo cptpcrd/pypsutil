@@ -602,6 +602,18 @@ def percpu_times() -> List[CPUTimes]:
     ]
 
 
+def _get_raw_meminfo() -> Dict[str, int]:
+    raw_meminfo = {}
+    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
+        for line in file:
+            line = line.strip()
+            if line.endswith(" kB"):
+                key, value = line[:-3].split()
+                raw_meminfo[key.rstrip(":")] = int(value) * 1024
+
+    return raw_meminfo
+
+
 VMEM_NAME_MAPPINGS = {
     "total": "MemTotal",
     "available": "MemAvailable",
@@ -616,13 +628,7 @@ VMEM_NAME_MAPPINGS = {
 
 
 def virtual_memory() -> VirtualMemoryInfo:
-    raw_meminfo = {}
-    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
-        for line in file:
-            line = line.strip()
-            if line.endswith(" kB"):
-                key, value = line[:-3].split()
-                raw_meminfo[key.rstrip(":")] = int(value) * 1024
+    raw_meminfo = _get_raw_meminfo()
 
     info_dict = {name: raw_meminfo[raw_name] for name, raw_name in VMEM_NAME_MAPPINGS.items()}
 
@@ -638,13 +644,7 @@ def virtual_memory() -> VirtualMemoryInfo:
 
 
 def swap_memory() -> SwapInfo:
-    raw_meminfo = {}
-    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
-        for line in file:
-            line = line.strip()
-            if line.endswith(" kB"):
-                key, value = line[:-3].split()
-                raw_meminfo[key.rstrip(":")] = int(value) * 1024
+    raw_meminfo = _get_raw_meminfo()
 
     swap_in = 0
     swap_out = 0
