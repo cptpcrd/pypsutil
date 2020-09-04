@@ -83,13 +83,16 @@ class ThreadInfo:
 class SwapInfo:
     total: int
     used: int
-    free: int
     sin: int
     sout: int
 
     @property
+    def free(self) -> int:
+        return self.total - self.used
+
+    @property
     def percent(self) -> float:
-        return (self.total - self.free) * 100.0 / self.total if self.total else 0.0
+        return self.used * 100.0 / self.total if self.total else 0.0
 
 
 class BatteryStatus(enum.Enum):

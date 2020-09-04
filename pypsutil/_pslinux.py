@@ -657,7 +657,6 @@ def swap_memory() -> SwapInfo:
 
     return SwapInfo(
         total=raw_meminfo["SwapTotal"],
-        free=raw_meminfo["SwapFree"],
         used=raw_meminfo["SwapTotal"] - raw_meminfo["SwapFree"],
         sin=swap_in,
         sout=swap_out,

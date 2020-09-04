@@ -919,8 +919,6 @@ def swap_memory() -> _util.SwapInfo:
 
         i += 1
 
-    swap_free_pages = swap_total_pages - swap_used_pages
-
     swapin = _bsd.sysctlbyname_into("vm.stats.vm.v_swapin", ctypes.c_uint32()).value
     swapout = _bsd.sysctlbyname_into("vm.stats.vm.v_swapout", ctypes.c_uint32()).value
 
@@ -930,7 +928,6 @@ def swap_memory() -> _util.SwapInfo:
     return _util.SwapInfo(
         total=swap_total_pages * _util.PAGESIZE,
         used=swap_used_pages * _util.PAGESIZE,
-        free=swap_free_pages * _util.PAGESIZE,
         sin=swapin + vnodein,
         sout=swapout + vnodeout,
     )
