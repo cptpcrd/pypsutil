@@ -1,7 +1,13 @@
 import os
+import pathlib
+import sys
 import time
 
+import pytest
+
 import pypsutil
+
+from .util import replace_info_directories
 
 
 def test_boot_time() -> None:
@@ -30,3 +36,52 @@ def test_physical_cpu_count() -> None:
 
     if logical_count is not None and phys_count is not None:
         assert phys_count <= logical_count
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+def test_cpu_info(tmp_path: pathlib.Path) -> None:
+    with replace_info_directories(procfs=str(tmp_path)):
+        # /proc/cpuinfo doesn't exist
+        assert pypsutil.physical_cpu_count() is None
+
+        # /proc/cpuinfo is an empty file
+        with open(tmp_path / "cpuinfo", "w") as file:
+            pass
+        assert pypsutil.physical_cpu_count() is None
+
+        # /proc/cpuinfo contains insufficient data
+        with open(tmp_path / "cpuinfo", "w") as file:
+            file.write("processor\t: 0\ncore id:\t0\n")
+        assert pypsutil.physical_cpu_count() is None
+
+        # Some entries in /proc/cpuinfo contain insufficient data
+        with open(tmp_path / "cpuinfo", "w") as file:
+            file.write(
+                """
+core id\t: 0
+physical id\t: 0
+
+core id\t: 1
+""".lstrip()
+            )
+        assert pypsutil.physical_cpu_count() is None
+
+        # Some entries in /proc/cpuinfo contain insufficient data
+        with open(tmp_path / "cpuinfo", "w") as file:
+            file.write(
+                """
+core id\t: 0
+physical id\t: 0
+
+core id\t: 0
+physical id\t: 0
+
+
+core id\t: 0
+physical id\t: 1
+
+core id\t: 1
+physical id\t: 1
+""".lstrip()
+            )
+        assert pypsutil.physical_cpu_count() == 3
