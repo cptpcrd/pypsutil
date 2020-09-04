@@ -90,10 +90,7 @@ class Process:
         if ppid <= 0:
             return None
 
-        try:
-            return Process(ppid)
-        except NoSuchProcess:
-            return None
+        return Process(ppid)
 
     def parent(self) -> Optional["Process"]:
         self._check_running()
