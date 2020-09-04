@@ -9,10 +9,10 @@ from ._detect import _psimpl
 
 SwapInfo = _util.SwapInfo
 
-PowerSupplySensorInfo = _psimpl.PowerSupplySensorInfo
-ACPowerInfo = _psimpl.ACPowerInfo
-BatteryInfo = _psimpl.BatteryInfo
-BatteryStatus = _psimpl.BatteryStatus
+PowerSupplySensorInfo = _util.PowerSupplySensorInfo
+ACPowerInfo = _util.ACPowerInfo
+BatteryInfo = _util.BatteryInfo
+BatteryStatus = _util.BatteryStatus
 
 
 @dataclasses.dataclass
