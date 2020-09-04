@@ -7,6 +7,13 @@ from typing import List, Optional
 from . import _util
 from ._detect import _psimpl
 
+SwapInfo = _util.SwapInfo
+
+PowerSupplySensorInfo = _psimpl.PowerSupplySensorInfo
+ACPowerInfo = _psimpl.ACPowerInfo
+BatteryInfo = _psimpl.BatteryInfo
+BatteryStatus = _psimpl.BatteryStatus
+
 
 @dataclasses.dataclass
 class CPUFrequencies:
@@ -77,16 +84,9 @@ if hasattr(_psimpl, "virtual_memory"):
 
 
 if hasattr(_psimpl, "swap_memory"):
-    SwapInfo = _util.SwapInfo
-
     swap_memory = _psimpl.swap_memory
 
 if hasattr(_psimpl, "sensors_power"):
-    PowerSupplySensorInfo = _psimpl.PowerSupplySensorInfo
-    ACPowerInfo = _psimpl.ACPowerInfo
-    BatteryInfo = _psimpl.BatteryInfo
-    BatteryStatus = _psimpl.BatteryStatus
-
     sensors_power = _psimpl.sensors_power
     sensors_is_on_ac_power = _psimpl.sensors_is_on_ac_power
 

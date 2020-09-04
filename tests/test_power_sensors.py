@@ -113,58 +113,58 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         psinfo = pypsutil.sensors_power()  # type: ignore
 
         assert psinfo.batteries == [
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100.0,
-                status=pypsutil.BatteryStatus.FULL,  # type: ignore
+                status=pypsutil.BatteryStatus.FULL,
                 energy_now=None,
                 energy_full=None,
                 power_now=None,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT1",
                 percent=89.9,
-                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.CHARGING,
                 energy_now=899,
                 energy_full=1000,
                 power_now=None,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT2",
                 percent=70,
-                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.DISCHARGING,
                 energy_now=1400,
                 energy_full=2000,
                 power_now=700,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT3",
                 percent=70,
-                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.CHARGING,
                 energy_now=700,
                 energy_full=1000,
                 power_now=300,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT4",
                 percent=70,
-                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.DISCHARGING,
                 energy_now=700,
                 energy_full=1000,
                 power_now=350,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT5",
                 percent=70,
-                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
+                status=pypsutil.BatteryStatus.UNKNOWN,
                 energy_now=700,
                 energy_full=1000,
                 power_now=350,
             ),
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT6",
                 percent=70,
-                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.CHARGING,
                 energy_now=700,
                 energy_full=1000,
                 power_now=300,
@@ -174,7 +174,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         assert pypsutil.sensors_battery_total() == pypsutil.BatteryInfo(  # type: ignore
             name="Combined",
             percent=5099 * 100 / 7000,
-            status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
+            status=pypsutil.BatteryStatus.UNKNOWN,
             energy_now=5099,
             energy_full=7000,
             power_now=None,
@@ -182,8 +182,8 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         )
 
         assert psinfo.ac_supplies == [
-            pypsutil.ACPowerInfo(name="AC0", is_online=True),  # type: ignore
-            pypsutil.ACPowerInfo(name="AC1", is_online=False),  # type: ignore
+            pypsutil.ACPowerInfo(name="AC0", is_online=True),
+            pypsutil.ACPowerInfo(name="AC1", is_online=False),
         ]
 
         assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
@@ -193,7 +193,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
 def test_sensors_battery(tmp_path: pathlib.Path) -> None:
     def test_info(
         ps_info: Dict[str, Dict[str, str]],
-        battery_info: Optional[pypsutil.BatteryInfo],  # type: ignore
+        battery_info: Optional[pypsutil.BatteryInfo],
     ) -> None:
         populate_directory(str(tmp_path), {"class": {"power_supply": ps_info}})
 
@@ -216,13 +216,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "online": "1",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 energy_now=None,
                 energy_full=None,
                 power_now=None,
-                status=pypsutil.BatteryStatus.FULL,  # type: ignore
+                status=pypsutil.BatteryStatus.FULL,
                 _power_plugged=True,
             ),
         )
@@ -237,13 +237,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "energy_full": "10000",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 power_now=100,
                 energy_now=10000,
                 energy_full=10000,
-                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
+                status=pypsutil.BatteryStatus.UNKNOWN,
                 _power_plugged=None,
             ),
         )
@@ -262,13 +262,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "online": "1",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 power_now=100,
                 energy_now=10000,
                 energy_full=10000,
-                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
+                status=pypsutil.BatteryStatus.UNKNOWN,
                 _power_plugged=True,
             ),
         )
@@ -287,13 +287,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "online": "0",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 power_now=100,
                 energy_now=10000,
                 energy_full=10000,
-                status=pypsutil.BatteryStatus.UNKNOWN,  # type: ignore
+                status=pypsutil.BatteryStatus.UNKNOWN,
                 _power_plugged=False,
             ),
         )
@@ -307,13 +307,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "energy_full": "10000",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 power_now=None,
                 energy_now=10000,
                 energy_full=10000,
-                status=pypsutil.BatteryStatus.DISCHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.DISCHARGING,
             ),
         )
 
@@ -326,13 +326,13 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
                     "energy_full": "10000",
                 },
             },
-            pypsutil.BatteryInfo(  # type: ignore
+            pypsutil.BatteryInfo(
                 name="BAT0",
                 percent=100,
                 power_now=None,
                 energy_now=10000,
                 energy_full=10000,
-                status=pypsutil.BatteryStatus.CHARGING,  # type: ignore
+                status=pypsutil.BatteryStatus.CHARGING,
             ),
         )
 
