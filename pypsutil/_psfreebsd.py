@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 CTL_KERN = 1

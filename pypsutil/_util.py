@@ -21,7 +21,7 @@ from typing import (
 
 from ._errors import AccessDenied, NoSuchProcess
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 RESOURCE_NUMS = set()

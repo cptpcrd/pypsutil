@@ -25,7 +25,7 @@ from . import _cache, _psposix, _util
 from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
 from ._util import ProcessCPUTimes, ProcessStatus, translate_proc_errors
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 

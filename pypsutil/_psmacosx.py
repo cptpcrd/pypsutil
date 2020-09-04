@@ -11,7 +11,7 @@ from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
 from ._util import ProcessCPUTimes, ProcessStatus
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 libc = _ffi.load_libc()

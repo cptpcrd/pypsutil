@@ -2,7 +2,7 @@ import dataclasses
 import os
 from typing import TYPE_CHECKING, Union
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 

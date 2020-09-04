@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Callable, Generic, TypeVar, cast
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 T = TypeVar("T")
