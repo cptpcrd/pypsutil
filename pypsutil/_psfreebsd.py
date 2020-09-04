@@ -1003,7 +1003,7 @@ def sensors_power() -> PowerSupplySensorInfo:
         # Multiply it by 1000 to get uW/uA instead of mW/mA
         energy_full = bif.lfcap * 1000
         energy_now = bst.cap * 1000
-        power_now = bst.rate * 1000 if bif.rate != ACPI_BATT_UNKNOWN else None
+        power_now = bst.rate * 1000 if bst.rate != ACPI_BATT_UNKNOWN else None
 
         if bif.units == ACPI_BIF_UNITS_MA:
             if bif.dvol in (0, ACPI_BATT_UNKNOWN):
