@@ -110,9 +110,9 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        batteries, mains = pypsutil.sensors_power()  # type: ignore
+        psinfo = pypsutil.sensors_power()  # type: ignore
 
-        assert batteries == [
+        assert psinfo.batteries == [
             pypsutil.BatteryInfo(  # type: ignore
                 name="BAT0",
                 percent=100.0,
@@ -181,7 +181,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
             _power_plugged=True,
         )
 
-        assert mains == [
+        assert psinfo.ac_supplies == [
             pypsutil.ACPowerInfo(name="AC0", is_online=True),  # type: ignore
             pypsutil.ACPowerInfo(name="AC1", is_online=False),  # type: ignore
         ]
@@ -437,7 +437,9 @@ def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
 @pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
 def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_power() == ([], [])  # type: ignore
+        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore
+            batteries=[], ac_supplies=[]
+        )
 
         assert pypsutil.sensors_battery() is None  # type: ignore
 

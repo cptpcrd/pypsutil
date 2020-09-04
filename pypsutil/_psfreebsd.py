@@ -169,6 +169,7 @@ class ProcessMemoryInfo:
 
 ProcessOpenFile = _util.ProcessOpenFile
 
+PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 BatteryStatus = _util.BatteryStatus
 BatteryInfo = _util.BatteryInfo
 ACPowerInfo = _util.ACPowerInfo
@@ -987,7 +988,7 @@ def _extract_battery_status(state: int, is_full: bool) -> BatteryStatus:
         return BatteryStatus.UNKNOWN
 
 
-def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+def sensors_power() -> PowerSupplySensorInfo:
     batteries = []
     ac_adapters = []
 
@@ -1031,20 +1032,36 @@ def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
     if has_ac_power is not None:
         ac_adapters.append(ACPowerInfo(name="ACAD", is_online=has_ac_power))
 
-    return batteries, ac_adapters
+    return PowerSupplySensorInfo(batteries=batteries, ac_supplies=ac_adapters)
 
 
-def sensors_battery() -> Optional[BatteryInfo]:
-    batteries, ac_adapters = sensors_power()
-    if not batteries:
+def sensors_battery_total_alt(power_plugged: bool) -> Optional[BatteryInfo]:
+    try:
+        percent = float(_bsd.sysctlbyname_into("hw.acpi.battery.life", ctypes.c_int()).value)
+        state = _bsd.sysctlbyname_into("hw.acpi.battery.state", ctypes.c_int()).value
+    except FileNotFoundError:
+        # The system just doesn't have a battery
         return None
 
-    battery = batteries[0]
+    status = _extract_battery_status(state, percent == 100)
 
-    if battery.power_plugged is None and ac_adapters:
-        battery._power_plugged = ac_adapters[0].is_online  # pylint: disable=protected-access
+    secsleft = None
 
-    return battery
+    if status == BatteryStatus.DISCHARGING:
+        minutes_remaining = _bsd.sysctlbyname_into("hw.acpi.battery.time", ctypes.c_int()).value
+        if minutes_remaining > 0:
+            secsleft = minutes_remaining * 60.0
+
+    return BatteryInfo(
+        name="Combined",
+        percent=percent,
+        status=status,
+        energy_full=None,
+        energy_now=None,
+        power_now=None,
+        _power_plugged=power_plugged,
+        _secsleft=secsleft,
+    )
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:

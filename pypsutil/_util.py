@@ -100,7 +100,7 @@ class BatteryStatus(enum.Enum):
 
 
 @dataclasses.dataclass
-class BatteryInfo:
+class BatteryInfo:  # pylint: disable=too-many-instance-attributes
     name: str
 
     status: BatteryStatus
@@ -111,6 +111,7 @@ class BatteryInfo:
     power_now: Optional[int]
 
     _power_plugged: Optional[bool] = None
+    _secsleft: Optional[float] = None
 
     @property
     def power_plugged(self) -> Optional[bool]:
@@ -134,7 +135,7 @@ class BatteryInfo:
         ):
             return self.energy_now * 3600 / self.power_now
         else:
-            return None
+            return self._secsleft
 
     @property
     def secsleft_full(self) -> Optional[float]:
@@ -170,6 +171,22 @@ class BatteryInfo:
 class ACPowerInfo:
     name: str
     is_online: bool
+
+
+@dataclasses.dataclass
+class PowerSupplySensorInfo:
+    batteries: List[BatteryInfo]
+    ac_supplies: List[ACPowerInfo]
+
+    @property
+    def is_on_ac_power(self) -> Optional[bool]:
+        for battery in self.batteries:
+            if battery.status == BatteryStatus.CHARGING:
+                return True
+            elif battery.status == BatteryStatus.DISCHARGING:
+                return False
+
+        return any(supply.is_online for supply in self.ac_supplies) if self.ac_supplies else None
 
 
 def get_procfs_path() -> str:

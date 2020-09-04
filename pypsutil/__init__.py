@@ -40,6 +40,7 @@ _OPTIONAL_FUNCS = [
     "virtual_memory",
     "SwapInfo",
     "swap_memory",
+    "PowerSupplySensorInfo",
     "ACPowerInfo",
     "BatteryInfo",
     "BatteryStatus",

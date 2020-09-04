@@ -82,22 +82,33 @@ if hasattr(_psimpl, "swap_memory"):
     swap_memory = _psimpl.swap_memory
 
 if hasattr(_psimpl, "sensors_power"):
+    PowerSupplySensorInfo = _psimpl.PowerSupplySensorInfo
     ACPowerInfo = _psimpl.ACPowerInfo
     BatteryInfo = _psimpl.BatteryInfo
     BatteryStatus = _psimpl.BatteryStatus
 
     sensors_power = _psimpl.sensors_power
-    sensors_battery = _psimpl.sensors_battery
     sensors_is_on_ac_power = _psimpl.sensors_is_on_ac_power
 
-    def sensors_battery_total() -> Optional[BatteryInfo]:
-        batteries, ac_supplies = sensors_power()
-        if not batteries:
+    def sensors_battery() -> Optional[BatteryInfo]:
+        psinfo = sensors_power()
+        if not psinfo.batteries:
             return None
 
-        power_plugged = None
-        if ac_supplies:
-            power_plugged = any(supply.is_online for supply in ac_supplies)
+        battery = psinfo.batteries[0]
+
+        if battery.power_plugged is None:
+            battery._power_plugged = psinfo.is_on_ac_power  # pylint: disable=protected-access
+
+        return battery
+
+    def sensors_battery_total() -> Optional[BatteryInfo]:
+        psinfo = sensors_power()
+        if not psinfo.batteries:
+            if hasattr(_psimpl, "sensors_battery_total_alt"):
+                return _psimpl.sensors_battery_total_alt(psinfo.is_on_ac_power)
+            else:
+                return None
 
         status = None
 
@@ -107,7 +118,7 @@ if hasattr(_psimpl, "sensors_power"):
         total_discharge_rate = 0
         total_charge_rate = 0
 
-        for battery in batteries:
+        for battery in psinfo.batteries:
             total_energy_full += battery.energy_full or 0
             total_energy_now += battery.energy_now or 0
 
@@ -122,18 +133,21 @@ if hasattr(_psimpl, "sensors_power"):
 
         power_now = None
 
-        if any(battery.status == BatteryStatus.CHARGING for battery in batteries) and all(
-            battery.status in (BatteryStatus.CHARGING, BatteryStatus.FULL) for battery in batteries
+        if any(battery.status == BatteryStatus.CHARGING for battery in psinfo.batteries) and all(
+            battery.status in (BatteryStatus.CHARGING, BatteryStatus.FULL)
+            for battery in psinfo.batteries
         ):
             status = BatteryStatus.CHARGING
             power_now = total_charge_rate
-        elif any(battery.status == BatteryStatus.DISCHARGING for battery in batteries) and all(
+        elif any(
+            battery.status == BatteryStatus.DISCHARGING for battery in psinfo.batteries
+        ) and all(
             battery.status in (BatteryStatus.DISCHARGING, BatteryStatus.FULL)
-            for battery in batteries
+            for battery in psinfo.batteries
         ):
             status = BatteryStatus.DISCHARGING
             power_now = total_discharge_rate
-        elif all(battery.status == BatteryStatus.FULL for battery in batteries):
+        elif all(battery.status == BatteryStatus.FULL for battery in psinfo.batteries):
             status = BatteryStatus.FULL
         else:
             status = BatteryStatus.UNKNOWN
@@ -144,7 +158,7 @@ if hasattr(_psimpl, "sensors_power"):
             energy_full=total_energy_full,
             energy_now=total_energy_now,
             power_now=power_now,
-            _power_plugged=power_plugged,
+            _power_plugged=psinfo.is_on_ac_power,
             status=status,
         )
 

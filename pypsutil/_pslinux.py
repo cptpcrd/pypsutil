@@ -97,6 +97,7 @@ class ProcessMemoryInfo:
     data: int
 
 
+PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 BatteryInfo = _util.BatteryInfo
 BatteryStatus = _util.BatteryStatus
 ACPowerInfo = _util.ACPowerInfo
@@ -790,47 +791,17 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
             )
 
 
-def sensors_power() -> Tuple[List[BatteryInfo], List[ACPowerInfo]]:
+def sensors_power() -> PowerSupplySensorInfo:
     batteries = []
-    ac_powers = []
+    ac_supplies = []
 
     for info in _iter_sensors_power():
         if isinstance(info, BatteryInfo):
             batteries.append(info)
         else:
-            ac_powers.append(info)
+            ac_supplies.append(info)
 
-    return batteries, ac_powers
-
-
-def sensors_battery() -> Optional[BatteryInfo]:
-    bat_info = None
-
-    ac_adapter_online = None
-
-    for info in _iter_sensors_power():
-        if isinstance(info, BatteryInfo):
-            if info.power_plugged is not None:
-                # We know enough to return now
-                return info
-
-            if bat_info is None:
-                # Let's save it and try to collect more information
-                bat_info = info
-
-        elif info.is_online:
-            # At least one adapter is online
-            ac_adapter_online = True
-        elif ac_adapter_online is None:
-            # This adapter is offline, and we haven't encountered any
-            # other adapters yet.
-            ac_adapter_online = False
-
-    if bat_info is not None and bat_info.power_plugged is None:
-        # Unable to determine based on the battery status; use the AC adapter status
-        bat_info._power_plugged = ac_adapter_online  # pylint: disable=protected-access
-
-    return bat_info
+    return PowerSupplySensorInfo(batteries=batteries, ac_supplies=ac_supplies)
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:
