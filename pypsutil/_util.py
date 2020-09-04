@@ -89,7 +89,7 @@ class SwapInfo:
 
     @property
     def percent(self) -> float:
-        return (self.total - self.free) * 100.0 / self.total if self.total else 0
+        return (self.total - self.free) * 100.0 / self.total if self.total else 0.0
 
 
 class BatteryStatus(enum.Enum):
@@ -140,7 +140,7 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
     @property
     def secsleft_full(self) -> Optional[float]:
         if self.status == BatteryStatus.FULL:
-            return 0
+            return 0.0
         elif (
             self.status == BatteryStatus.CHARGING
             and self.energy_full is not None
