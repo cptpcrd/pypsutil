@@ -1,13 +1,10 @@
 import os
 import pathlib
-import sys
 import time
-
-import pytest
 
 import pypsutil
 
-from .util import replace_info_directories
+from .util import linux_only, replace_info_directories
 
 
 def test_boot_time() -> None:
@@ -38,7 +35,7 @@ def test_physical_cpu_count() -> None:
         assert phys_count <= logical_count
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+@linux_only  # type: ignore
 def test_cpu_info(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(procfs=str(tmp_path)):
         # /proc/cpuinfo doesn't exist

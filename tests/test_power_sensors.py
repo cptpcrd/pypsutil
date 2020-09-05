@@ -1,21 +1,18 @@
 # pylint: disable=no-member
 import pathlib
 import shutil
-import sys
 from typing import Dict, Optional
-
-import pytest
 
 import pypsutil
 
-from .util import populate_directory, replace_info_directories
+from .util import linux_only, populate_directory, replace_info_directories
 
 
 def build_supply_uevent(data: Dict[str, str]) -> str:
     return "".join("POWER_SUPPLY_{}={}\n".format(key.upper(), value) for key, value in data.items())
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+@linux_only  # type: ignore
 def test_sensors_power(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -189,7 +186,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+@linux_only  # type: ignore
 def test_sensors_battery(tmp_path: pathlib.Path) -> None:
     def test_info(
         ps_info: Dict[str, Dict[str, str]],
@@ -337,7 +334,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
         )
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+@linux_only  # type: ignore
 def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
     def test_info(
         ps_info: Dict[str, Dict[str, str]],
@@ -434,7 +431,7 @@ def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
         )
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Tests Linux-specific behavior")  # type: ignore
+@linux_only  # type: ignore
 def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(sysfs=str(tmp_path)):
         assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore

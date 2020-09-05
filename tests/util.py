@@ -5,7 +5,14 @@ import sys
 import time
 from typing import Any, Dict, Iterator, List, Optional
 
+import pytest
+
 import pypsutil
+
+macos_only = pytest.mark.skipif(sys.platform != "darwin", reason="Tests Linux-specific behavior")
+linux_only = pytest.mark.skipif(
+    not sys.platform.startswith("linux"), reason="Tests Linux-specific behavior"
+)
 
 
 def _rewrite_kwargs(kwargs: Dict[str, Any]) -> None:
