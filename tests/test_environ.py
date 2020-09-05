@@ -5,7 +5,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, managed_child_process
+from .util import get_dead_process, macos_only, managed_child_process
 
 
 def test_environ() -> None:
@@ -28,4 +28,12 @@ def test_environ_no_proc() -> None:
     proc = get_dead_process()
 
     with pytest.raises(pypsutil.NoSuchProcess):
+        proc.environ()
+
+
+@macos_only  # type: ignore
+def test_environ_pid_0() -> None:
+    proc = pypsutil.Process(0)
+
+    with pytest.raises(pypsutil.AccessDenied):
         proc.environ()
