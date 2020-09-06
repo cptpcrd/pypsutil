@@ -53,6 +53,7 @@ PATH_MAX = 1024
 KI_CRF_GRP_OVERFLOW = 0x80000000
 
 KF_TYPE_VNODE = 1
+KF_FD_TYPE_ROOT = -2
 
 XSWDEV_VERSION = 2
 
@@ -710,6 +711,15 @@ def proc_cwd(proc: "Process") -> str:
     cwd_info = KinfoFile()
     _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_CWD, proc.pid], None, cwd_info)
     return cast(str, cwd_info.kf_path.decode())
+
+
+def proc_root(proc: "Process") -> str:
+    for kfile in _iter_kinfo_files(proc):
+        if kfile.kf_fd == KF_FD_TYPE_ROOT:
+            return cast(str, kfile.kf_path.decode())
+
+    # Something is wrong
+    raise PermissionError
 
 
 def proc_exe(proc: "Process") -> str:
