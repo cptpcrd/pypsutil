@@ -1,9 +1,17 @@
+import os
 import subprocess
 import sys
+from typing import Dict
 
 import pytest
 
 import pypsutil
+
+
+def sanitized_env() -> Dict[str, str]:
+    env = dict(os.environ)
+    env.pop("COV_CORE_DATAFILE", None)
+    return env
 
 
 def test_popen_launch_error() -> None:
@@ -15,7 +23,7 @@ def test_popen_launch_error() -> None:
 
 
 def test_popen_success() -> None:
-    proc = pypsutil.Popen([sys.executable, "-c", ""])
+    proc = pypsutil.Popen([sys.executable, "-c", ""], env=sanitized_env())
 
     retval = proc.wait()
     assert retval is not None
@@ -27,7 +35,9 @@ def test_popen_success() -> None:
 
 
 def test_popen_wait() -> None:
-    proc = pypsutil.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    proc = pypsutil.Popen(
+        [sys.executable, "-c", "import time; time.sleep(10)"], env=sanitized_env()
+    )
 
     assert proc.poll() is None
 
@@ -51,6 +61,7 @@ def test_popen_communicate() -> None:
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=sanitized_env(),
     )
     assert proc.communicate() == (b"1\n", b"2\n")
 
@@ -59,10 +70,13 @@ def test_popen_communicate() -> None:
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=sanitized_env(),
     )
     assert proc.communicate(b"1\n") == (b"1\n", b"")
 
-    proc = pypsutil.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    proc = pypsutil.Popen(
+        [sys.executable, "-c", "import time; time.sleep(10)"], env=sanitized_env()
+    )
     with pytest.raises(pypsutil.TimeoutExpired):
         proc.communicate(timeout=0)
 
@@ -71,7 +85,9 @@ def test_popen_communicate() -> None:
 
 
 def test_popen_context() -> None:
-    with pypsutil.Popen([sys.executable, "-c", "import time; time.sleep(10)"]) as proc:
+    with pypsutil.Popen(
+        [sys.executable, "-c", "import time; time.sleep(10)"], env=sanitized_env()
+    ) as proc:
         proc.terminate()
 
         # proc.returncode should NOT be set yet
@@ -85,6 +101,7 @@ def test_popen_context() -> None:
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=sanitized_env(),
     ) as proc:
         proc.terminate()
 
