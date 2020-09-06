@@ -8,7 +8,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process
+from .util import get_dead_process, managed_child_process2
 
 
 @contextlib.contextmanager
@@ -35,7 +35,7 @@ if hasattr(pypsutil.Process, "num_threads"):
             assert pypsutil.Process().num_threads() == nthreads
 
     def test_num_threads_subproc() -> None:
-        with pypsutil.Popen(
+        with managed_child_process2(
             [
                 sys.executable,
                 "-c",
@@ -92,7 +92,7 @@ if (
                 }
 
     def test_thread_ids_subproc() -> None:
-        with pypsutil.Popen(
+        with managed_child_process2(
             [
                 sys.executable,
                 "-c",
