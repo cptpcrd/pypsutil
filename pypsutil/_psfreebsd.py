@@ -53,6 +53,7 @@ PATH_MAX = 1024
 KI_CRF_GRP_OVERFLOW = 0x80000000
 
 KF_TYPE_VNODE = 1
+KF_VTYPE_VREG = 1
 KF_FD_TYPE_ROOT = -2
 
 XSWDEV_VERSION = 2
@@ -638,7 +639,9 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
             path=kfile.kf_path.decode(),
         )
         for kfile in _iter_kinfo_files(proc)
-        if kfile.kf_fd >= 0 and kfile.kf_type == KF_TYPE_VNODE
+        if kfile.kf_fd >= 0
+        and kfile.kf_type == KF_TYPE_VNODE
+        and kfile.kf_un.kf_file.kf_file_type == KF_VTYPE_VREG
     ]
 
 
