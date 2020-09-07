@@ -631,7 +631,7 @@ def proc_num_fds(proc: "Process") -> int:
     return sum(kfile.kf_fd >= 0 for kfile in _iter_kinfo_files(proc))
 
 
-def proc_open_fles(proc: "Process") -> List[ProcessOpenFile]:
+def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     return [
         ProcessOpenFile(
             fd=kfile.kf_fd,
