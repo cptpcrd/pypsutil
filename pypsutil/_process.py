@@ -189,7 +189,7 @@ class Process:
                 try:
                     lookup_path = self.environ()["PATH"]
                 except (OSError, KeyError):
-                    lookup_path = os.environ.get("PATH")
+                    lookup_path = None
 
                 exe = shutil.which(cmdline[0], path=lookup_path)
                 if exe:
