@@ -23,12 +23,19 @@ KERN_PROC_ARGS = 55
 KERN_PROC_CWD = 78
 KERN_PROC_ARGV = 1
 KERN_PROC_ENV = 3
+KERN_FILE = 73
+KERN_FILE_BYPID = 2
+
+DTYPE_VNODE = 1
 
 KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
 KI_WMESGLEN = 8
 KI_MAXLOGNAME = 32
 KI_MAXEMULLEN = 16
+
+KI_MNAMELEN = 96
+KI_UNPPATHLEN = 104
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
@@ -173,6 +180,79 @@ class KinfoProc(ctypes.Structure):
         return list(self.p_groups[: self.p_ngroups])
 
 
+class KinfoFile(ctypes.Structure):
+    _fields_ = [
+        ("f_fileaddr", ctypes.c_uint64),
+        ("f_flags", ctypes.c_uint32),
+        ("f_iflags", ctypes.c_uint32),
+        ("f_type", ctypes.c_uint32),
+        ("f_count", ctypes.c_uint32),
+        ("f_msgcount", ctypes.c_uint32),
+        ("f_usecount", ctypes.c_uint32),
+        ("f_ucred", ctypes.c_uint64),
+        ("f_uid", ctypes.c_uint32),
+        ("f_gid", ctypes.c_uint32),
+        ("f_ops", ctypes.c_uint64),
+        ("f_offset", ctypes.c_uint64),
+        ("f_data", ctypes.c_uint64),
+        ("f_rxfer", ctypes.c_uint64),
+        ("f_rwfer", ctypes.c_uint64),
+        ("f_seek", ctypes.c_uint64),
+        ("f_rbytes", ctypes.c_uint64),
+        ("f_wbytes", ctypes.c_uint64),
+        ("v_un", ctypes.c_uint64),
+        ("v_type", ctypes.c_uint32),
+        ("v_tag", ctypes.c_uint32),
+        ("v_flag", ctypes.c_uint32),
+        ("va_rdev", ctypes.c_uint32),
+        ("v_data", ctypes.c_uint64),
+        ("v_mount", ctypes.c_uint64),
+        ("va_fileid", ctypes.c_uint64),
+        ("va_size", ctypes.c_uint64),
+        ("va_mode", ctypes.c_uint32),
+        ("va_fsid", ctypes.c_uint32),
+        ("f_mntonname", (ctypes.c_char * KI_MNAMELEN)),
+        ("so_type", ctypes.c_uint32),
+        ("so_state", ctypes.c_uint32),
+        ("so_pcb", ctypes.c_uint64),
+        ("so_protocol", ctypes.c_uint32),
+        ("so_family", ctypes.c_uint32),
+        ("inp_ppcb", ctypes.c_uint64),
+        ("inp_lport", ctypes.c_uint32),
+        ("inp_laddru", (ctypes.c_uint32 * 4)),
+        ("inp_fport", ctypes.c_uint32),
+        ("inp_faddru", (ctypes.c_uint32 * 4)),
+        ("unp_conn", ctypes.c_uint64),
+        ("pipe_peer", ctypes.c_uint64),
+        ("pipe_state", ctypes.c_uint32),
+        ("kq_count", ctypes.c_uint32),
+        ("kq_state", ctypes.c_uint32),
+        ("__unused1", ctypes.c_uint32),
+        ("p_pid", ctypes.c_uint32),
+        ("fd_fd", ctypes.c_int32),
+        ("fd_ofileflags", ctypes.c_uint32),
+        ("p_uid", ctypes.c_uint32),
+        ("p_gid", ctypes.c_uint32),
+        ("p_tid", ctypes.c_uint32),
+        ("p_comm", (ctypes.c_char * KI_MAXCOMLEN)),
+        ("inp_rtableid", ctypes.c_uint32),
+        ("so_splice", ctypes.c_uint64),
+        ("so_splicelen", ctypes.c_int64),
+        ("so_rcv_cc", ctypes.c_uint64),
+        ("so_snd_cc", ctypes.c_uint64),
+        ("unp_refs", ctypes.c_uint64),
+        ("unp_nextref", ctypes.c_uint64),
+        ("unp_addr", ctypes.c_uint64),
+        ("unp_path", (ctypes.c_char * KI_UNPPATHLEN)),
+        ("inp_proto", ctypes.c_uint32),
+        ("t_state", ctypes.c_uint32),
+        ("t_rcv_wnd", ctypes.c_uint64),
+        ("t_snd_wnd", ctypes.c_uint64),
+        ("t_snd_cwnd", ctypes.c_uint64),
+        ("va_nlink", ctypes.c_uint32),
+    ]
+
+
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
 
@@ -219,6 +299,22 @@ def _list_kinfo_procs() -> List[KinfoProc]:
             return proc_arr[:nprocs]
 
 
+def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+    kinfo_file_size = ctypes.sizeof(KinfoFile)
+
+    num_files = _bsd.sysctl(
+        [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
+    )
+
+    files = (KinfoFile * num_files)()
+
+    num_files = _bsd.sysctl(
+        [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
+    )
+
+    return files[:num_files]
+
+
 def iter_pid_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
@@ -230,6 +326,18 @@ def iter_pid_create_time(
 def iter_pids() -> Iterator[int]:
     for kinfo in _list_kinfo_procs():
         yield kinfo.p_pid
+
+
+def proc_num_fds(proc: "Process") -> int:
+    return sum(kfile.fd_fd >= 0 for kfile in _list_kinfo_files(proc))
+
+
+def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
+    return [
+        ProcessOpenFile(fd=kfile.fd_fd, path="")
+        for kfile in _list_kinfo_files(proc)
+        if kfile.fd_fd >= 0 and kfile.f_type == DTYPE_VNODE
+    ]
 
 
 def pid_create_time(pid: int) -> float:
