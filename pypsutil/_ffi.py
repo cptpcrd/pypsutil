@@ -18,7 +18,9 @@ def load_libc() -> ctypes.CDLL:
     if _libc is None:
         libc_path = ctypes.util.find_library("c")
         if libc_path is None:
-            raise RuntimeError("Could not find libc; is your system statically linked?")
+            raise RuntimeError(
+                "Could not find libc. Is your system statically linked? Are you in a chroot?"
+            )
 
         _libc = ctypes.CDLL(libc_path, use_errno=True)
 
