@@ -36,6 +36,7 @@ if hasattr(pypsutil.Process, "open_files"):
             [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
             close_fds=True,
             stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             bufsize=0,
         ) as proc:
             assert proc.stdout is not None
@@ -58,6 +59,7 @@ time.sleep(10)
             ],
             close_fds=True,
             stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             bufsize=0,
         ) as proc:
             assert proc.stdout is not None
