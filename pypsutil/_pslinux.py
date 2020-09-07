@@ -3,7 +3,6 @@ import dataclasses
 import os
 import resource
 import signal
-import stat
 import sys
 import time
 from typing import (
@@ -253,8 +252,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
                 if path[0] != "/":
                     continue
 
-                file_mode = os.stat(path).st_mode
-                if not stat.S_ISREG(file_mode):
+                if not os.path.isfile(path):
                     continue
 
                 position = None
