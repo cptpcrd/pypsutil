@@ -396,7 +396,7 @@ class Process:
 
         start_time = time.monotonic()
 
-        if timeout is None:
+        if timeout is None and self.pid > 0:
             # Wait with no timeout
 
             # We don't lock on self._lock because this is blocking
@@ -418,25 +418,30 @@ class Process:
                     return self._exitcode
 
         while True:
-            with self._lock:
-                try:
-                    wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
-                except ChildProcessError:
-                    # Not a child of the current process
-                    # Check is_running()
-                    if not self.is_running():
-                        with self._exitcode_lock:
-                            return self._exitcode
-                else:
-                    if wpid != 0:
-                        self._dead = True
-                        self._exitcode = (
-                            -os.WTERMSIG(wstatus)
-                            if os.WIFSIGNALED(wstatus)
-                            else os.WEXITSTATUS(wstatus)
-                        )
+            if self.pid > 0:
+                with self._lock:
+                    try:
+                        wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
+                    except ChildProcessError:
+                        # Not a child of the current process
+                        # Check is_running()
+                        if not self.is_running():
+                            with self._exitcode_lock:
+                                return self._exitcode
 
-                        return self._exitcode
+                    else:
+                        if wpid != 0:
+                            self._dead = True
+                            self._exitcode = (
+                                -os.WTERMSIG(wstatus)
+                                if os.WIFSIGNALED(wstatus)
+                                else os.WEXITSTATUS(wstatus)
+                            )
+                            return self._exitcode
+
+            else:
+                if not self.is_running():
+                    return None
 
             interval = 0.01
             if timeout is not None:
