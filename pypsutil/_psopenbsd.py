@@ -27,6 +27,7 @@ KERN_FILE = 73
 KERN_FILE_BYPID = 2
 
 DTYPE_VNODE = 1
+VREG = 1
 
 KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
@@ -336,7 +337,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     return [
         ProcessOpenFile(fd=kfile.fd_fd, path="")
         for kfile in _list_kinfo_files(proc)
-        if kfile.fd_fd >= 0 and kfile.f_type == DTYPE_VNODE
+        if kfile.fd_fd >= 0 and kfile.f_type == DTYPE_VNODE and kfile.v_type == VREG
     ]
 
 
