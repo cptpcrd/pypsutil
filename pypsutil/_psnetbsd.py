@@ -28,6 +28,11 @@ KERN_PROC_ARGV = 1
 KERN_PROC_ENV = 3
 KERN_PROC_PATHNAME = 5
 KERN_PROC_CWD = 6
+KERN_FILE2 = 77
+KERN_FILE_BYPID = 2
+
+DTYPE_VNODE = 1
+VREG = 1
 
 KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
@@ -245,6 +250,33 @@ class KinfoProc2(ctypes.Structure):
         return list(self.p_groups[: self.p_ngroups])
 
 
+class KinfoFile(ctypes.Structure):
+    _fields_ = [
+        ("ki_fileaddr", ctypes.c_uint64),
+        ("ki_flag", ctypes.c_uint32),
+        ("ki_iflags", ctypes.c_uint32),
+        ("ki_ftype", ctypes.c_uint32),
+        ("ki_count", ctypes.c_uint32),
+        ("ki_msgcount", ctypes.c_uint32),
+        ("ki_usecount", ctypes.c_uint32),
+        ("ki_fucred", ctypes.c_uint64),
+        ("ki_fuid", ctypes.c_uint32),
+        ("ki_fgid", ctypes.c_uint32),
+        ("ki_fops", ctypes.c_uint64),
+        ("ki_foffset", ctypes.c_uint64),
+        ("ki_fdata", ctypes.c_uint64),
+        ("ki_vun", ctypes.c_uint64),
+        ("ki_vsize", ctypes.c_uint64),
+        ("ki_vtype", ctypes.c_uint32),
+        ("ki_vtag", ctypes.c_uint32),
+        ("ki_vdata", ctypes.c_uint64),
+        ("ki_pid", ctypes.c_uint32),
+        ("ki_fd", ctypes.c_int32),
+        ("ki_ofileflags", ctypes.c_uint32),
+        ("_ki_padto64bits", ctypes.c_uint32),
+    ]
+
+
 def _get_kinfo_proc2_pid(pid: int) -> KinfoProc2:
     proc_info = KinfoProc2()
 
@@ -289,6 +321,22 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
             return proc_arr[:nprocs]
 
 
+def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+    kinfo_file_size = ctypes.sizeof(KinfoFile)
+
+    num_files = _bsd.sysctl(
+        [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
+    )
+
+    files = (KinfoFile * num_files)()
+
+    num_files = _bsd.sysctl(
+        [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
+    )
+
+    return files[:num_files]
+
+
 def iter_pid_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
@@ -300,6 +348,18 @@ def iter_pid_create_time(
 def iter_pids() -> Iterator[int]:
     for kinfo in _list_kinfo_procs2():
         yield kinfo.p_pid
+
+
+def proc_num_fds(proc: "Process") -> int:
+    return sum(kfile.ki_fd >= 0 for kfile in _list_kinfo_files(proc))
+
+
+def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
+    return [
+        ProcessOpenFile(fd=kfile.ki_fd, path="")
+        for kfile in _list_kinfo_files(proc)
+        if kfile.ki_fd >= 0 and kfile.ki_ftype == DTYPE_VNODE and kfile.ki_vtype == VREG
+    ]
 
 
 def pid_create_time(pid: int) -> float:
