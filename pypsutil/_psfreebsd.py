@@ -1020,10 +1020,10 @@ def sensors_power() -> PowerSupplySensorInfo:
                 continue
 
             # Measurements are in current; convert to power
-            energy_full *= bif.dvol / 1000
-            energy_now *= bif.dvol / 1000
+            energy_full = int(energy_full * bif.dvol / 1000)
+            energy_now = int(energy_now * bif.dvol / 1000)
             if power_now is not None:
-                power_now *= bif.dvol / 1000
+                power_now = int(power_now * bif.dvol / 1000)
 
         status = _extract_battery_status(bst.state, bst.cap == bif.lfcap)
 
