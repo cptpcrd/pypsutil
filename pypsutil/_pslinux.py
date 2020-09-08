@@ -838,7 +838,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
     try:
         with os.scandir(os.path.join(_get_sysfs_path(), "class/hwmon")) as hwmon_it:
             for hwmon_entry in hwmon_it:
-                name = _util.read_file_first_line(os.path.join(hwmon_entry.path, "name"))
+                hwmon_name = _util.read_file_first_line(os.path.join(hwmon_entry.path, "name"))
 
                 sensor_names = {
                     name.split("_")[0]
@@ -897,7 +897,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
                         TempSensorInfo(label=label, current=current, high=high, critical=critical)
                     )
 
-                results[name] = sensor_infos
+                results[hwmon_name] = sensor_infos
 
     except FileNotFoundError:
         pass
