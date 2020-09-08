@@ -210,7 +210,7 @@ Process information
 
    .. py:method:: environ()
 
-        Return this process's environmenal variables as a dictionary of strings.
+        Return this process's environmental variables as a dictionary of strings.
 
         Note: This may not reflect changes since the process was started.
 
