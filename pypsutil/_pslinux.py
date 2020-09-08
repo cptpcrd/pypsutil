@@ -269,10 +269,12 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
                     else:
                         # "pos" and/or "flags" fields not found; skip
                         continue
+
             except FileNotFoundError:
                 pass
             else:
                 results.append(ProcessOpenFile(fd=fd, path=path, flags=flags, position=position))
+
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
     else:
@@ -684,6 +686,7 @@ class PowerSupplyInfo:
                     key, value = line.strip().split("=")
                     if key.startswith("POWER_SUPPLY_"):
                         self.data[key[13:].lower()] = value
+
         except OSError:
             pass
 
