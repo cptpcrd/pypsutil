@@ -206,7 +206,7 @@ Process information
         :return: This process's root directory
         :rtype: str
 
-        Availability: Linux
+        Availability: Linux, FreeBSD
 
    .. py:method:: environ()
 
@@ -314,6 +314,30 @@ Process information
 
         :return: The accumulated process times
         :rtype: ProcessCPUTimes
+
+   .. py:method:: memory_info()
+
+      Return a dataclass containing information on the process's memory usage. Some attributes:
+      - `rss`: Non-swapped physical memory the process is using.
+      - `vms`: Total amount of virtual memory used by the process.
+      - `shared` (Linux): The amount of memory used in `tmpfs`es.
+      - `text` (Linux, \*BSD): The amount of memory used by executable code.
+      - `data` (Linux, \*BSD): The amount of memory used by things other than executable code.
+      - `stack` (\*BSD): The amount of memory used by the stack.
+      - `pfaults` (macOS): The number of page faults.
+      - `pageins` (macOS): The number of pageins.
+
+      :returns: A dataclass containing information on the process's memory usage
+      :rtype: ProcessMemoryInfo
+
+   .. py:method:: memory_percent(memtype="rss")
+
+      Compare system-winde memory usage to the total system memory and return a process utilization
+      percentage.
+
+      :returns:
+          The percent of system memory that is being used by the process as the given memory type.
+      :rtype: float
 
    .. py:method:: rlimit(res, new_limits=None)
 
@@ -769,6 +793,114 @@ System information
    :rtype: CPUStats
 
    Availablity: Linux
+
+
+Sensor information
+==================
+
+.. py:function:: sensors_power()
+
+   Get information on power supplies connected to the current system.
+
+   This returns a dataclass with the following attributes:
+
+   - ``batteries``: A list of :py:class:`BatteryInfo` objects representing any batteries connected
+     to the current system.
+   - ``ac_supplies``: A list if :py:class:`ACPowerInfo` objects representing any mains power
+     supplies connected to the current system.
+   - ``is_on_ac_power``: ``True`` if the system is on AC power, ``False`` if it is not, and ``None``
+     if this cannot be determined
+
+   :py:class:`ACPowerInfo` objects have the following attributes:
+
+   - ``name``: A semi-meaningless name.
+   - ``is_online``: Whether the power supply is online.
+
+   :py:class:`BatteryInfo` objects have the following attributes:
+
+   - ``name``: A semi-meaningless name (should be unique betwween batteries, but may be inconsistent
+     if a battery is unplugged).
+   - ``status``: One of the elements of the :py:class:`BatteryStatus` enum (listed below) indicating
+     the current battery status.
+   - ``power_plugged``: This is ``True`` if it can be confirmed that AC power is connected,
+     ``False`` if it can be confirmed that AC power is disconnected, and ``None`` if it cannot be
+     determined. This is provided for compatibility with ``psutil``; it is recommended to use
+     ``status`` instead for most cases.
+     :py:func:`sensors_power()` will only set this to a value other than ``None`` if the battery is
+     either charging or discharging; other sensor information functions, may set this based on the
+     AC adapter status.
+   - ``percent``: The percentage capacity of the battery, as a floating point number,
+   - ``energy_full``: The amount of energy the battery normally contains when full, in uWh (or
+     ``None`` if not available).
+   - ``energy_now``: The amount of energy the battery currently holds, in uWh (or ``None`` if not
+     available).
+   - ``power_now``: The amount of power currently flowing into or out of the battery (this value is
+     always positive; check whether the battery is charging or discharging to determine the
+     direction.)
+   - ``secsleft``: The number of seconds left until the battery is empty. If the battery is either
+     charging or full, this is ``float("inf")``; if the information cannot be determined (or the
+     battery is in the "unknown" state) it is ``None``.
+   - ``secsleft_full``: The number of seconds left until the battery is full. If the battery is
+     full, this is 0; if the the information cannot be determined (or the battery is in the
+     "unknown" or "discharging" states) it is ``None``.
+
+   The elements of the :py:class:`BatteryStatus` enum are as follows:
+
+   - ``CHARGING``: The battery is actively charging.
+   - ``DISCHARGING``: The battery is actively discharging.
+   - ``FULL``: The battery is at 100% capacity and neither charging nor discharging.
+   - ``UNKNOWN``: The battery state is unknown.
+
+   :returns: Information on power supplies connected to the current system.
+   :rtype: PowerSupplySensorInfo or None
+
+   Availability: Linux, FreeBSD
+
+.. py:function:: sensors_is_on_ac_power()
+
+   Detect whether the system is on AC power.
+
+   This is equivalent to ``sensors_power().is_on_ac_power`` (except that it returns ``None`` if
+   :py:func:`sensors_power()` would return ``None``) but it may be more efficient.
+
+   :returns:
+        True if the computer is on AC power, False if it is not, and None if this cannot be
+        determined.
+   :rtype: bool or None
+
+   Availability: Linux, FreeBSD
+
+.. py:function:: sensors_battery()
+
+   Return battery status information (or ``None`` if no battery is installed).
+
+   Internally, this just calls :py:func:`sensors_power()`, extracts the first battery's information,
+   and then sets ``battery.power_plugged`` based on the ``is_on_ac_power`` attribute of the
+   dataclass returned by `:py:func:`sensors_power()`.
+
+   On systems that may have more than one battery, you should use :py:func:`sensors_power()` or
+   :py:func:`sensors_battery_total()` instead.
+
+   :returns: Battery information
+   :rtype: BetteryInfo or None
+
+   Availability: Linux, FreeBSD
+
+.. py:function:: sensors_battery_total()
+
+   Collect system-wide battery information.
+
+   If the system has only one battery (or no batteries), this should be equivalent to
+   :py:func:`sensors_battery()`. If the system has more than one battery, this function will return
+   totaled statistics for all batteries.
+
+   It also sets the ``power_plugged`` attribute similarly to how :py:func:`sensors_battery()` does
+   it.
+
+   :returns: Totaled battery information
+   :rtype: BetteryInfo or None
+
+   Availability: Linux, FreeBSD
 
 
 Exceptions
