@@ -84,7 +84,7 @@ time.sleep(10)
                 assert open_files[0].flags == os.O_RDONLY
 
             assert open_files[1].fd == 5
-            if open_files[0].path:
+            if open_files[1].path:
                 assert os.path.samefile(open_files[1].path, tmp_path / "a")
             if hasattr(pypsutil.ProcessOpenFile, "flags"):
                 assert open_files[1].flags == os.O_RDWR | os.O_APPEND | os.O_CREAT
