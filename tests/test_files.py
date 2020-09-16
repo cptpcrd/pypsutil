@@ -6,7 +6,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, managed_child_process2
+from .util import get_dead_process, linux_only, managed_child_process2
 
 if hasattr(pypsutil.Process, "num_fds"):
 
@@ -77,3 +77,20 @@ time.sleep(10)
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.open_files()
+
+
+@linux_only  # type: ignore
+def test_open_file_mode() -> None:
+    assert pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_RDONLY).mode == "r"
+
+    assert pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_WRONLY).mode == "w"
+    assert (
+        pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_WRONLY | os.O_APPEND).mode
+        == "a"
+    )
+
+    assert pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_RDWR).mode == "r+"
+    assert (
+        pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_RDWR | os.O_APPEND).mode
+        == "a+"
+    )
