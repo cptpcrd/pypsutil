@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 import os
+import pathlib
 import subprocess
 import sys
 
@@ -45,7 +46,10 @@ if hasattr(pypsutil.Process, "open_files"):
 
             assert proc.open_files() == []
 
-    def test_open_files_2() -> None:
+    def test_open_files_2(tmp_path: pathlib.Path) -> None:
+        with open(tmp_path / "a", "w"):
+            pass
+
         with managed_child_process2(
             [
                 sys.executable,
@@ -54,11 +58,14 @@ if hasattr(pypsutil.Process, "open_files"):
 import os, sys, time
 os.open("/", os.O_RDONLY)
 os.open(sys.executable, os.O_RDONLY)
+os.open(sys.argv[1], os.O_RDWR | os.O_APPEND | os.O_CREAT)
 print('a', flush=True)
 time.sleep(10)
 """,
+                str(tmp_path / "a"),
             ],
             close_fds=True,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             bufsize=0,
@@ -68,10 +75,19 @@ time.sleep(10)
 
             open_files = proc.open_files()
 
-            assert len(open_files) == 1
+            assert len(open_files) == 2
+
             assert open_files[0].fd == 4
             if open_files[0].path:
                 assert os.path.samefile(open_files[0].path, sys.executable)
+            if hasattr(pypsutil.ProcessOpenFile, "flags"):
+                assert open_files[0].flags == os.O_RDONLY
+
+            assert open_files[1].fd == 5
+            if open_files[0].path:
+                assert os.path.samefile(open_files[1].path, tmp_path / "a")
+            if hasattr(pypsutil.ProcessOpenFile, "flags"):
+                assert open_files[1].flags == os.O_RDWR | os.O_APPEND | os.O_CREAT
 
     def test_open_files_no_proc() -> None:
         proc = get_dead_process()
