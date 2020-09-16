@@ -846,7 +846,7 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
                 sensor_names = {
                     name.split("_")[0]
                     for name in os.listdir(hwmon_entry.path)
-                    if name.startswith("temp")
+                    if name.startswith("temp") and name.endswith("_input")
                 }
                 if not sensor_names:
                     continue
