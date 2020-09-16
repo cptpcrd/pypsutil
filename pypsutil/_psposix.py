@@ -28,7 +28,7 @@ def proc_getpriority(proc: "Process") -> int:
     pid = proc.pid
 
     if pid == 0:
-        raise ProcessLookupError
+        raise PermissionError
 
     return os.getpriority(os.PRIO_PROCESS, pid)
 
