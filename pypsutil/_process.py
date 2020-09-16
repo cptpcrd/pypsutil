@@ -115,7 +115,7 @@ class Process:
         if recursive:
             search_parents = {self}
             children = []
-            children_set = set()
+            children_info_set = set()
 
             while True:
                 new_search_parents = set()
@@ -129,10 +129,16 @@ class Process:
                     except NoSuchProcess:
                         pass
                     else:
-                        if proc_parent in search_parents and proc not in children_set:
+                        if (
+                            proc_parent in search_parents
+                            and (proc.pid, proc._create_time)  # pylint: disable=protected-access
+                            not in children_info_set
+                        ):
                             # Its parent is one of the processes we were looking for
                             children.append(proc)
-                            children_set.add(proc)
+                            children_info_set.add(
+                                (proc.pid, proc._create_time)  # pylint: disable=protected-access
+                            )
                             # Look for its children next round
                             new_search_parents.add(proc)
 
