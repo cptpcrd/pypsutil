@@ -714,7 +714,7 @@ System information
 
 .. py:function:: physical_cpu_count()
 
-   Get the number of physical CPUs in the system (i.e. excluding Hyper Threading cores) or``None``
+   Get the number of physical CPUs in the system (i.e. excluding Hyper Threading cores) or ``None``
    if that cannot be determined.
 
    Currently, this always returns ``None`` on OpenBSD and NetBSD.
@@ -724,7 +724,7 @@ System information
 
 .. py:function:: cpu_freq()
 
-   Returns an instance of a dataclass with ``current``, ``min`, and ``max`` attributes, representing
+   Returns an instance of a dataclass with ``current``, ``min``, and ``max`` attributes, representing
    the current, minimum, and maximum CPU frequencies.
 
    :return: An instance of a dataclass containing the current, minimum, and maximum CPU frequencies.
@@ -735,7 +735,7 @@ System information
 
 .. py:function:: percpu_freq()
 
-   Identical to :py:func:`cpu_freq()`, but returns a list representing the frequency for each CPU.
+   Identical to :py:func:`cpu_freq()`, but returns a list representing the frequencies for each CPU.
 
    :return: A list of the frequencies of each CPU.
    :rtype: CPUFrequencies
@@ -748,7 +748,7 @@ System information
    Returns a dataclass containing information about system CPU times. Each attribute represents the
    time in seconds that the CPU has spent in the corresponding mode (since boot):
 
-   - ``user``: Time spent in user mode (includes `guest` time on Linux)
+   - ``user``: Time spent in user mode (includes ``guest`` time on Linux)
    - ``system``: Time spent in kernel mode
    - ``idle``: Time spent doing nothing
 
@@ -760,7 +760,7 @@ System information
    - ``irq`` (Linux/BSDs): Time spent servicing hardware interrupts
    - ``softirq`` (Linux): Time spent servicing software interrupts
    - ``lock_spin`` (OpenBSD): Time spent "spinning" on a lock
-   - ``steal`` (Linux): Time spent running other operating systems in a virtualize environment
+   - ``steal`` (Linux): Time spent running other operating systems in a virtualized environment
    - ``guest`` (Linux): Time spent running a virtual CPU for a guest operating system
    - ``guest_nice`` (Linux): Time spent running a niced guest
 
