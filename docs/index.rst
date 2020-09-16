@@ -863,6 +863,8 @@ Sensor information
    This is equivalent to ``sensors_power().is_on_ac_power`` (except that it returns ``None`` if
    :py:func:`sensors_power()` would return ``None``) but it may be more efficient.
 
+   In some cases, it may also succeed if ``sensors_power()`` would return ``None``.
+
    :returns:
         True if the computer is on AC power, False if it is not, and None if this cannot be
         determined.
