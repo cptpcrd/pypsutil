@@ -1045,7 +1045,7 @@ def sensors_power() -> PowerSupplySensorInfo:
     return PowerSupplySensorInfo(batteries=batteries, ac_supplies=ac_adapters)
 
 
-def sensors_battery_total_alt(power_plugged: bool) -> Optional[BatteryInfo]:
+def sensors_battery_total_alt(power_plugged: Optional[bool]) -> Optional[BatteryInfo]:
     try:
         percent = float(_bsd.sysctlbyname_into("hw.acpi.battery.life", ctypes.c_int()).value)
         state = _bsd.sysctlbyname_into("hw.acpi.battery.state", ctypes.c_int()).value
