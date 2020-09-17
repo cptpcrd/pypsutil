@@ -440,4 +440,59 @@ def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
 
         assert pypsutil.sensors_battery() is None  # type: ignore
 
+        assert pypsutil.sensors_battery_total() is None  # type: ignore
+
         assert pypsutil.sensors_is_on_ac_power() is None  # type: ignore
+
+
+@linux_only  # type: ignore
+def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
+    populate_directory(
+        str(tmp_path),
+        {
+            "class": {
+                "power_supply": {
+                    "BAT0": {
+                        "type": "Battery\n",
+                        "status": "full",
+                        "capacity": "100",
+                        "energy_now": "10000",
+                    },
+                    "AC0": {
+                        "type": "Mains\n",
+                        "online": "1",
+                    },
+                },
+            },
+        },
+    )
+
+    with replace_info_directories(sysfs=str(tmp_path)):
+        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore
+            batteries=[
+                pypsutil.BatteryInfo(
+                    name="BAT0",
+                    status=pypsutil.BatteryStatus.FULL,
+                    percent=100,
+                    energy_now=10000,
+                    energy_full=None,
+                    power_now=None,
+                )
+            ],
+            ac_supplies=[pypsutil.ACPowerInfo(name="AC0", is_online=True)],
+        )
+
+        assert pypsutil.sensors_battery() == pypsutil.BatteryInfo(  # type: ignore
+            name="BAT0",
+            status=pypsutil.BatteryStatus.FULL,
+            percent=100,
+            energy_now=10000,
+            energy_full=None,
+            power_now=None,
+            _power_plugged=True,
+        )
+
+        # Unable to determine total capacity
+        assert pypsutil.sensors_battery_total() is None  # type: ignore
+
+        assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
