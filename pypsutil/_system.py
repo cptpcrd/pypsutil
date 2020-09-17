@@ -137,6 +137,7 @@ if hasattr(_psimpl, "sensors_power"):
             battery.status in (BatteryStatus.CHARGING, BatteryStatus.FULL)
             for battery in psinfo.batteries
         ):
+            # At least one battery charging, all either charging or full
             status = BatteryStatus.CHARGING
             power_now = total_charge_rate
         elif any(
@@ -145,9 +146,11 @@ if hasattr(_psimpl, "sensors_power"):
             battery.status in (BatteryStatus.DISCHARGING, BatteryStatus.FULL)
             for battery in psinfo.batteries
         ):
+            # At least one battery discharging, all either discharging or full
             status = BatteryStatus.DISCHARGING
             power_now = total_discharge_rate
         elif all(battery.status == BatteryStatus.FULL for battery in psinfo.batteries):
+            # All full
             status = BatteryStatus.FULL
         else:
             status = BatteryStatus.UNKNOWN
