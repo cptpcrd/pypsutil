@@ -131,7 +131,6 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
             return float("inf")
         elif (
             self.status == BatteryStatus.DISCHARGING
-            and self.energy_full is not None
             and self.energy_now is not None
             and self.power_now is not None
             and self.power_now > 0
