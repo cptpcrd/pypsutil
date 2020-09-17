@@ -332,7 +332,7 @@ Process information
 
    .. py:method:: memory_percent(memtype="rss")
 
-      Compare system-winde memory usage to the total system memory and return a process utilization
+      Compare system-wide memory usage to the total system memory and return a process utilization
       percentage.
 
       :returns:
