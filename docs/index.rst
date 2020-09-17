@@ -318,14 +318,15 @@ Process information
    .. py:method:: memory_info()
 
       Return a dataclass containing information on the process's memory usage. Some attributes:
-      - `rss`: Non-swapped physical memory the process is using.
-      - `vms`: Total amount of virtual memory used by the process.
-      - `shared` (Linux): The amount of memory used in `tmpfs`es.
-      - `text` (Linux, \*BSD): The amount of memory used by executable code.
-      - `data` (Linux, \*BSD): The amount of memory used by things other than executable code.
-      - `stack` (\*BSD): The amount of memory used by the stack.
-      - `pfaults` (macOS): The number of page faults.
-      - `pageins` (macOS): The number of pageins.
+
+      - ``rss``: Non-swapped physical memory the process is using.
+      - ``vms``: Total amount of virtual memory used by the process.
+      - ``shared`` (Linux): The amount of memory used in `tmpfs`es.
+      - ``text`` (Linux, \*BSD): The amount of memory used by executable code.
+      - ``data`` (Linux, \*BSD): The amount of memory used by things other than executable code.
+      - ``stack`` (\*BSD): The amount of memory used by the stack.
+      - ``pfaults`` (macOS): The number of page faults.
+      - ``pageins`` (macOS): The number of pageins.
 
       :returns: A dataclass containing information on the process's memory usage
       :rtype: ProcessMemoryInfo
