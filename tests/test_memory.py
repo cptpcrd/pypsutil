@@ -23,5 +23,5 @@ if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
 
         assert (
             sys_meminfo.used + sys_meminfo.free + sys_meminfo.buffers + sys_meminfo.cached
-            == sys_meminfo.total
+            <= sys_meminfo.total
         )
