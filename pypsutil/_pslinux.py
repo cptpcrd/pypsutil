@@ -597,14 +597,14 @@ def cpu_stats() -> Tuple[int, int, int, int]:
 def cpu_times() -> CPUTimes:
     for entry in _iter_procfs_stat_entries():
         if entry[0] == "cpu":
-            return CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:]))
+            return CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:11]))
 
     raise RuntimeError("'cpu' entry not found in /proc/stat")
 
 
 def percpu_times() -> List[CPUTimes]:
     return [
-        CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:]))
+        CPUTimes(*(int(item) / _util.CLK_TCK for item in entry[1:11]))
         for entry in _iter_procfs_stat_entries()
         if entry[0].startswith("cpu") and len(entry[0]) > 3
     ]
