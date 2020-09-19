@@ -322,14 +322,17 @@ class Process:
             except FileNotFoundError:
                 pass
 
-            with os.scandir("/dev") as dev_names:
-                for entry in dev_names:
-                    if entry.name.startswith("tty") and len(entry.name) > 3:
-                        try:
-                            if entry.stat().st_rdev == tty_rdev:
-                                return entry.path
-                        except OSError:
-                            pass
+            try:
+                with os.scandir("/dev") as dev_names:
+                    for entry in dev_names:
+                        if entry.name.startswith("tty") and len(entry.name) > 3:
+                            try:
+                                if entry.stat().st_rdev == tty_rdev:
+                                    return entry.path
+                            except OSError:
+                                pass
+            except FileNotFoundError:
+                pass
 
             return ""
         else:
