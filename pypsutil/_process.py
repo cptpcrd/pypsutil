@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tupl
 
 from . import _system, _util
 from ._detect import _psimpl
-from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired
+from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._util import translate_proc_errors
 
 ThreadInfo = _util.ThreadInfo
@@ -195,7 +195,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 lookup_path: Optional[str]
                 try:
                     lookup_path = self.environ()["PATH"]
-                except (OSError, KeyError):
+                except (OSError, KeyError, AccessDenied, ZombieProcess):
                     lookup_path = None
 
                 exe = shutil.which(cmdline[0], path=lookup_path)
