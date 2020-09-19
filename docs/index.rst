@@ -140,6 +140,21 @@ Process information
         :return: The creation time of this process, in seconds since the Unix epoch
         :rtype: float
 
+   .. py:method:: raw_create_time()
+
+        .. warning::
+            In nearly all cases, you want to use :py:meth:`create_time()` instead.
+
+        Get the "raw" creation time of this process. This is the value returned directly by the OS.
+        For most intents and purposes, its value is completely meaningless.
+
+        The only guarantees made about this value are a) it increases with time and b) it is unique
+        per-process; i.e. two :py:class:`Process` objects representing the same process will always
+        have the same raw creation time. Any uses of this value beyond that are undefined behavior.
+
+        :return: The "raw" creation time returned directly by the OS.
+        :rtype: float
+
    .. py:method:: pgid()
 
         Get the processs group ID of this process.

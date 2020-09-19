@@ -29,7 +29,8 @@ Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
 
-class Process:
+class Process:  # pylint: disable=too-many-instance-attributes
+    _raw_create_time: Optional[float] = None
     _create_time: Optional[float] = None
 
     def __init__(self, pid: Optional[int] = None) -> None:
@@ -52,12 +53,12 @@ class Process:
         self._exitcode: Optional[int] = None
         self._exitcode_lock = threading.RLock()
 
-        self.create_time()
+        self.raw_create_time()
 
     @classmethod
-    def _create(cls, pid: int, create_time: float) -> "Process":
+    def _create(cls, pid: int, raw_create_time: float) -> "Process":
         proc = object.__new__(cls)
-        proc._create_time = create_time  # pylint: disable=protected-access
+        proc._raw_create_time = raw_create_time  # pylint: disable=protected-access
         proc.__init__(pid)
         return cast(Process, proc)
 
@@ -155,9 +156,15 @@ class Process:
         return children
 
     @translate_proc_errors
+    def raw_create_time(self) -> float:
+        if self._raw_create_time is None:
+            self._raw_create_time = _psimpl.pid_raw_create_time(self._pid)
+
+        return self._raw_create_time
+
     def create_time(self) -> float:
         if self._create_time is None:
-            self._create_time = _psimpl.pid_create_time(self._pid)
+            self._create_time = _psimpl.translate_create_time(self.raw_create_time())
 
         return self._create_time
 
@@ -487,12 +494,12 @@ class Process:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Process):
-            return self._pid == other._pid and self._create_time == other._create_time
+            return self._pid == other._pid and self._raw_create_time == other._raw_create_time
 
         return NotImplemented
 
     def __hash__(self) -> int:
-        return hash((self._pid, self._create_time))
+        return hash((self._pid, self._raw_create_time))
 
     def __repr__(self) -> str:
         return "{}(pid={})".format(self.__class__.__name__, self._pid)
@@ -583,7 +590,7 @@ _process_iter_cache_lock = threading.RLock()
 def _process_iter_impl(*, skip_perm_error: bool = False) -> Iterator[Process]:
     seen_pids = set()
 
-    for (pid, create_time) in _psimpl.iter_pid_create_time(skip_perm_error=skip_perm_error):
+    for (pid, raw_create_time) in _psimpl.iter_pid_raw_create_time(skip_perm_error=skip_perm_error):
         seen_pids.add(pid)
 
         try:
@@ -595,7 +602,7 @@ def _process_iter_impl(*, skip_perm_error: bool = False) -> Iterator[Process]:
             pass
         else:
             # Cache hit
-            if proc.create_time() == create_time:
+            if proc.raw_create_time() == raw_create_time:  # pylint: disable=protected-access
                 # It's the same process
                 yield proc
                 continue
@@ -610,7 +617,7 @@ def _process_iter_impl(*, skip_perm_error: bool = False) -> Iterator[Process]:
                     # the entry, so we don't get an error if it's not present.
                     _process_iter_cache.pop(pid, None)
 
-        proc = Process._create(pid, create_time)  # pylint: disable=protected-access
+        proc = Process._create(pid, raw_create_time)  # pylint: disable=protected-access
         with _process_iter_cache_lock:
             # There's also a potential race condition here.
             # Another thread might have already populated the cache entry, and we
@@ -646,7 +653,7 @@ def pid_exists(pid: int) -> bool:
         if pid > 0:
             os.kill(pid, 0)
         else:
-            _psimpl.pid_create_time(pid)
+            _psimpl.pid_raw_create_time(pid)
     except (ProcessLookupError, NoSuchProcess):
         return False
     except (PermissionError, AccessDenied):
@@ -664,6 +671,19 @@ def wait_procs(
 
     gone = list()
     alive = list(procs)
+
+    if len(alive) == 1:
+        proc = alive[0]
+        try:
+            res = proc.wait(timeout=timeout)
+        except TimeoutExpired:
+            return [], [proc]
+        else:
+            proc.returncode = res
+            if callback is not None:
+                callback(proc)
+
+            return [proc], []
 
     while alive:
         for proc in list(alive):

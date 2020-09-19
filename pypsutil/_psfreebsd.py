@@ -595,7 +595,7 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
         i += kfile.kf_structsize
 
 
-def iter_pid_create_time(
+def iter_pid_raw_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
@@ -608,8 +608,12 @@ def iter_pids() -> Iterator[int]:
         yield kinfo.ki_pid
 
 
-def pid_create_time(pid: int) -> float:
+def pid_raw_create_time(pid: int) -> float:
     return cast(float, _get_kinfo_proc_pid(pid).ki_start.to_float())
+
+
+def translate_create_time(raw_create_time: float) -> float:
+    return raw_create_time
 
 
 def proc_umask(proc: "Process") -> int:

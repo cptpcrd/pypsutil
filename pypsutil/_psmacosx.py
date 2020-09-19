@@ -372,7 +372,7 @@ def _get_proc_task_info(proc: "Process") -> ProcTaskInfo:
     return info
 
 
-def iter_pid_create_time(
+def iter_pid_raw_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
@@ -385,8 +385,12 @@ def iter_pids() -> Iterator[int]:
         yield kinfo.kp_proc.p_pid
 
 
-def pid_create_time(pid: int) -> float:
+def pid_raw_create_time(pid: int) -> float:
     return cast(float, _get_kinfo_proc_pid(pid).kp_proc.p_un.p_starttime.to_float())
+
+
+def translate_create_time(raw_create_time: float) -> float:
+    return raw_create_time
 
 
 _PROC_STATUSES = {

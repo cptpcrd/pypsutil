@@ -337,7 +337,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
     return files[:num_files]
 
 
-def iter_pid_create_time(
+def iter_pid_raw_create_time(
     *,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
@@ -362,9 +362,13 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     ]
 
 
-def pid_create_time(pid: int) -> float:
+def pid_raw_create_time(pid: int) -> float:
     kinfo = _get_kinfo_proc2_pid(pid)
     return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+
+
+def translate_create_time(raw_create_time: float) -> float:
+    return raw_create_time
 
 
 _PROC_STATUSES = {

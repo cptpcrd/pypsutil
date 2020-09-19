@@ -176,9 +176,13 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
 
 
 @translate_proc_errors
-def pid_create_time(pid: int) -> float:
+def pid_raw_create_time(pid: int) -> float:
     ctime_ticks = int(_get_pid_stat_fields(pid)[21])
-    return _internal_boot_time() + ctime_ticks / _util.CLK_TCK
+    return ctime_ticks / _util.CLK_TCK
+
+
+def translate_create_time(raw_create_time: float) -> float:
+    return _internal_boot_time() + raw_create_time
 
 
 _PROC_STATUSES = {
@@ -454,7 +458,7 @@ def iter_pids() -> Iterator[int]:
             pass
 
 
-def iter_pid_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int, float]]:
+def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int, float]]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
             pid = int(name)
@@ -462,7 +466,7 @@ def iter_pid_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int
             continue
 
         try:
-            ctime = pid_create_time(pid)
+            ctime = pid_raw_create_time(pid)
         except NoSuchProcess:
             continue
         except AccessDenied:
