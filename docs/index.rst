@@ -194,7 +194,7 @@ Process information
         If the path to the process's executable cannot be determined (for example, if the ``PATH``
         lookup fails on OpenBSD), this function will return an empty string.
 
-        :param fallback_cmdline bool:
+        :param bool fallback_cmdline:
             Whether to fall back on checking the first command-line argument if the OS does not
             provide a way to get the executable path. (This is much less reliable.)
         :return: The path to this process's executable
