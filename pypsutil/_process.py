@@ -460,7 +460,7 @@ class Process:
                 if remaining_time <= 0:
                     raise TimeoutExpired(timeout, pid=self.pid)
 
-                interval = min(interval, remaining_time / 2)
+                interval = max(min(interval, remaining_time / 2), 0.001)
 
             time.sleep(interval)
 
@@ -692,7 +692,7 @@ def wait_procs(
             if remaining_time <= 0:
                 break
 
-            interval = min(interval, remaining_time / 2)
+            interval = max(min(interval, remaining_time / 2), 0.001)
 
         time.sleep(interval)
 
