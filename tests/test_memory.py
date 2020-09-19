@@ -1,6 +1,10 @@
 # mypy: ignore-errors
 # pylint: disable=no-member
+import pytest
+
 import pypsutil
+
+from .util import get_dead_process
 
 if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
 
@@ -25,3 +29,10 @@ if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
             sys_meminfo.used + sys_meminfo.free + sys_meminfo.buffers + sys_meminfo.cached
             <= sys_meminfo.total
         )
+
+
+def test_memory_info_no_proc() -> None:
+    proc = get_dead_process()
+
+    with pytest.raises(pypsutil.NoSuchProcess):
+        proc.memory_info()
