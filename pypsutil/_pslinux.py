@@ -813,30 +813,7 @@ def sensors_power() -> PowerSupplySensorInfo:
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:
-    seen_discharging_batteries = False
-    seen_offline_ac_adapters = False
-
-    for info in _iter_sensors_power():
-        if isinstance(info, BatteryInfo):
-            if info.status == BatteryStatus.CHARGING:
-                # If we have at least one battery charging, power must be connected
-                return True
-            elif info.status == BatteryStatus.DISCHARGING:
-                seen_discharging_batteries = True
-
-        elif info.is_online:
-            # AC adapter that reports it's online
-            return True
-
-        else:
-            # AC adapter that reports it's not online
-            seen_offline_ac_adapters = True
-
-    # Return False if we saw:
-    # 1. At least one AC power supply that was offline
-    # 2. No batteries that were discharging
-    # Otherwise, return None.
-    return False if seen_offline_ac_adapters or seen_discharging_batteries else None
+    return sensors_power().is_on_ac_power
 
 
 def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
