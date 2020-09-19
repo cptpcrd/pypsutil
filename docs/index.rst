@@ -336,7 +336,7 @@ Process information
 
       - ``rss``: Non-swapped physical memory the process is using.
       - ``vms``: Total amount of virtual memory used by the process.
-      - ``shared`` (Linux): The amount of memory used in `tmpfs`es.
+      - ``shared`` (Linux): The amount of memory used in ``tmpfs``-es.
       - ``text`` (Linux, \*BSD): The amount of memory used by executable code.
       - ``data`` (Linux, \*BSD): The amount of memory used by things other than executable code.
       - ``stack`` (\*BSD): The amount of memory used by the stack.
