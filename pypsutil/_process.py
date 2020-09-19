@@ -331,7 +331,9 @@ class Process:
                         except OSError:
                             pass
 
-        return None
+            return ""
+        else:
+            return None
 
     @translate_proc_errors
     def cpu_times(self) -> ProcessCPUTimes:

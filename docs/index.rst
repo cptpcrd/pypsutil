@@ -390,7 +390,8 @@ Process information
    .. py:method:: terminal()
 
       Get the name of this process's controlling terminal. Returns ``None`` if the process has no
-      controlling terminal, or if its name cannot be found.
+      controlling terminal, or an empty string if the process has a controlling terminal but its name
+      cannot be found.
 
       .. note::
           In most cases, the name returned by this function will be the same as with the ``tty``
