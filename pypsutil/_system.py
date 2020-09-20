@@ -110,8 +110,6 @@ if hasattr(_psimpl, "sensors_power"):
             else:
                 return None
 
-        status = None
-
         total_energy_full = 0
         total_energy_now = 0
 
