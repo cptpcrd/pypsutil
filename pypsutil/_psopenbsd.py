@@ -12,6 +12,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 CTL_KERN = 1
+CTL_VM = 2
+CTL_HW = 6
+CTL_VFS = 10
 
 KERN_CPTIME = 40
 KERN_CPTIME2 = 71
@@ -25,6 +28,14 @@ KERN_PROC_ARGV = 1
 KERN_PROC_ENV = 3
 KERN_FILE = 73
 KERN_FILE_BYPID = 2
+
+VM_METER = 1
+VM_UVMEXP = 4
+
+HW_PHYSMEM64 = 19
+
+VFS_GENERIC = 0
+VFS_BCACHESTAT = 3
 
 DTYPE_VNODE = 1
 VREG = 1
@@ -53,6 +64,24 @@ class CPUTimes:
     lock_spin: float
     irq: float
     idle: float
+
+
+@dataclasses.dataclass
+class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
+    total: int
+    available: int
+    used: int
+    free: int
+    active: int
+    inactive: int
+    buffers: int
+    cached: int
+    shared: int
+    wired: int
+
+    @property
+    def percent(self) -> float:
+        return 100 - self.available * 100.0 / self.total
 
 
 @dataclasses.dataclass
@@ -251,6 +280,139 @@ class KinfoFile(ctypes.Structure):
         ("t_snd_wnd", ctypes.c_uint64),
         ("t_snd_cwnd", ctypes.c_uint64),
         ("va_nlink", ctypes.c_uint32),
+    ]
+
+
+class UvmExp(ctypes.Structure):
+    _fields_ = [
+        ("pagesize", ctypes.c_int),
+        ("pagemask", ctypes.c_int),
+        ("pageshift", ctypes.c_int),
+        ("npages", ctypes.c_int),
+        ("free", ctypes.c_int),
+        ("active", ctypes.c_int),
+        ("inactive", ctypes.c_int),
+        ("paging", ctypes.c_int),
+        ("wired", ctypes.c_int),
+        ("zeropages", ctypes.c_int),
+        ("reserve_pagedaemon", ctypes.c_int),
+        ("reserve_kernel", ctypes.c_int),
+        ("unused01", ctypes.c_int),
+        ("vnodepages", ctypes.c_int),
+        ("vtextpages", ctypes.c_int),
+        ("freemin", ctypes.c_int),
+        ("freetarg", ctypes.c_int),
+        ("inactarg", ctypes.c_int),
+        ("wiredmax", ctypes.c_int),
+        ("anonmin", ctypes.c_int),
+        ("vtextmin", ctypes.c_int),
+        ("vnodemin", ctypes.c_int),
+        ("anonminpct", ctypes.c_int),
+        ("vtextminpct", ctypes.c_int),
+        ("vnodeminpct", ctypes.c_int),
+        ("nswapdev", ctypes.c_int),
+        ("swpages", ctypes.c_int),
+        ("swpginuse", ctypes.c_int),
+        ("swpgonly", ctypes.c_int),
+        ("nswget", ctypes.c_int),
+        ("nanon", ctypes.c_int),
+        ("unused05", ctypes.c_int),
+        ("unused06", ctypes.c_int),
+        ("faults", ctypes.c_int),
+        ("traps", ctypes.c_int),
+        ("intrs", ctypes.c_int),
+        ("swtch", ctypes.c_int),
+        ("softs", ctypes.c_int),
+        ("syscalls", ctypes.c_int),
+        ("pageins", ctypes.c_int),
+        ("unused07", ctypes.c_int),
+        ("unused08", ctypes.c_int),
+        ("pgswapin", ctypes.c_int),
+        ("pgswapout", ctypes.c_int),
+        ("forks", ctypes.c_int),
+        ("forks_ppwait", ctypes.c_int),
+        ("forks_sharevm", ctypes.c_int),
+        ("pga_zerohit", ctypes.c_int),
+        ("pga_zeromiss", ctypes.c_int),
+        ("unused09", ctypes.c_int),
+        ("fltnoram", ctypes.c_int),
+        ("fltnoanon", ctypes.c_int),
+        ("fltnoamap", ctypes.c_int),
+        ("fltpgwait", ctypes.c_int),
+        ("fltpgrele", ctypes.c_int),
+        ("fltrelck", ctypes.c_int),
+        ("fltrelckok", ctypes.c_int),
+        ("fltanget", ctypes.c_int),
+        ("fltanretry", ctypes.c_int),
+        ("fltamcopy", ctypes.c_int),
+        ("fltnamap", ctypes.c_int),
+        ("fltnomap", ctypes.c_int),
+        ("fltlget", ctypes.c_int),
+        ("fltget", ctypes.c_int),
+        ("flt_anon", ctypes.c_int),
+        ("flt_acow", ctypes.c_int),
+        ("flt_obj", ctypes.c_int),
+        ("flt_prcopy", ctypes.c_int),
+        ("flt_przero", ctypes.c_int),
+        ("pdwoke", ctypes.c_int),
+        ("pdrevs", ctypes.c_int),
+        ("pdswout", ctypes.c_int),
+        ("pdfreed", ctypes.c_int),
+        ("pdscans", ctypes.c_int),
+        ("pdanscan", ctypes.c_int),
+        ("pdobscan", ctypes.c_int),
+        ("pdreact", ctypes.c_int),
+        ("pdbusy", ctypes.c_int),
+        ("pdpageouts", ctypes.c_int),
+        ("pdpending", ctypes.c_int),
+        ("pddeact", ctypes.c_int),
+        ("unused11", ctypes.c_int),
+        ("unused12", ctypes.c_int),
+        ("unused13", ctypes.c_int),
+        ("fpswtch", ctypes.c_int),
+        ("kmapent", ctypes.c_int),
+    ]
+
+
+class VmTotal(ctypes.Structure):
+    _fields_ = [
+        ("t_rq", ctypes.c_int16),
+        ("t_dw", ctypes.c_int16),
+        ("t_pw", ctypes.c_int16),
+        ("t_sl", ctypes.c_int16),
+        ("t_sw", ctypes.c_int16),
+        ("t_vm", ctypes.c_uint32),
+        ("t_avm", ctypes.c_uint32),
+        ("t_rm", ctypes.c_uint32),
+        ("t_arm", ctypes.c_uint32),
+        ("t_vmshr", ctypes.c_uint32),
+        ("t_avmshr", ctypes.c_uint32),
+        ("t_rmshr", ctypes.c_uint32),
+        ("t_armshr", ctypes.c_uint32),
+        ("t_free", ctypes.c_uint32),
+    ]
+
+
+class BCacheStats(ctypes.Structure):
+    _fields_ = [
+        ("numbufs", ctypes.c_int64),
+        ("numbufpages", ctypes.c_int64),
+        ("numdirtypages", ctypes.c_int64),
+        ("numcleanpages", ctypes.c_int64),
+        ("pendingwrites", ctypes.c_int64),
+        ("pendingreads", ctypes.c_int64),
+        ("numwrites", ctypes.c_int64),
+        ("numreads", ctypes.c_int64),
+        ("cachehits", ctypes.c_int64),
+        ("busymapped", ctypes.c_int64),
+        ("dmapages", ctypes.c_int64),
+        ("highpages", ctypes.c_int64),
+        ("delwribufs", ctypes.c_int64),
+        ("kvaslots", ctypes.c_int64),
+        ("kvaslots_avail", ctypes.c_int64),
+        ("highflips", ctypes.c_int64),
+        ("highflops", ctypes.c_int64),
+        ("dmaflips", ctypes.c_int64),
     ]
 
 
@@ -503,6 +665,47 @@ def percpu_times() -> List[CPUTimes]:
             results.append(CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes)))
 
     return results
+
+
+def _get_uvmexp() -> UvmExp:
+    return _bsd.sysctl_into([CTL_VM, VM_UVMEXP], UvmExp())
+
+
+def cpu_stats() -> Tuple[int, int, int, int]:
+    uvmexp = _get_uvmexp()
+    return uvmexp.swtch, uvmexp.intrs, uvmexp.softs, uvmexp.syscalls
+
+
+def virtual_memory() -> VirtualMemoryInfo:
+    uvmexp = _get_uvmexp()
+    vmtotal = _bsd.sysctl_into([CTL_VM, VM_METER], VmTotal())
+    bcstats = _bsd.sysctl_into([CTL_VFS, VFS_GENERIC, VFS_BCACHESTAT], BCacheStats())
+
+    total_mem = _bsd.sysctl_into([CTL_HW, HW_PHYSMEM64], ctypes.c_int64()).value
+
+    return VirtualMemoryInfo(
+        total=total_mem,
+        available=(uvmexp.inactive + uvmexp.free) * uvmexp.pagesize,
+        used=vmtotal.t_rm * uvmexp.pagesize,
+        free=uvmexp.free * uvmexp.pagesize,
+        active=uvmexp.active * uvmexp.pagesize,
+        inactive=uvmexp.inactive * uvmexp.pagesize,
+        buffers=bcstats.numbufpages * uvmexp.pagesize,
+        cached=0,
+        shared=(vmtotal.t_vmshr + vmtotal.t_rmshr) * uvmexp.pagesize,
+        wired=uvmexp.wired * uvmexp.pagesize,
+    )
+
+
+def swap_memory() -> _util.SwapInfo:
+    uvmexp = _get_uvmexp()
+
+    return _util.SwapInfo(
+        total=uvmexp.swpages * uvmexp.pagesize,
+        used=uvmexp.swpginuse * uvmexp.pagesize,
+        sin=uvmexp.pageins,
+        sout=uvmexp.pdpageouts,
+    )
 
 
 def boot_time() -> float:
