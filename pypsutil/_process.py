@@ -687,7 +687,7 @@ def wait_procs(
 
             return [proc], []
 
-    while alive:
+    while True:
         for proc in list(alive):
             try:
                 res = proc.wait(timeout=0)
@@ -702,6 +702,9 @@ def wait_procs(
 
                 alive.remove(proc)
                 gone.append(proc)
+
+        if not alive:
+            break
 
         interval = 0.01
         if timeout is not None:
