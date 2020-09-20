@@ -111,15 +111,15 @@ def test_wait_single_proc() -> None:
 
         # Wait for both of them to die
         # In this order
-        gone, alive = pypsutil.wait_procs([child_proc])
-        assert not alive
-        assert set(gone) == {child_proc}
-        assert child_proc.returncode == -signal.SIGTERM  # type: ignore  # pylint: disable=no-member
-
         gone, alive = pypsutil.wait_procs([gchild_proc])
         assert not alive
         assert set(gone) == {gchild_proc}
         assert gchild_proc.returncode is None  # type: ignore
+
+        gone, alive = pypsutil.wait_procs([child_proc])
+        assert not alive
+        assert set(gone) == {child_proc}
+        assert child_proc.returncode == -signal.SIGTERM  # type: ignore  # pylint: disable=no-member
 
         # Waiting for them again has no effect
         gone, alive = pypsutil.wait_procs([child_proc])
@@ -131,6 +131,38 @@ def test_wait_single_proc() -> None:
         assert not alive
         assert set(gone) == {gchild_proc}
         assert gchild_proc.returncode is None  # type: ignore
+
+
+def test_wait_single_proc2() -> None:
+    with managed_child_process(
+        [
+            sys.executable,
+            "-c",
+            "import os, sys, time; os.spawnv(os.P_NOWAIT, sys.executable, "
+            "[sys.executable, '-c', 'exit()']); time.sleep(100)",
+        ]
+    ) as child_proc:
+        # Wait for the child to fork()
+        while True:
+            grandchildren = child_proc.children()
+            if grandchildren:
+                break
+
+            time.sleep(0.01)
+
+        # Our child only has one child
+        assert len(grandchildren) == 1
+        gchild_proc = grandchildren[0]
+
+        # Send SIGTERM
+        gchild_proc.terminate()
+        child_proc.terminate()
+
+        # Wait for both of them to die
+        # In this order
+        # Set a timeout that isn't 0 or None to test some extra portions of the code
+        assert gchild_proc.wait(timeout=0.5) is None
+        assert child_proc.wait(timeout=0.5) == -signal.SIGTERM
 
 
 def test_wait_procs_callback() -> None:
