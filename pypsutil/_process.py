@@ -679,7 +679,9 @@ def wait_procs(
         except TimeoutExpired:
             return [], [proc]
         else:
-            proc.returncode = res
+            if not isinstance(proc, Popen):
+                proc.returncode = res
+
             if callback is not None:
                 callback(proc)
 
@@ -692,7 +694,8 @@ def wait_procs(
             except TimeoutExpired:
                 pass
             else:
-                proc.returncode = res
+                if not isinstance(proc, Popen):
+                    proc.returncode = res
 
                 if callback is not None:
                     callback(proc)

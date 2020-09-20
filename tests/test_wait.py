@@ -4,7 +4,7 @@ import time
 
 import pypsutil
 
-from .util import managed_child_process
+from .util import managed_child_process, managed_child_process2
 
 
 def test_wait_procs_basic() -> None:
@@ -134,7 +134,7 @@ def test_wait_single_proc() -> None:
 
 
 def test_wait_procs_callback() -> None:
-    with managed_child_process(
+    with managed_child_process2(
         [
             sys.executable,
             "-c",
@@ -173,7 +173,7 @@ def test_wait_procs_callback() -> None:
 
 
 def test_wait_procs_single_callback() -> None:
-    with managed_child_process(
+    with managed_child_process2(
         [
             sys.executable,
             "-c",
