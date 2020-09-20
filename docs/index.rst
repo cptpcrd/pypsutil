@@ -701,7 +701,7 @@ System information
    :returns: A dataclass containing system memory statistics
    :rtype: VirtualMemoryInfo
 
-   Availability: Linux, FreeBSD
+   Availability: Linux, FreeBSD, OpenBSD, NetBSD
 
 .. py:function:: swap_memory()
 
