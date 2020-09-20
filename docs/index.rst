@@ -831,7 +831,7 @@ Sensor information
 
    - ``batteries``: A list of :py:class:`BatteryInfo` objects representing any batteries connected
      to the current system.
-   - ``ac_supplies``: A list if :py:class:`ACPowerInfo` objects representing any mains power
+   - ``ac_supplies``: A list of :py:class:`ACPowerInfo` objects representing any mains power
      supplies connected to the current system.
    - ``is_on_ac_power``: ``True`` if the system is on AC power, ``False`` if it is not, and ``None``
      if this cannot be determined
@@ -843,8 +843,8 @@ Sensor information
 
    :py:class:`BatteryInfo` objects have the following attributes:
 
-   - ``name``: A semi-meaningless name (should be unique betwween batteries, but may be inconsistent
-     if a battery is unplugged).
+   - ``name``: A semi-meaningless name (should be unique between batteries, but may change if one
+     battery is unplugged in a multi-battery system).
    - ``status``: One of the elements of the :py:class:`BatteryStatus` enum (listed below) indicating
      the current battery status.
    - ``power_plugged``: This is ``True`` if it can be confirmed that AC power is connected,
@@ -852,7 +852,7 @@ Sensor information
      determined. This is provided for compatibility with ``psutil``; it is recommended to use
      ``status`` instead for most cases.
      :py:func:`sensors_power()` will only set this to a value other than ``None`` if the battery is
-     either charging or discharging; other sensor information functions, may set this based on the
+     either charging or discharging; other sensor information functions may set this based on the
      AC adapter status.
    - ``percent``: The percentage capacity of the battery, as a floating point number,
    - ``energy_full``: The amount of energy the battery normally contains when full, in uWh (or
@@ -861,7 +861,7 @@ Sensor information
      available).
    - ``power_now``: The amount of power currently flowing into or out of the battery (this value is
      always positive; check whether the battery is charging or discharging to determine the
-     direction.)
+     direction) or ``None`` if not available.
    - ``secsleft``: The number of seconds left until the battery is empty. If the battery is either
      charging or full, this is ``float("inf")``; if the information cannot be determined (or the
      battery is in the "unknown" state) it is ``None``.
@@ -917,7 +917,7 @@ Sensor information
 
    Collect system-wide battery information.
 
-   If the system has only one battery (or no batteries), this should be equivalent to
+   If the system has only one battery (or no batteries), this should be roughly equivalent to
    :py:func:`sensors_battery()`. If the system has more than one battery, this function will return
    totaled statistics for all batteries.
 
