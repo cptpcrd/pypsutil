@@ -623,10 +623,18 @@ Process information
 
 .. py:function:: wait_procs(procs, timeout=None, callback=None)
 
-   Wait for several :py:class:`Process` instances to terminate, and returns ``(gone, alive)`` tuple
+   Wait for several :py:class:`Process` instances to terminate, and returns a ``(gone, alive)`` tuple
    indicating which have terminated and which are still alive.
 
-   If the ``timeout`` expires, this function will not raise :py:class:`TimeoutExpired`.
+   As each process terminates, a ``returncode`` attribute will be set on it. If the process was a child
+   of the current process, this will be set to the return code of the process; otherwise, it will be set
+   to ``None``.
+
+   If ``callback`` is not ``None``, it should be a function that will be called as each process terminates
+   (after the ``returncode`` atribute is set).
+
+   If the ``timeout`` expires, this function will not raise :py:class:`TimeoutExpired`; it will simply
+   return the current ``(gone, alive)`` tuple of processes.
 
    :param procs: The processes that should be waited for
    :type procs: iterable[int]
