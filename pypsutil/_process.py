@@ -406,7 +406,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
             with self._lock, self._exitcode_lock:
                 return self._exitcode
 
-        start_time = time.monotonic()
+        start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
 
         if timeout is None and self.pid > 0:
             # Wait with no timeout
@@ -667,7 +667,7 @@ def wait_procs(
     timeout: Union[int, float, None] = None,
     callback: Optional[Callable[[Process], None]] = None,
 ) -> Tuple[List[Process], List[Process]]:
-    start_time = time.monotonic()
+    start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
 
     gone = list()
     alive = list(procs)
