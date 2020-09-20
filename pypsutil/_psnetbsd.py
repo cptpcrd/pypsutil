@@ -12,6 +12,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 CTL_KERN = 1
+CTL_VM = 2
+CTL_VFS = 3
+CTL_HW = 6
 CTL_PROC = 10
 
 PROC_PID_LIMIT = 2
@@ -30,6 +33,11 @@ KERN_PROC_PATHNAME = 5
 KERN_PROC_CWD = 6
 KERN_FILE2 = 77
 KERN_FILE_BYPID = 2
+
+HW_PHYSMEM64 = 13
+
+VM_METER = 1
+VM_UVMEXP2 = 5
 
 DTYPE_VNODE = 1
 VREG = 1
@@ -113,6 +121,24 @@ class CPUTimes:
     system: float
     irq: float
     idle: float
+
+
+@dataclasses.dataclass
+class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
+    total: int
+    available: int
+    used: int
+    free: int
+    active: int
+    inactive: int
+    buffers: int
+    cached: int
+    shared: int
+    wired: int
+
+    @property
+    def percent(self) -> float:
+        return 100 - self.available * 100.0 / self.total
 
 
 @dataclasses.dataclass
@@ -274,6 +300,119 @@ class KinfoFile(ctypes.Structure):
         ("ki_fd", ctypes.c_int32),
         ("ki_ofileflags", ctypes.c_uint32),
         ("_ki_padto64bits", ctypes.c_uint32),
+    ]
+
+
+class UvmExpSysctl(ctypes.Structure):
+    _fields_ = [
+        ("pagesize", ctypes.c_int64),
+        ("pagemask", ctypes.c_int64),
+        ("pageshift", ctypes.c_int64),
+        ("npages", ctypes.c_int64),
+        ("free", ctypes.c_int64),
+        ("active", ctypes.c_int64),
+        ("inactive", ctypes.c_int64),
+        ("paging", ctypes.c_int64),
+        ("wired", ctypes.c_int64),
+        ("zeropages", ctypes.c_int64),
+        ("reserve_pagedaemon", ctypes.c_int64),
+        ("reserve_kernel", ctypes.c_int64),
+        ("freemin", ctypes.c_int64),
+        ("freetarg", ctypes.c_int64),
+        ("inactarg", ctypes.c_int64),
+        ("wiredmax", ctypes.c_int64),
+        ("nswapdev", ctypes.c_int64),
+        ("swpages", ctypes.c_int64),
+        ("swpginuse", ctypes.c_int64),
+        ("swpgonly", ctypes.c_int64),
+        ("nswget", ctypes.c_int64),
+        ("unused1", ctypes.c_int64),
+        ("cpuhit", ctypes.c_int64),
+        ("cpumiss", ctypes.c_int64),
+        ("faults", ctypes.c_int64),
+        ("traps", ctypes.c_int64),
+        ("intrs", ctypes.c_int64),
+        ("swtch", ctypes.c_int64),
+        ("softs", ctypes.c_int64),
+        ("syscalls", ctypes.c_int64),
+        ("pageins", ctypes.c_int64),
+        ("swapins", ctypes.c_int64),
+        ("swapouts", ctypes.c_int64),
+        ("pgswapin", ctypes.c_int64),
+        ("pgswapout", ctypes.c_int64),
+        ("forks", ctypes.c_int64),
+        ("forks_ppwait", ctypes.c_int64),
+        ("forks_sharevm", ctypes.c_int64),
+        ("pga_zerohit", ctypes.c_int64),
+        ("pga_zeromiss", ctypes.c_int64),
+        ("zeroaborts", ctypes.c_int64),
+        ("fltnoram", ctypes.c_int64),
+        ("fltnoanon", ctypes.c_int64),
+        ("fltpgwait", ctypes.c_int64),
+        ("fltpgrele", ctypes.c_int64),
+        ("fltrelck", ctypes.c_int64),
+        ("fltrelckok", ctypes.c_int64),
+        ("fltanget", ctypes.c_int64),
+        ("fltanretry", ctypes.c_int64),
+        ("fltamcopy", ctypes.c_int64),
+        ("fltnamap", ctypes.c_int64),
+        ("fltnomap", ctypes.c_int64),
+        ("fltlget", ctypes.c_int64),
+        ("fltget", ctypes.c_int64),
+        ("flt_anon", ctypes.c_int64),
+        ("flt_acow", ctypes.c_int64),
+        ("flt_obj", ctypes.c_int64),
+        ("flt_prcopy", ctypes.c_int64),
+        ("flt_przero", ctypes.c_int64),
+        ("pdwoke", ctypes.c_int64),
+        ("pdrevs", ctypes.c_int64),
+        ("unused4", ctypes.c_int64),
+        ("pdfreed", ctypes.c_int64),
+        ("pdscans", ctypes.c_int64),
+        ("pdanscan", ctypes.c_int64),
+        ("pdobscan", ctypes.c_int64),
+        ("pdreact", ctypes.c_int64),
+        ("pdbusy", ctypes.c_int64),
+        ("pdpageouts", ctypes.c_int64),
+        ("pdpending", ctypes.c_int64),
+        ("pddeact", ctypes.c_int64),
+        ("anonpages", ctypes.c_int64),
+        ("filepages", ctypes.c_int64),
+        ("execpages", ctypes.c_int64),
+        ("colorhit", ctypes.c_int64),
+        ("colormiss", ctypes.c_int64),
+        ("ncolors", ctypes.c_int64),
+        ("bootpages", ctypes.c_int64),
+        ("poolpages", ctypes.c_int64),
+        ("countsyncone", ctypes.c_int64),
+        ("countsyncall", ctypes.c_int64),
+        ("anonunknown", ctypes.c_int64),
+        ("anonclean", ctypes.c_int64),
+        ("anondirty", ctypes.c_int64),
+        ("fileunknown", ctypes.c_int64),
+        ("fileclean", ctypes.c_int64),
+        ("filedirty", ctypes.c_int64),
+        ("fltup", ctypes.c_int64),
+        ("fltnoup", ctypes.c_int64),
+    ]
+
+
+class VmTotal(ctypes.Structure):
+    _fields_ = [
+        ("t_rq", ctypes.c_int16),
+        ("t_dw", ctypes.c_int16),
+        ("t_pw", ctypes.c_int16),
+        ("t_sl", ctypes.c_int16),
+        ("_reserved1", ctypes.c_int16),
+        ("t_vm", ctypes.c_int32),
+        ("t_avm", ctypes.c_int32),
+        ("t_rm", ctypes.c_int32),
+        ("t_arm", ctypes.c_int32),
+        ("t_vmshr", ctypes.c_int32),
+        ("t_avmshr", ctypes.c_int32),
+        ("t_rmshr", ctypes.c_int32),
+        ("t_armshr", ctypes.c_int32),
+        ("t_free", ctypes.c_int32),
     ]
 
 
@@ -523,6 +662,47 @@ def percpu_times() -> List[CPUTimes]:
             results.append(CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes)))
 
     return results
+
+
+def _get_uvmexp() -> UvmExpSysctl:
+    return _bsd.sysctl_into([CTL_VM, VM_UVMEXP2], UvmExpSysctl())
+
+
+def cpu_stats() -> Tuple[int, int, int, int]:
+    uvmexp = _get_uvmexp()
+    return uvmexp.swtch, uvmexp.intrs, uvmexp.softs, uvmexp.syscalls
+
+
+def virtual_memory() -> VirtualMemoryInfo:
+    uvmexp = _get_uvmexp()
+    vmtotal = _bsd.sysctl_into([CTL_VM, VM_METER], VmTotal())
+
+    total_mem = _bsd.sysctl_into([CTL_HW, HW_PHYSMEM64], ctypes.c_int64()).value
+    bufmem = _bsd.sysctlbyname_into("vm.bufmem", ctypes.c_long()).value
+
+    return VirtualMemoryInfo(
+        total=total_mem,
+        available=(uvmexp.inactive + uvmexp.free) * uvmexp.pagesize,
+        used=vmtotal.t_rm * uvmexp.pagesize,
+        free=uvmexp.free * uvmexp.pagesize,
+        active=uvmexp.active * uvmexp.pagesize,
+        inactive=uvmexp.inactive * uvmexp.pagesize,
+        buffers=bufmem,
+        cached=uvmexp.filepages * uvmexp.pagesize,
+        shared=(vmtotal.t_vmshr + vmtotal.t_rmshr) * uvmexp.pagesize,
+        wired=uvmexp.wired * uvmexp.pagesize,
+    )
+
+
+def swap_memory() -> _util.SwapInfo:
+    uvmexp = _get_uvmexp()
+
+    return _util.SwapInfo(
+        total=uvmexp.swpages * uvmexp.pagesize,
+        used=uvmexp.swpginuse * uvmexp.pagesize,
+        sin=uvmexp.pageins,
+        sout=uvmexp.pdpageouts,
+    )
 
 
 def boot_time() -> float:
