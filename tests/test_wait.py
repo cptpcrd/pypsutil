@@ -198,7 +198,7 @@ def test_wait_procs_callback() -> None:
         gone, alive = pypsutil.wait_procs([child_proc, gchild_proc], callback=callback)
         assert not alive
         assert set(gone) == {child_proc, gchild_proc}
-        assert child_proc.returncode == -signal.SIGTERM  # type: ignore  # pylint: disable=no-member
+        assert child_proc.returncode == -signal.SIGTERM  # pylint: disable=no-member
         assert gchild_proc.returncode is None  # type: ignore
 
         assert procs == {child_proc: -signal.SIGTERM, gchild_proc: None}
@@ -223,6 +223,6 @@ def test_wait_procs_single_callback() -> None:
         gone, alive = pypsutil.wait_procs([child_proc], callback=callback)
         assert not alive
         assert set(gone) == {child_proc}
-        assert child_proc.returncode == -signal.SIGTERM  # type: ignore  # pylint: disable=no-member
+        assert child_proc.returncode == -signal.SIGTERM  # pylint: disable=no-member
 
         assert procs == {child_proc: -signal.SIGTERM}
