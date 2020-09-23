@@ -8,7 +8,13 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, linux_only, managed_child_process2
+from .util import (
+    get_dead_process,
+    linux_only,
+    managed_child_process2,
+    populate_directory,
+    replace_info_directories,
+)
 
 if hasattr(pypsutil.Process, "num_fds"):
 
@@ -111,3 +117,32 @@ def test_open_file_mode() -> None:
         pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_RDWR | os.O_APPEND).mode
         == "a+"
     )
+
+
+@linux_only  # type: ignore
+def test_open_files_bad_fdinfo(tmp_path: pathlib.Path) -> None:
+    populate_directory(
+        str(tmp_path),
+        {
+            "2": {
+                "stat": "2 (kthreadd) S 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 9 0 0 "
+                "18446744073709551615 0 0 0 0 0 0 0 2147483647 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 "
+                "0",
+                "fd": {
+                    "0": ["/bin/sh"],
+                    "1": ["/bin/ls"],
+                    "2": ["/bin/cat"],
+                },
+                "fdinfo": {
+                    "0": "pos: 10\nmnt_id: 33\nflags: 02\n",
+                    "1": "pos: 10\nmnt_id: 33\n",
+                },
+            },
+        },
+    )
+
+    # Only file 0 shows up because 1 and 2 have bad fdinfo entries
+    with replace_info_directories(procfs=str(tmp_path)):
+        assert pypsutil.Process(2).open_files() == [
+            pypsutil.ProcessOpenFile(path="/bin/sh", fd=0, position=10, flags=os.O_RDWR)
+        ]

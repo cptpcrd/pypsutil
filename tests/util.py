@@ -117,6 +117,9 @@ def populate_directory(root_dir: str, structure: Dict[str, Any]) -> None:
         if isinstance(item, str):
             with open(path, "x") as file:
                 file.write(item)
+        elif isinstance(item, list):
+            assert len(item) == 1
+            os.symlink(item[0], path)
         else:
             os.mkdir(path)
             populate_directory(path, item)
