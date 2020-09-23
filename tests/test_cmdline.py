@@ -5,7 +5,14 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, linux_only, macos_only, managed_child_process, populate_directory, replace_info_directories
+from .util import (
+    get_dead_process,
+    linux_only,
+    macos_only,
+    managed_child_process,
+    populate_directory,
+    replace_info_directories,
+)
 
 
 def test_cmdline() -> None:
