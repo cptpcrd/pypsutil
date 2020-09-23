@@ -81,7 +81,7 @@ mach_msg_type_number_t = natural_t
 libc.host_statistics64.argtypes = (
     ctypes.c_void_p,
     host_flavor_t,
-    ctypes.POINTER(ctypes.c_int),
+    ctypes.c_void_p,
     ctypes.POINTER(mach_msg_type_number_t),
 )
 libc.host_statistics64.restype = kern_return_t
@@ -684,7 +684,7 @@ def virtual_memory() -> VirtualMemoryInfo:
 
 
 def swap_memory() -> SwapInfo:
-    xsw_usage = _bsd.sysctl_into([CTL_VM, VM_SWAPUSAGE], XswUsage()).value
+    xsw_usage = _bsd.sysctl_into([CTL_VM, VM_SWAPUSAGE], XswUsage())
     vmstats = _get_vmstats64()
 
     return SwapInfo(
