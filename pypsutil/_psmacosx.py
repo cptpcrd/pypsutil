@@ -47,9 +47,18 @@ KERN_PROC = 14
 KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
 
+CTL_HW = 6
+HW_MEMSIZE = 24
+
+CTL_VM = 2
+VM_SWAPUSAGE = 5
+
 PROC_PIDVNODEPATHINFO = 9
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 PROC_PIDTASKINFO = 4
+
+HOST_VM_INFO64 = 4
+KERN_SUCCESS = 0
 
 CLOCK_UPTIME_RAW = 8
 
@@ -63,6 +72,22 @@ suseconds_t = ctypes.c_int32
 sigset_t = ctypes.c_uint32
 fsid_t = ctypes.c_int32 * 2
 off_t = ctypes.c_int64
+
+natural_t = ctypes.c_uint
+kern_return_t = ctypes.c_int
+host_flavor_t = ctypes.c_int
+mach_msg_type_number_t = natural_t
+
+libc.host_statistics64.argtypes = (
+    ctypes.c_void_p,
+    host_flavor_t,
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(mach_msg_type_number_t),
+)
+libc.host_statistics64.restype = kern_return_t
+
+libc.mach_host_self.argtypes = ()
+libc.mach_host_self.restype = ctypes.c_void_p
 
 
 @dataclasses.dataclass
@@ -79,7 +104,24 @@ class ProcessMemoryInfo:
     pageins: int
 
 
+@dataclasses.dataclass
+class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
+    total: int
+    available: int
+    used: int
+    free: int
+    active: int
+    inactive: int
+    wired: int
+
+    @property
+    def percent(self) -> float:
+        return 100 - self.available * 100.0 / self.total
+
+
 ProcessOpenFile = _util.ProcessOpenFile
+
+SwapInfo = _util.SwapInfo
 
 
 class Timeval(ctypes.Structure):
@@ -319,6 +361,45 @@ class ProcTaskInfo(ctypes.Structure):
         ("pti_threadnum", ctypes.c_int32),
         ("pti_numrunning", ctypes.c_int32),
         ("pti_priority", ctypes.c_int32),
+    ]
+
+
+class XswUsage(ctypes.Structure):
+    _fields_ = [
+        ("xsu_total", ctypes.c_uint64),
+        ("xsu_avail", ctypes.c_uint64),
+        ("xsu_used", ctypes.c_uint64),
+        ("xsu_pagesize", ctypes.c_uint32),
+        ("xsu_encrypted", ctypes.c_bool),
+    ]
+
+
+class VmStatistics64(ctypes.Structure):
+    _fields_ = [
+        ("free_count", natural_t),
+        ("active_count", natural_t),
+        ("inactive_count", natural_t),
+        ("wire_count", natural_t),
+        ("zero_fill_count", ctypes.c_uint64),
+        ("reactivations", ctypes.c_uint64),
+        ("pageins", ctypes.c_uint64),
+        ("pageouts", ctypes.c_uint64),
+        ("faults", ctypes.c_uint64),
+        ("cow_faults", ctypes.c_uint64),
+        ("lookups", ctypes.c_uint64),
+        ("hits", ctypes.c_uint64),
+        ("purges", ctypes.c_uint64),
+        ("purgeable_count", natural_t),
+        ("speculative_count", natural_t),
+        ("decompressions", ctypes.c_uint64),
+        ("compressions", ctypes.c_uint64),
+        ("swapins", ctypes.c_uint64),
+        ("swapouts", ctypes.c_uint64),
+        ("compressor_page_count", natural_t),
+        ("throttled_count", natural_t),
+        ("external_page_count", natural_t),
+        ("internal_page_count", natural_t),
+        ("total_uncompressed_pages_in_compressor", ctypes.c_uint64),
     ]
 
 
@@ -566,6 +647,52 @@ def physical_cpu_count() -> Optional[int]:
     count = ctypes.c_int()
     _bsd.sysctlbyname("hw.physicalcpu", None, count)  # type: ignore
     return count.value or None
+
+
+def _get_vmstats64() -> VmStatistics64:
+    host = libc.mach_host_self()
+    if host is None:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    count = mach_msg_type_number_t(ctypes.sizeof(VmStatistics64) // ctypes.sizeof(ctypes.c_int))
+
+    vmstats = VmStatistics64()
+
+    if (
+        libc.host_statistics64(host, HOST_VM_INFO64, ctypes.byref(vmstats), ctypes.byref(count))
+        != KERN_SUCCESS
+    ):
+        raise _ffi.build_oserror(errno.ENOSYS)
+
+    return vmstats
+
+
+def virtual_memory() -> VirtualMemoryInfo:
+    total_mem = _bsd.sysctl_into([CTL_HW, HW_MEMSIZE], ctypes.c_int64()).value
+
+    vmstats = _get_vmstats64()
+
+    return VirtualMemoryInfo(
+        total=total_mem,
+        used=total_mem - (vmstats.free_count * _util.PAGESIZE),
+        available=(vmstats.free_count + vmstats.inactive_count) * _util.PAGESIZE,
+        free=(vmstats.free_count * _util.PAGESIZE),
+        active=(vmstats.active_count * _util.PAGESIZE),
+        inactive=(vmstats.inactive_count * _util.PAGESIZE),
+        wired=(vmstats.wire_count * _util.PAGESIZE),
+    )
+
+
+def swap_memory() -> SwapInfo:
+    xsw_usage = _bsd.sysctl_into([CTL_VM, VM_SWAPUSAGE], XswUsage()).value
+    vmstats = _get_vmstats64()
+
+    return SwapInfo(
+        total=(xsw_usage.xsu_total * xsw_usage.xsu_pagesize),
+        used=(xsw_usage.xsu_used * xsw_usage.xsu_pagesize),
+        sin=vmstats.swapins,
+        sout=vmstats.swapouts,
+    )
 
 
 def boot_time() -> float:
