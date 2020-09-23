@@ -26,7 +26,10 @@ if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
             assert proc_meminfo.stack < sys_meminfo.total + swapinfo.total
 
         assert (
-            sys_meminfo.used + sys_meminfo.free + sys_meminfo.buffers + sys_meminfo.cached
+            sys_meminfo.used
+            + sys_meminfo.free
+            + getattr(sys_meminfo, "buffers", 0)
+            + getattr(sys_meminfo, "cached", 0)
             <= sys_meminfo.total
         )
 
