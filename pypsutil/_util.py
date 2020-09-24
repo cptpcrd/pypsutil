@@ -182,13 +182,34 @@ class PowerSupplySensorInfo:
 
     @property
     def is_on_ac_power(self) -> Optional[bool]:
+        if any(supply.is_online for supply in self.ac_supplies):
+            # If any AC supplies say they're online, we're definitely on AC power.
+            return True
+
+        # If we got here, either a) we have no AC supplies or b) all the AC supplies report that
+        # they're offline.
+
+        all_batteries_full = True
         for battery in self.batteries:
             if battery.status == BatteryStatus.CHARGING:
+                # If any batteries report they're charging, we're almost definitely on AC power.
                 return True
             elif battery.status == BatteryStatus.DISCHARGING:
+                # And if any batteries report that they're discharging, there's a very good chance
+                # we're not on AC power.
                 return False
+            elif battery.status != BatteryStatus.FULL:
+                all_batteries_full = False
 
-        return any(supply.is_online for supply in self.ac_supplies) if self.ac_supplies else None
+        if self.batteries and all_batteries_full:
+            # If we have at least one battery, and *all* of them report they're full, then we're
+            # probably plugged in.
+            return True
+
+        # If any AC supplies are present, then from above we know they're all reporting as offline,
+        # so we can be reasonably confident that we're not on AC power.
+        # Otherwise, we don't know.
+        return False if self.ac_supplies else None
 
 
 def get_procfs_path() -> str:
