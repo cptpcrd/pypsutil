@@ -30,8 +30,8 @@ for name in dir(resource):
         RESOURCE_NUMS.add(getattr(resource, name))
 
 
-CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
-PAGESIZE = os.sysconf(os.sysconf_names["SC_PAGESIZE"])
+CLK_TCK = os.sysconf("SC_CLK_TCK")
+PAGESIZE = os.sysconf("SC_PAGESIZE")
 
 
 class ProcessStatus(enum.Enum):
