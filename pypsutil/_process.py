@@ -437,6 +437,28 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
                     return self._exitcode
 
+        elif timeout == 0 and self.pid > 0:
+            with self._lock:
+                try:
+                    wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
+                except ChildProcessError:
+                    # We already checked is_running(), so we know it's still running
+                    raise TimeoutExpired(  # pylint: disable=raise-missing-from
+                        timeout, pid=self.pid
+                    )
+                else:
+                    if wpid == 0:
+                        raise TimeoutExpired(timeout, pid=self.pid)
+
+                    self._dead = True
+                    self._exitcode = (
+                        -os.WTERMSIG(wstatus)
+                        if os.WIFSIGNALED(wstatus)
+                        else os.WEXITSTATUS(wstatus)
+                    )
+
+                    return self._exitcode
+
         while True:
             if self.pid > 0:
                 with self._lock:
