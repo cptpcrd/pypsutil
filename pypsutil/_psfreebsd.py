@@ -759,6 +759,8 @@ def proc_rlimit(
     return old_limits.unpack()
 
 
+proc_rlimit.is_atomic = True  # type: ignore
+
 proc_getrlimit = proc_rlimit
 
 

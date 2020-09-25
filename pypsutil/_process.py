@@ -277,11 +277,15 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
             return _psimpl.proc_rlimit(self, res, new_limits)
 
+        rlimit.is_atomic = getattr(_psimpl.proc_rlimit, "is_atomic", False)
+
     if hasattr(_psimpl, "proc_getrlimit"):
 
         @translate_proc_errors
         def getrlimit(self, res: int) -> Tuple[int, int]:
             return _psimpl.proc_getrlimit(self, res)
+
+        getrlimit.is_atomic = getattr(_psimpl.proc_rlimit, "is_atomic", False)
 
     if hasattr(_psimpl, "proc_num_fds"):
 

@@ -368,6 +368,11 @@ Process information
            an error, one or both of the limits may have been changed before the error
            occurred. In this case, no attempts are made to revert the changes.
 
+      .. note::
+           A special boolean attribute, ``is_atomic``, is set on this method. It is ``True`` if
+           the implementation of :py:meth:`rlimit()` is able to get/set the soft/hard limits
+           atomically, and is not vulnerable to the issues described above.
+
       :param int res:
            The number of the resource to set (one of the :py:const:`resource.RLIMIT_*` constants)
       :param new_limits:
@@ -394,6 +399,9 @@ Process information
             are changed while this method is reading them, this method may return a combination such as
             ``(old soft, new hard)`` or ``(new soft, old hard)`` (where "old" means the values before
             the change and "new" means the values after the change).
+
+            To aid in detection, this method has an ``is_atomic`` attribute similar to the one set on
+            :py:meth:`rlimit()`.
 
       :param int res:
            The number of the resource to set (one of the :py:const:`resource.RLIMIT_*` constants)

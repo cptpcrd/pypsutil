@@ -425,6 +425,8 @@ def proc_rlimit(
         return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
 
 
+proc_rlimit.is_atomic = True
+
 proc_getrlimit = proc_rlimit
 
 
