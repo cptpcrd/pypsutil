@@ -312,6 +312,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
             return _psimpl.proc_threads(self)
 
     @translate_proc_errors
+    def has_terminal(self) -> bool:
+        return _psimpl.proc_tty_rdev(self) is not None
+
+    @translate_proc_errors
     def terminal(self) -> Optional[str]:
         tty_rdev = _psimpl.proc_tty_rdev(self)
 

@@ -410,6 +410,19 @@ Process information
 
       Availability: Linux, FreeBSD, NetBSD
 
+   .. py:method:: has_terminal()
+
+      Check whether this process has a controlling terminal. This is exactly equivalent to
+      ``proc.terminal() is not None``, but it is more efficient if you don't need the name of the
+      terminal (just whether or not the process has one).
+
+      .. note::
+          See the note on :py:meth:`terminal()` for an explanation of how this differs from
+          ``[ -t 0 ]``, ``tty -s``, or ``os.isatty(0)``.
+
+      :return: Whether this process has a controlling terminal
+      :rtype: bool
+
    .. py:method:: terminal()
 
       Get the name of this process's controlling terminal. Returns ``None`` if the process has no
@@ -530,17 +543,19 @@ Process information
       +---------------------------------+------------------------------------+---------------------------------------+
       | :py:meth:`terminal()` [2]_      | :py:meth:`pgid()` [1]_             | :py:meth:`pgid()` [1]_                |
       +---------------------------------+------------------------------------+---------------------------------------+
-      | :py:meth:`cpu_times()`          | :py:meth:`uids()`                  | :py:meth:`sid()` [1]_                 |
+      | :py:meth:`has_terminal()`       | :py:meth:`uids()`                  | :py:meth:`sid()` [1]_                 |
       +---------------------------------+------------------------------------+---------------------------------------+
-      |                                 | :py:meth:`gids()`                  | :py:meth:`uids()`                     |
+      | :py:meth:`cpu_times()`          | :py:meth:`gids()`                  | :py:meth:`uids()`                     |
       +---------------------------------+------------------------------------+---------------------------------------+
-      | :py:meth:`uids()`               | :py:meth:`username()`              | :py:meth:`gids()`                     |
+      |                                 | :py:meth:`username()`              | :py:meth:`gids()`                     |
       +---------------------------------+------------------------------------+---------------------------------------+
-      | :py:meth:`gids()`               | :py:meth:`getgroups()`             | :py:meth:`username()`                 |
+      | :py:meth:`uids()`               | :py:meth:`getgroups()`             | :py:meth:`username()`                 |
       +---------------------------------+------------------------------------+---------------------------------------+
-      | :py:meth:`username()`           | :py:meth:`terminal()` [2]_         | :py:meth:`getgroups()` [3]_           |
+      | :py:meth:`gids()`               | :py:meth:`terminal()` [2]_         | :py:meth:`getgroups()` [3]_           |
       +---------------------------------+------------------------------------+---------------------------------------+
-      | :py:meth:`getgroups()`          | :py:meth:`sigmasks()`              | :py:meth:`terminal()` [2]_            |
+      | :py:meth:`username()`           | :py:meth:`has_terminal()`          | :py:meth:`terminal()` [2]_            |
+      +---------------------------------+------------------------------------+---------------------------------------+
+      | :py:meth:`getgroups()`          | :py:meth:`sigmasks()`              | :py:meth:`has_terminal()`             |
       +---------------------------------+------------------------------------+---------------------------------------+
       | :py:meth:`umask()`              |                                    | :py:meth:`sigmasks()`                 |
       +---------------------------------+------------------------------------+---------------------------------------+

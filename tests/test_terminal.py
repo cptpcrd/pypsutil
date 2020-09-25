@@ -54,6 +54,8 @@ os.read(0, 1)
             # Wait for the slave to signal that it's ready
             assert os.read(master_fd, 2) == b"\r\n"
 
+            assert proc.has_terminal()
+
             # Check that the name matches
             assert proc.terminal() == slave_name
         finally:
@@ -93,6 +95,7 @@ os.read(child_r, 1)
         assert os.read(parent_r, 1) == b"\n"
 
         try:
+            assert not proc.has_terminal()
             assert proc.terminal() is None
         finally:
             # Close the pipes
@@ -106,6 +109,12 @@ def test_terminal_no_proc() -> None:
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.terminal()
 
+    with pytest.raises(pypsutil.NoSuchProcess):
+        proc.has_terminal()
+
     with proc.oneshot():
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.terminal()
+
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.has_terminal()
