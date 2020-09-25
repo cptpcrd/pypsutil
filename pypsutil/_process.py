@@ -328,7 +328,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                                 return entry.path
                         except OSError:
                             pass
-            except FileNotFoundError:
+            except OSError:
                 pass
 
             try:
@@ -340,7 +340,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                                     return entry.path
                             except OSError:
                                 pass
-            except FileNotFoundError:
+            except OSError:
                 pass
 
             return ""
