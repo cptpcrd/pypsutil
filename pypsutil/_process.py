@@ -437,7 +437,9 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
                     return self._exitcode
 
-        elif timeout == 0 and self.pid > 0:
+        elif (  # pylint: disable=chained-comparison
+            timeout is not None and timeout <= 0 and self.pid > 0
+        ):
             with self._lock:
                 try:
                     wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
