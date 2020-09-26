@@ -93,7 +93,10 @@ if hasattr(_psimpl, "sensors_power"):
     def sensors_battery() -> Optional[BatteryInfo]:
         psinfo = sensors_power()
         if not psinfo.batteries:
-            return None
+            if hasattr(_psimpl, "sensors_battery_total_alt"):
+                return _psimpl.sensors_battery_total_alt(psinfo.is_on_ac_power)
+            else:
+                return None
 
         battery = psinfo.batteries[0]
 

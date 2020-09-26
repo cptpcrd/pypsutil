@@ -927,10 +927,12 @@ Sensor information
 
    Internally, this just calls :py:func:`sensors_power()`, extracts the first battery's information,
    and then sets ``battery.power_plugged`` based on the ``is_on_ac_power`` attribute of the
-   dataclass returned by `:py:func:`sensors_power()`.
+   dataclass returned by `:py:func:`sensors_power()`. If that fails, it may fall back on methods
+   that will return the same results as for :py:func:`sensors_battery_total()`.
 
-   On systems that may have more than one battery, you should use :py:func:`sensors_power()` or
-   :py:func:`sensors_battery_total()` instead.
+   Essentially, this function says "let's assume the system has at most one battery, and return
+   results based on that." On systems that may have more than one battery, you should use
+   :py:func:`sensors_power()` or :py:func:`sensors_battery_total()` instead.
 
    :returns: Battery information
    :rtype: BetteryInfo or None
