@@ -574,7 +574,8 @@ Process information
          requested information in a different way that collects as much extra information as possible about
          the process for later use.
 
-      .. [2] Because of implementation details, :py:meth:`terminal()` will likely only see a minor speedup.
+      .. [2] :py:meth:`terminal()` has to do additional processing after retrieving the cached information, so it will
+         likely only see a minor speedup.
 
       .. [3] On FreeBSD, calling :py:meth:`getgroups()` inside a :py:meth:`oneshot()` will first attempt to retrieve
          the group list via a method that collects as much extra information as possible. However, this method may
