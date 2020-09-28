@@ -755,6 +755,9 @@ def wait_procs(
                 if not pid_exists(proc.pid):
                     proc._dead = dead = True  # pylint: disable=protected-access
 
+                    with proc._lock, proc._exitcode_lock:  # pylint: disable=protected-access
+                        res = proc._exitcode  # pylint: disable=protected-access
+
             else:
                 try:
                     # Try waitpid()
@@ -774,6 +777,9 @@ def wait_procs(
                     else:
                         # It died
                         proc._dead = dead = True  # pylint: disable=protected-access
+
+                        with proc._lock, proc._exitcode_lock:  # pylint: disable=protected-access
+                            res = proc._exitcode  # pylint: disable=protected-access
 
             if dead:
                 if not isinstance(proc, Popen):
