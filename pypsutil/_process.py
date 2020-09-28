@@ -407,14 +407,16 @@ class Process:  # pylint: disable=too-many-instance-attributes
         self.send_signal(signal.SIGKILL)
 
     def wait(self, *, timeout: Union[int, float, None] = None) -> Optional[int]:
+        # We check is_running() up front so we don't run into PID reuse.
+        # After that, we can safely just check pid_exists() or os.waitpid().
         if not self.is_running():
-            # Simple case
-            # Also, checking is_running() up front means we can be sure that self.pid refers to the
-            # correct process, so we can call waitpid() with creating potential bugs
             with self._lock, self._exitcode_lock:
                 return self._exitcode
 
         start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
+
+        # Assume it's a child of the current process by default
+        is_child = self.pid > 0
 
         if timeout is None and self.pid > 0:
             # Wait with no timeout
@@ -425,8 +427,8 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     wstatus = os.waitpid(self.pid, 0)[1]
                 except ChildProcessError:
                     # Not a child of the current process
-                    # Fall through to the code that checks is_running()
-                    pass
+                    # Fall through to the polling loop
+                    is_child = False
                 else:
                     self._dead = True
                     self._exitcode = (
@@ -440,51 +442,29 @@ class Process:  # pylint: disable=too-many-instance-attributes
         elif (  # pylint: disable=chained-comparison
             timeout is not None and timeout <= 0 and self.pid > 0
         ):
-            with self._lock:
-                try:
-                    wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
-                except ChildProcessError:
-                    # We already checked is_running(), so we know it's still running
-                    raise TimeoutExpired(  # pylint: disable=raise-missing-from
-                        timeout, pid=self.pid
-                    )
-                else:
-                    if wpid == 0:
-                        raise TimeoutExpired(timeout, pid=self.pid)
-
-                    self._dead = True
-                    self._exitcode = (
-                        -os.WTERMSIG(wstatus)
-                        if os.WIFSIGNALED(wstatus)
-                        else os.WEXITSTATUS(wstatus)
-                    )
-
+            # Zero timeout
+            try:
+                if self._wait_child_poll():
                     return self._exitcode
+                else:
+                    raise TimeoutExpired(timeout, pid=self.pid)
+            except ChildProcessError:
+                # We already checked is_running(), so we know it's still running
+                raise TimeoutExpired(timeout, pid=self.pid)  # pylint: disable=raise-missing-from
 
         while True:
-            if self.pid > 0:
-                with self._lock:
-                    try:
-                        wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
-                    except ChildProcessError:
-                        # Not a child of the current process
-                        # Check is_running()
-                        if not self.is_running():
-                            with self._exitcode_lock:
-                                return self._exitcode
-
-                    else:
-                        if wpid != 0:
-                            self._dead = True
-                            self._exitcode = (
-                                -os.WTERMSIG(wstatus)
-                                if os.WIFSIGNALED(wstatus)
-                                else os.WEXITSTATUS(wstatus)
-                            )
-                            return self._exitcode
+            if is_child:
+                try:
+                    if self._wait_child_poll():
+                        return self._exitcode
+                except ChildProcessError:
+                    # Switch to pid_exists()
+                    is_child = False
+                    # Restart the loop so it gets checked immediately, not 0.01 seconds from now
+                    continue
 
             else:
-                if not self.is_running():
+                if not pid_exists(self.pid):
                     return None
 
             interval = 0.01
@@ -496,6 +476,19 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 interval = min(interval, remaining_time)
 
             time.sleep(interval)
+
+    def _wait_child_poll(self) -> bool:
+        with self._lock:
+            wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
+
+            if wpid == 0:
+                return False
+
+            self._dead = True
+            self._exitcode = (
+                -os.WTERMSIG(wstatus) if os.WIFSIGNALED(wstatus) else os.WEXITSTATUS(wstatus)
+            )
+            return True
 
     @contextlib.contextmanager
     def oneshot(self) -> Iterator[None]:
@@ -701,15 +694,34 @@ def wait_procs(
 ) -> Tuple[List[Process], List[Process]]:
     start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
 
-    gone = list()
-    alive = list(procs)
+    # We check is_running() up front so we don't run into PID reuse.
+    # After that, we can safely just check pid_exists().
 
-    if len(alive) == 1:
+    gone = []
+    alive = []
+    for proc in procs:
+        if proc.is_running():
+            alive.append(proc)
+        else:
+            if not hasattr(proc, "returncode"):
+                proc.returncode = None
+
+            if callback is not None:
+                callback(proc)
+
+            gone.append(proc)
+
+    if not alive:
+        return gone, alive
+
+    elif len(alive) == 1:
+        # Only one process left; Process.wait() may be able to optimize.
         proc = alive[0]
+
         try:
             res = proc.wait(timeout=timeout)
         except TimeoutExpired:
-            return [], [proc]
+            pass
         else:
             if not isinstance(proc, Popen):
                 proc.returncode = res
@@ -717,15 +729,53 @@ def wait_procs(
             if callback is not None:
                 callback(proc)
 
-            return [proc], []
+            alive = []
+            gone.append(proc)
+
+        return gone, alive
+
+    nonchildren = set()
 
     while True:
         for proc in list(alive):
-            try:
-                res = proc.wait(timeout=0)
-            except TimeoutExpired:
-                pass
+            res = None
+            dead = False
+
+            if isinstance(proc, Popen):
+                # With Popen, delegate to wait()
+                try:
+                    proc.wait(timeout=0)
+                except TimeoutExpired:
+                    pass
+                else:
+                    dead = True
+
+            elif proc in nonchildren:
+                # Not a child of the current process; just check if it exists
+                if not pid_exists(proc.pid):
+                    proc._dead = dead = True  # pylint: disable=protected-access
+
             else:
+                try:
+                    # Try waitpid()
+                    if proc._wait_child_poll():  # pylint: disable=protected-access
+                        # The process died
+                        res = proc._exitcode  # pylint: disable=protected-access
+                        dead = True
+
+                except ChildProcessError:
+                    # Either it died and another thread wait()ed for it, or it isn't a child of the
+                    # current process.
+                    # Begin treating it like a non-child.
+
+                    if pid_exists(proc.pid):
+                        # Check using pid_exists() next time
+                        nonchildren.add(proc)
+                    else:
+                        # It died
+                        proc._dead = dead = True  # pylint: disable=protected-access
+
+            if dead:
                 if not isinstance(proc, Popen):
                     proc.returncode = res
 
