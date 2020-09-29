@@ -387,7 +387,7 @@ Process information
    .. py:method:: getrlimit(res)
 
       Get the current soft/hard resource limits of the process. Equivalent to
-      ``resource.prlimit(proc.pid, res, None)``, but may be implemented on more platforms.
+      ``resource.prlimit(proc.pid, res)``, but may be implemented on more platforms.
 
       Currently, the availability of this method is the same as for :py:meth:`rlimit()`. However, that
       may change if ``pypsutil`` adds supports for platforms that allow for getting, but not setting,
