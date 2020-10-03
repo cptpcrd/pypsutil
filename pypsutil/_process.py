@@ -514,7 +514,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 return False
 
             try:
-                self._dead = self != Process(self._pid)
+                self._dead = self._raw_create_time != _psimpl.pid_raw_create_time(self._pid)
             except NoSuchProcess:
                 self._dead = True
 
