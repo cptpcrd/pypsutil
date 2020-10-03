@@ -91,7 +91,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
         if ppid <= 0:
             return None
 
-        return Process(ppid)
+        try:
+            return Process(ppid)
+        except NoSuchProcess:
+            return None
 
     def parent(self) -> Optional["Process"]:
         self._check_running()
