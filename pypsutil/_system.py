@@ -77,14 +77,10 @@ if hasattr(_psimpl, "percpu_times"):
     percpu_times = _psimpl.percpu_times
 
 
-if hasattr(_psimpl, "virtual_memory"):
-    VirtualMemoryInfo = _psimpl.VirtualMemoryInfo
+VirtualMemoryInfo = _psimpl.VirtualMemoryInfo
+virtual_memory = _psimpl.virtual_memory
+swap_memory = _psimpl.swap_memory
 
-    virtual_memory = _psimpl.virtual_memory
-
-
-if hasattr(_psimpl, "swap_memory"):
-    swap_memory = _psimpl.swap_memory
 
 if hasattr(_psimpl, "sensors_power"):
     sensors_power = _psimpl.sensors_power

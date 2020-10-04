@@ -357,22 +357,20 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def memory_info(self) -> ProcessMemoryInfo:
         return _psimpl.proc_memory_info(self)
 
-    if hasattr(_system, "virtual_memory"):
+    def memory_percent(self, memtype: str = "rss") -> float:
+        proc_meminfo = self.memory_info()
+        sys_meminfo = _system.virtual_memory()
 
-        def memory_percent(self, memtype: str = "rss") -> float:
-            proc_meminfo = self.memory_info()
-            sys_meminfo = _system.virtual_memory()
-
-            try:
-                proc_val = getattr(proc_meminfo, memtype)
-            except AttributeError as ex:
-                raise ValueError(
-                    "Bad process memory type {!r} (valid types: {})".format(
-                        memtype, list(proc_meminfo.__dict__.keys())
-                    )
-                ) from ex
-            else:
-                return proc_val * 100.0 / sys_meminfo.total
+        try:
+            proc_val = getattr(proc_meminfo, memtype)
+        except AttributeError as ex:
+            raise ValueError(
+                "Bad process memory type {!r} (valid types: {})".format(
+                    memtype, list(proc_meminfo.__dict__.keys())
+                )
+            ) from ex
+        else:
+            return proc_val * 100.0 / sys_meminfo.total
 
     @translate_proc_errors
     def getpriority(self) -> int:
