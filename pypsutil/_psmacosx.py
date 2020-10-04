@@ -25,6 +25,15 @@ libc.proc_pidinfo.argtypes = (
 )
 libc.proc_pidinfo.restype = ctypes.c_int
 
+libc.proc_pidfdinfo.argtypes = (
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_void_p,
+    ctypes.c_int,
+)
+libc.proc_pidfdinfo.restype = ctypes.c_int
+
 libc.proc_pidpath.argtypes = (
     ctypes.c_int,
     ctypes.c_void_p,
@@ -56,6 +65,13 @@ VM_SWAPUSAGE = 5
 PROC_PIDVNODEPATHINFO = 9
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 PROC_PIDTASKINFO = 4
+
+PROC_PIDLISTFDS = 1
+PROX_FDTYPE_VNODE = 1
+
+PROC_PIDFDVNODEPATHINFO = 2
+
+VREG = 1
 
 HOST_VM_INFO64 = 4
 KERN_SUCCESS = 0
@@ -364,6 +380,30 @@ class ProcTaskInfo(ctypes.Structure):
     ]
 
 
+class ProcFdInfo(ctypes.Structure):
+    _fields_ = [
+        ("proc_fd", ctypes.c_int32),
+        ("proc_fdtype", ctypes.c_uint32),
+    ]
+
+
+class ProcFileInfo(ctypes.Structure):
+    _fields_ = [
+        ("fi_openflags", ctypes.c_uint32),
+        ("fi_status", ctypes.c_uint32),
+        ("fi_offset", off_t),
+        ("fi_type", ctypes.c_int32),
+        ("fi_guardflags", ctypes.c_uint32),
+    ]
+
+
+class VnodeFdInfoWithPath(ctypes.Structure):
+    _fields_ = [
+        ("pfi", ProcFileInfo),
+        ("pvip", VnodeInfoPath),
+    ]
+
+
 class XswUsage(ctypes.Structure):
     _fields_ = [
         ("xsu_total", ctypes.c_uint64),
@@ -429,10 +469,36 @@ def _proc_pidinfo(
     pid: int,
     flavor: int,
     arg: int,
-    buf: Union[ctypes.Array, ctypes.Structure],  # type: ignore
+    buf: Union[ctypes.Array, ctypes.Structure, None],  # type: ignore
     allow_zero: bool = False,
 ) -> int:
-    res = libc.proc_pidinfo(pid, flavor, arg, ctypes.byref(buf), ctypes.sizeof(buf))
+    res = libc.proc_pidinfo(
+        pid,
+        flavor,
+        arg,
+        ctypes.byref(buf) if buf is not None else None,
+        ctypes.sizeof(buf) if buf is not None else 0,
+    )
+    if res < 0 or (res == 0 and not allow_zero):
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    return cast(int, res)
+
+
+def _proc_pidfdinfo(
+    pid: int,
+    fd: int,
+    flavor: int,
+    buf: Union[ctypes.Array, ctypes.Structure, None],  # type: ignore
+    allow_zero: bool = False,
+) -> int:
+    res = libc.proc_pidfdinfo(
+        pid,
+        fd,
+        flavor,
+        ctypes.byref(buf) if buf is not None else None,
+        ctypes.sizeof(buf) if buf is not None else 0,
+    )
     if res < 0 or (res == 0 and not allow_zero):
         raise _ffi.build_oserror(ctypes.get_errno())
 
@@ -567,6 +633,47 @@ def proc_cmdline(proc: "Process") -> List[str]:
 
 def proc_environ(proc: "Process") -> Dict[str, str]:
     return _proc_cmdline_environ(proc)[1]
+
+
+def _list_proc_fds(proc: "Process") -> List[ProcFdInfo]:
+    while True:
+        maxfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, None) // ctypes.sizeof(ProcFdInfo)
+
+        # We add an extra 1 just in case
+        buf = (ProcFdInfo * (maxfds + 1))()
+
+        nfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, buf) // ctypes.sizeof(ProcFdInfo)
+
+        # Because we added 1 when creating the buffer above, we may run into nfds == maxfds + 1.
+        # That may mean truncation, and we want to try again.
+        if nfds <= maxfds:
+            return buf[:nfds]
+
+
+def proc_num_fds(proc: "Process") -> int:
+    return len(_list_proc_fds(proc))
+
+
+def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
+    results = []
+
+    for fdinfo in _list_proc_fds(proc):
+        if fdinfo.proc_fdtype != PROX_FDTYPE_VNODE:
+            continue
+
+        vinfo = VnodeFdInfoWithPath()
+        try:
+            _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDVNODEPATHINFO, vinfo)
+        except OSError as ex:
+            if ex.errno not in (errno.ENOENT, errno.EBADF):
+                raise
+        else:
+            if vinfo.pvip.vip_vi.vi_type == VREG:
+                results.append(
+                    ProcessOpenFile(fd=fdinfo.proc_fd, path=vinfo.pvip.vip_path.decode())
+                )
+
+    return results
 
 
 def proc_exe(proc: "Process") -> str:
