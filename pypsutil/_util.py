@@ -216,6 +216,10 @@ def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 
 
+def get_devfs_path() -> str:
+    return sys.modules[__package__].DEVFS_PATH  # type: ignore
+
+
 def check_rlimit_resource(res: int) -> None:
     if res not in RESOURCE_NUMS:
         raise ValueError("invalid resource specified")

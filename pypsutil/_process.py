@@ -323,7 +323,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         if tty_rdev is not None:
             try:
-                with os.scandir("/dev/pts") as pts_names:
+                with os.scandir(os.path.join(_util.get_devfs_path(), "pts")) as pts_names:
                     for entry in pts_names:
                         try:
                             if entry.stat().st_rdev == tty_rdev:
@@ -334,7 +334,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 pass
 
             try:
-                with os.scandir("/dev") as dev_names:
+                with os.scandir(_util.get_devfs_path()) as dev_names:
                     for entry in dev_names:
                         if entry.name.startswith("tty") and len(entry.name) > 3:
                             try:

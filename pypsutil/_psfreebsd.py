@@ -956,7 +956,7 @@ def _list_batteries_raw() -> List[Tuple[ACPIBif, ACPIBst]]:
     batteries = []
 
     try:
-        with open("/dev/acpi") as acpi_file:
+        with open(os.path.join(_util.get_devfs_path(), "acpi")) as acpi_file:
             # Get the number of batteries
             c_bat_count = ctypes.c_int()
             try:

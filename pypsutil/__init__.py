@@ -102,6 +102,8 @@ for name in _OPTIONAL_FUNCS:
         globals()[name] = getattr(_system, name)
         __all__.append(name)
 
+DEVFS_PATH = "/dev"
+
 PROCFS_PATH = "/proc"
 
 if LINUX:
