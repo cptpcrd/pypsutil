@@ -1,4 +1,5 @@
 import os
+import pathlib
 import pty
 import sys
 
@@ -6,10 +7,15 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, managed_child_process
+from .util import (
+    get_dead_process,
+    managed_child_process,
+    populate_directory,
+    replace_info_directories,
+)
 
 
-def test_terminal() -> None:
+def test_terminal(tmp_path: pathlib.Path) -> None:
     # Open a PTY
     master_fd, slave_fd = pty.openpty()
 
@@ -58,6 +64,26 @@ os.read(0, 1)
 
             # Check that the name matches
             assert proc.terminal() == slave_name
+
+            # Returns "" if we swap out /dev for:
+            # 1. An empty directory
+            # 2. A directory that contains a "pts" subdirectory but is otherwise empty
+            # 3. A directory that contains a "pts" subdirectory, with an empty "ptmx" file inside.
+            # 4. A nonexistent directory
+            populate_directory(
+                str(tmp_path),
+                {"empty": {}, "pts-empty": {"pts": {}}, "pts-ptmx": {"pts": {"ptmx": ""}}},
+            )
+
+            with replace_info_directories(devfs=str(tmp_path / "empty")):
+                assert proc.terminal() == ""
+            with replace_info_directories(devfs=str(tmp_path / "pts-empty")):
+                assert proc.terminal() == ""
+            with replace_info_directories(devfs=str(tmp_path / "pts-ptmx")):
+                assert proc.terminal() == ""
+            with replace_info_directories(devfs="/NOEXIST"):
+                assert proc.terminal() == ""
+
         finally:
             # Close the master end
             os.close(master_fd)

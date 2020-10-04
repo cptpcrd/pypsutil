@@ -90,10 +90,11 @@ def get_dead_process() -> pypsutil.Process:
 
 @contextlib.contextmanager
 def replace_info_directories(
-    *, procfs: Optional[str] = None, sysfs: Optional[str] = None
+    *, procfs: Optional[str] = None, sysfs: Optional[str] = None, devfs: Optional[str] = None
 ) -> Iterator[None]:
     old_procfs = pypsutil.PROCFS_PATH
     old_sysfs = getattr("pypsutil", "SYSFS_PATH", None)
+    old_devfs = getattr("pypsutil", "DEVFS_PATH", None)
 
     try:
         if procfs is not None:
@@ -102,12 +103,18 @@ def replace_info_directories(
         if sysfs is not None:
             pypsutil.SYSFS_PATH = sysfs
 
+        if devfs is not None:
+            pypsutil.DEVFS_PATH = devfs
+
         yield
     finally:
         pypsutil.PROCFS_PATH = old_procfs
 
         if old_sysfs is not None:
             pypsutil.SYSFS_PATH = old_sysfs
+
+        if old_devfs is not None:
+            pypsutil.DEVFS_PATH = old_devfs
 
 
 def populate_directory(root_dir: str, structure: Dict[str, Any]) -> None:
