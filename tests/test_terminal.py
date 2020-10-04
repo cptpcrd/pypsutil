@@ -65,6 +65,12 @@ os.read(0, 1)
             # Check that the name matches
             assert proc.terminal() == slave_name
 
+            with proc.oneshot():
+                assert proc.has_terminal()
+
+                # Check that the name matches
+                assert proc.terminal() == slave_name
+
             # Returns "" if we swap out /dev for:
             # 1. An empty directory
             # 2. A directory that contains a "pts" subdirectory but is otherwise empty
