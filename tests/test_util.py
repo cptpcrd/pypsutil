@@ -213,6 +213,9 @@ def test_ps_sensor_info() -> None:
     psinfo = pypsutil.PowerSupplySensorInfo(batteries=[bat_discharging], ac_supplies=[])
     assert psinfo.is_on_ac_power is False
 
+    psinfo = pypsutil.PowerSupplySensorInfo(batteries=[bat_full], ac_supplies=[])
+    assert psinfo.is_on_ac_power is True
+
 
 def test_check_rlimit_resource() -> None:
     pypsutil._util.check_rlimit_resource(resource.RLIMIT_NOFILE)  # pylint: disable=protected-access
