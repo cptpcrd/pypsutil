@@ -21,8 +21,8 @@ from typing import (
 )
 
 from . import _cache, _psposix, _util
-from ._errors import AccessDenied, NoSuchProcess, ZombieProcess
-from ._util import ProcessCPUTimes, ProcessStatus, translate_proc_errors
+from ._errors import AccessDenied, ZombieProcess
+from ._util import ProcessCPUTimes, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -175,7 +175,6 @@ def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
         raise ProcessLookupError from ex
 
 
-@translate_proc_errors
 def pid_raw_create_time(pid: int) -> float:
     ctime_ticks = int(_get_pid_stat_fields(pid)[21])
     return ctime_ticks / _util.CLK_TCK
@@ -469,13 +468,13 @@ def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple
 
         try:
             ctime = pid_raw_create_time(pid)
-        except NoSuchProcess:
+        except ProcessLookupError:
             continue
-        except AccessDenied:
+        except PermissionError as ex:
             if skip_perm_error:
                 continue
             else:
-                raise
+                raise AccessDenied(pid=pid) from ex
 
         yield (pid, ctime)
 

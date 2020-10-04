@@ -501,10 +501,9 @@ class Process:  # pylint: disable=too-many-instance-attributes
         else:
             yield
 
-    @translate_proc_errors
     def _check_running(self) -> None:
         if not self.is_running():
-            raise ProcessLookupError
+            raise NoSuchProcess(pid=self._pid)
 
     def is_running(self) -> bool:
         with self._lock:
@@ -513,8 +512,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
             try:
                 self._dead = self._raw_create_time != _psimpl.pid_raw_create_time(self._pid)
-            except NoSuchProcess:
+            except ProcessLookupError:
                 self._dead = True
+            except PermissionError as ex:
+                raise AccessDenied(pid=self._pid) from ex
 
             return not self._dead
 
