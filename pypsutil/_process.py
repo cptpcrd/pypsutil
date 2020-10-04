@@ -42,7 +42,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         self._pid = pid
         self._dead = False
-        self._cache: Optional[Dict[str, Any]] = None
+        self._cache_storage = threading.local()
         self._lock = threading.RLock()
 
         # Code that retrieves self._exitcode must hold both self._lock and self._exitcode_lock.
@@ -63,20 +63,19 @@ class Process:  # pylint: disable=too-many-instance-attributes
         return cast(Process, proc)
 
     def _get_cache(self, name: str) -> Any:
-        with self._lock:
-            if self._cache is None:
-                raise KeyError
-
-            return self._cache[name]
+        try:
+            return self._cache_storage.data[name]
+        except AttributeError:
+            raise KeyError  # pylint: disable=raise-missing-from
 
     def _set_cache(self, name: str, value: Any) -> None:
-        with self._lock:
-            if self._cache is not None:
-                self._cache[name] = value
+        try:
+            self._cache_storage.data[name] = value
+        except AttributeError:
+            pass
 
     def _is_cache_enabled(self) -> bool:
-        with self._lock:
-            return self._cache is not None
+        return hasattr(self._cache_storage, "data")
 
     @property
     def pid(self) -> int:
@@ -495,13 +494,12 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
     @contextlib.contextmanager
     def oneshot(self) -> Iterator[None]:
-        with self._lock:
-            if self._cache is None:
-                self._cache = {}
-                yield
-                self._cache = None
-            else:
-                yield
+        if not hasattr(self._cache_storage, "data"):
+            self._cache_storage.data = {}
+            yield
+            del self._cache_storage.data
+        else:
+            yield
 
     @translate_proc_errors
     def _check_running(self) -> None:
