@@ -706,7 +706,8 @@ def wait_procs(
             alive.append(proc)
         else:
             if not hasattr(proc, "returncode"):
-                proc.returncode = None
+                with proc._lock, proc._exitcode_lock:  # pylint: disable=protected-access
+                    proc.returncode = proc._exitcode  # pylint: disable=protected-access
 
             if callback is not None:
                 callback(proc)
