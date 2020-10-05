@@ -287,17 +287,13 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         getrlimit.is_atomic = getattr(_psimpl.proc_rlimit, "is_atomic", False)
 
-    if hasattr(_psimpl, "proc_num_fds"):
+    @translate_proc_errors
+    def num_fds(self) -> int:
+        return _psimpl.proc_num_fds(self)
 
-        @translate_proc_errors
-        def num_fds(self) -> int:
-            return _psimpl.proc_num_fds(self)
-
-    if hasattr(_psimpl, "proc_open_files"):
-
-        @translate_proc_errors
-        def open_files(self) -> List[ProcessOpenFile]:
-            return _psimpl.proc_open_files(self)
+    @translate_proc_errors
+    def open_files(self) -> List[ProcessOpenFile]:
+        return _psimpl.proc_open_files(self)
 
     if hasattr(_psimpl, "proc_num_threads"):
 
