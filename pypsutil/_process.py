@@ -152,7 +152,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 except NoSuchProcess:
                     pass
                 else:
-                    if proc_ppid == self.pid:
+                    if proc_ppid == self._pid:
                         children.append(proc)
 
         return children
@@ -410,15 +410,15 @@ class Process:  # pylint: disable=too-many-instance-attributes
         start_time = time.monotonic() if timeout is not None and timeout > 0 else 0
 
         # Assume it's a child of the current process by default
-        is_child = self.pid > 0
+        is_child = self._pid > 0
 
-        if timeout is None and self.pid > 0:
+        if timeout is None and self._pid > 0:
             # Wait with no timeout
 
             # We don't lock on self._lock because this is blocking
             with self._exitcode_lock:
                 try:
-                    wstatus = os.waitpid(self.pid, 0)[1]
+                    wstatus = os.waitpid(self._pid, 0)[1]
                 except ChildProcessError:
                     # Not a child of the current process
                     # Fall through to the polling loop
@@ -434,17 +434,17 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     return self._exitcode
 
         elif (  # pylint: disable=chained-comparison
-            timeout is not None and timeout <= 0 and self.pid > 0
+            timeout is not None and timeout <= 0 and self._pid > 0
         ):
             # Zero timeout
             try:
                 if self._wait_child_poll():
                     return self._exitcode
                 else:
-                    raise TimeoutExpired(timeout, pid=self.pid)
+                    raise TimeoutExpired(timeout, pid=self._pid)
             except ChildProcessError:
                 # We already checked is_running(), so we know it's still running
-                raise TimeoutExpired(timeout, pid=self.pid)  # pylint: disable=raise-missing-from
+                raise TimeoutExpired(timeout, pid=self._pid)  # pylint: disable=raise-missing-from
 
         while True:
             if is_child:
@@ -458,14 +458,14 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     continue
 
             else:
-                if not pid_exists(self.pid):
+                if not pid_exists(self._pid):
                     return None
 
             interval = 0.01
             if timeout is not None:
                 remaining_time = (start_time + timeout) - time.monotonic() if timeout > 0 else 0
                 if remaining_time <= 0:
-                    raise TimeoutExpired(timeout, pid=self.pid)
+                    raise TimeoutExpired(timeout, pid=self._pid)
 
                 interval = min(interval, remaining_time)
 
@@ -473,7 +473,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
     def _wait_child_poll(self) -> bool:
         with self._lock:
-            wpid, wstatus = os.waitpid(self.pid, os.WNOHANG)
+            wpid, wstatus = os.waitpid(self._pid, os.WNOHANG)
 
             if wpid == 0:
                 return False
@@ -552,7 +552,7 @@ class Popen(Process):
         try:
             res = self._proc.wait(timeout)
         except subprocess.TimeoutExpired as ex:
-            raise TimeoutExpired(timeout, self.pid) from ex
+            raise TimeoutExpired(timeout, self._pid) from ex
         else:
             self._dead = True
             return res
@@ -565,7 +565,7 @@ class Popen(Process):
         try:
             res = self._proc.communicate(input, timeout)
         except subprocess.TimeoutExpired as ex:
-            raise TimeoutExpired(timeout, self.pid) from ex
+            raise TimeoutExpired(timeout, self._pid) from ex
         else:
             self._dead = True
             return res
