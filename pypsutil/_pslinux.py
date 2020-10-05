@@ -1,4 +1,5 @@
 # pylint: disable=too-many-lines
+import ctypes
 import dataclasses
 import os
 import resource
@@ -20,7 +21,7 @@ from typing import (
     no_type_check,
 )
 
-from . import _cache, _psposix, _util
+from . import _cache, _ffi, _psposix, _util
 from ._errors import AccessDenied, ZombieProcess
 from ._util import ProcessCPUTimes, ProcessStatus
 
@@ -412,16 +413,70 @@ def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
     )
 
 
-@no_type_check
-def proc_rlimit(
-    proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
-) -> Tuple[int, int]:
-    if new_limits is None:
-        return resource.prlimit(  # pylint: disable=no-member  # pytype: disable=missing-parameter
-            proc.pid, res
-        )
-    else:
-        return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
+if hasattr(resource, "prlimit"):
+
+    @no_type_check
+    def proc_rlimit(
+        proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
+    ) -> Tuple[int, int]:
+        if new_limits is None:
+            return (
+                resource.prlimit(  # pylint: disable=no-member  # pytype: disable=missing-parameter
+                    proc.pid, res
+                )
+            )
+        else:
+            return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
+
+
+else:
+    # PyPy doesn't have resource.prlimit() (!)
+    rlim_t = ctypes.c_uint64
+    rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
+    class Rlimit(ctypes.Structure):
+        _fields_ = [
+            ("rlim_cur", rlim_t),
+            ("rlim_max", rlim_t),
+        ]
+
+        @classmethod
+        def construct_opt(cls, limits: Optional[Tuple[int, int]]) -> Optional["Rlimit"]:
+            if limits is not None:
+                soft, hard = limits
+
+                if soft > rlimit_max_value or hard > rlimit_max_value:
+                    raise OverflowError("resource limit value is too large")
+
+                return cls(rlim_cur=soft, rlim_max=hard)
+            else:
+                return None
+
+        def unpack(self) -> Tuple[int, int]:
+            return self.rlim_cur, self.rlim_max
+
+    libc = _ffi.load_libc()
+    libc.prlimit.argtypes = (
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(Rlimit),
+        ctypes.POINTER(Rlimit),
+    )
+    libc.prlimit.restype = ctypes.c_int
+
+    def proc_rlimit(
+        proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
+    ) -> Tuple[int, int]:
+        _util.check_rlimit_resource(res)
+
+        new_limits_raw = Rlimit.construct_opt(new_limits)
+
+        old_limits = Rlimit(rlim_cur=resource.RLIM_INFINITY, rlim_max=resource.RLIM_INFINITY)
+
+        if libc.prlimit(proc.pid, res, new_limits_raw, old_limits) < 0:
+            raise _ffi.build_oserror(ctypes.get_errno())
+
+        return old_limits.unpack()
 
 
 proc_rlimit.is_atomic = True
