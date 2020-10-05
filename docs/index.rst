@@ -418,7 +418,7 @@ Process information
 
       .. note::
           See the note on :py:meth:`terminal()` for an explanation of how this differs from
-          ``[ -t 0 ]``, ``tty -s``, or ``os.isatty(0)``.
+          ``[ -t 0 ]``, ``tty -s``, or ``isatty(0)``.
 
       :return: Whether this process has a controlling terminal
       :rtype: bool
@@ -430,10 +430,10 @@ Process information
       cannot be found.
 
       .. note::
-          In most cases, the name returned by this function will be the same as with the ``tty``
-          command or ``os.ttyname(0)``. However, this function returns the name of the process's
-          *controlling terminal*; ``tty`` and ``os.ttyname(0)`` return the name of the terminal
-          connected to standard input (if the process's standard input is a terminal).
+          Usually, the name returned by this function will be the same as with the ``tty`` command
+          or ``ttyname(0)``. However, this function returns the name of the process's *controlling
+          terminal*; ``tty`` and ``ttyname(0)`` return the name of *the terminal connected to standard
+          input* (if the process's standard input is a terminal).
 
           In most cases, these will be the same thing. However, they are not technically *required*
           to be, and in some edge cases they may be different.
