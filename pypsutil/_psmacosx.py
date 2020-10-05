@@ -2,6 +2,7 @@
 import ctypes
 import dataclasses
 import errno
+import os
 import signal
 import struct
 import time
@@ -576,11 +577,11 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_cwd(proc: "Process") -> str:
-    return cast(str, _get_proc_vnode_info(proc).pvi_cdir.vip_path.decode())
+    return os.fsdecode(_get_proc_vnode_info(proc).pvi_cdir.vip_path)
 
 
 def proc_name(proc: "Process") -> str:
-    return cast(str, _get_kinfo_proc(proc).kp_proc.p_comm.decode())
+    return os.fsdecode(_get_kinfo_proc(proc).kp_proc.p_comm)
 
 
 @_cache.CachedByProcess
@@ -670,7 +671,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
         else:
             if vinfo.pvip.vip_vi.vi_type == VREG:
                 results.append(
-                    ProcessOpenFile(fd=fdinfo.proc_fd, path=vinfo.pvip.vip_path.decode())
+                    ProcessOpenFile(fd=fdinfo.proc_fd, path=os.fsdecode(vinfo.pvip.vip_path))
                 )
 
     return results
@@ -681,7 +682,7 @@ def proc_exe(proc: "Process") -> str:
     if libc.proc_pidpath(proc.pid, buf, ctypes.sizeof(buf)) <= 0:
         raise _ffi.build_oserror(ctypes.get_errno())
 
-    return buf.value.decode()
+    return os.fsdecode(buf.value)
 
 
 def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:

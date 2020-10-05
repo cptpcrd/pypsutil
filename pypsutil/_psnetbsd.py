@@ -2,6 +2,7 @@
 import ctypes
 import dataclasses
 import errno
+import os
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
@@ -543,15 +544,19 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_cwd(proc: "Process") -> str:
-    return _bsd.sysctl_bytes_retry(
-        [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_CWD, proc.pid], None, trim_nul=True
-    ).decode()
+    return os.fsdecode(
+        _bsd.sysctl_bytes_retry(
+            [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_CWD, proc.pid], None, trim_nul=True
+        )
+    )
 
 
 def proc_exe(proc: "Process") -> str:
-    return _bsd.sysctl_bytes_retry(
-        [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_PATHNAME, proc.pid], None, trim_nul=True
-    ).decode()
+    return os.fsdecode(
+        _bsd.sysctl_bytes_retry(
+            [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_PATHNAME, proc.pid], None, trim_nul=True
+        )
+    )
 
 
 def proc_cmdline(proc: "Process") -> List[str]:

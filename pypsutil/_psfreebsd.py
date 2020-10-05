@@ -640,7 +640,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     return [
         ProcessOpenFile(
             fd=kfile.kf_fd,
-            path=kfile.kf_path.decode(),
+            path=os.fsdecode(kfile.kf_path),
         )
         for kfile in _iter_kinfo_files(proc)
         if kfile.kf_fd >= 0
@@ -717,22 +717,24 @@ def proc_getgroups(proc: "Process") -> List[int]:
 def proc_cwd(proc: "Process") -> str:
     cwd_info = KinfoFile()
     _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_CWD, proc.pid], None, cwd_info)
-    return cast(str, cwd_info.kf_path.decode())
+    return os.fsdecode(cwd_info.kf_path)
 
 
 def proc_root(proc: "Process") -> str:
     for kfile in _iter_kinfo_files(proc):
         if kfile.kf_fd == KF_FD_TYPE_ROOT:
-            return cast(str, kfile.kf_path.decode())
+            return os.fsdecode(kfile.kf_path)
 
     # Something is wrong
     raise PermissionError
 
 
 def proc_exe(proc: "Process") -> str:
-    return _bsd.sysctl_bytes_retry(
-        [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, proc.pid], None, trim_nul=True
-    ).decode()
+    return os.fsdecode(
+        _bsd.sysctl_bytes_retry(
+            [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, proc.pid], None, trim_nul=True
+        )
+    )
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
