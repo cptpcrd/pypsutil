@@ -459,7 +459,8 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
             else:
                 if not pid_exists(self._pid):
-                    return None
+                    with self._lock, self._exitcode_lock:
+                        return self._exitcode
 
             interval = 0.01
             if timeout is not None:
