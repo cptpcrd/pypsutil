@@ -360,6 +360,9 @@ Process information
       Get/set the soft/hard resource limits of the process. Equivalent to
       ``resource.prlimit(proc.pid, res, new_limits)``, but may be implemented on more platforms.
 
+      In addition, if this method is used to *set* the resource limits, it preemptively checks for
+      PID reuse.
+
       .. warning::
            On some platforms, this method may not be able to get/set the limits atomically,
            or to set the soft and hard resource limits together.
