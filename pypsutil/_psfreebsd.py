@@ -195,9 +195,6 @@ class Rlimit(ctypes.Structure):
         else:
             return None
 
-    def unpack(self) -> Tuple[int, int]:
-        return self.rlim_cur, self.rlim_max
-
 
 class Sigset(ctypes.Structure):
     _fields_ = [
@@ -758,7 +755,7 @@ def proc_rlimit(
 
     _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_RLIMIT, proc.pid, res], new_limits_raw, old_limits)
 
-    return old_limits.unpack()
+    return old_limits.rlim_cur, old_limits.rlim_max
 
 
 proc_rlimit.is_atomic = True  # type: ignore

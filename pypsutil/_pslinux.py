@@ -452,9 +452,6 @@ else:
             else:
                 return None
 
-        def unpack(self) -> Tuple[int, int]:
-            return self.rlim_cur, self.rlim_max
-
     libc = _ffi.load_libc()
     libc.prlimit.argtypes = (
         ctypes.c_int,
@@ -476,7 +473,7 @@ else:
         if libc.prlimit(proc.pid, res, new_limits_raw, old_limits) < 0:
             raise _ffi.build_oserror(ctypes.get_errno())
 
-        return old_limits.unpack()
+        return old_limits.rlim_cur, old_limits.rlim_max
 
 
 proc_rlimit.is_atomic = True
