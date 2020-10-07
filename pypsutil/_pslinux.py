@@ -431,10 +431,10 @@ if hasattr(resource, "prlimit"):
 
 else:
     # PyPy doesn't have resource.prlimit() (!)
-    rlim_t = ctypes.c_uint64
+    rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
     rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
 
-    class Rlimit(ctypes.Structure):
+    class Rlimit(ctypes.Structure):  # pylint: disable=too-few-public-methods
         _fields_ = [
             ("rlim_cur", rlim_t),
             ("rlim_max", rlim_t),
