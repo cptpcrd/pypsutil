@@ -246,6 +246,24 @@ Process information
         :return: A tuple containing the GIDs of this process.
         :rtype: tuple[int, int, int]
 
+   .. py:method:: fsuid()
+
+        Get the filesystem UID of this process (Linux-specific).
+
+        :return: The filesystem UID of this process
+        :rtype: int
+
+        Availability: Linux
+
+   .. py:method:: fsgid()
+
+        Get the filesystem GID of this process (Linux-specific).
+
+        :return: The filesystem GID of this process
+        :rtype: int
+
+        Availability: Linux
+
    .. py:method:: getgroups()
 
         Get the supplementary group list of this process.

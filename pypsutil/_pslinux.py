@@ -370,6 +370,14 @@ def proc_gids(proc: "Process") -> Tuple[int, int, int]:
     return rgid, egid, sgid
 
 
+def proc_fsuid(proc: "Process") -> int:
+    return int(_get_proc_status_dict(proc)["Uid"].rsplit(maxsplit=1)[1])
+
+
+def proc_fsgid(proc: "Process") -> int:
+    return int(_get_proc_status_dict(proc)["Gid"].rsplit(maxsplit=1)[1])
+
+
 def proc_getgroups(proc: "Process") -> List[int]:
     return list(map(int, _get_proc_status_dict(proc)["Groups"].split()))
 

@@ -236,6 +236,18 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def getgroups(self) -> List[int]:
         return _psimpl.proc_getgroups(self)
 
+    if hasattr(_psimpl, "proc_fsuid"):
+
+        @translate_proc_errors
+        def fsuid(self) -> int:
+            return _psimpl.proc_fsuid(self)
+
+    if hasattr(_psimpl, "proc_fsgid"):
+
+        @translate_proc_errors
+        def fsgid(self) -> int:
+            return _psimpl.proc_fsgid(self)
+
     def username(self) -> str:
         ruid = self.uids()[0]
 

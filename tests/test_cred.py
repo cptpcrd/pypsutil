@@ -6,8 +6,9 @@ import sys
 import pytest
 
 import pypsutil
+import pypsutil._ffi
 
-from .util import get_dead_process
+from .util import get_dead_process, linux_only
 
 
 def test_uids() -> None:
@@ -30,6 +31,20 @@ def test_gids() -> None:
         rgid, egid, _ = proc.gids()
         assert rgid == os.getgid()
         assert egid == os.getegid()
+
+
+@linux_only
+def test_fsugid() -> None:
+    libc = pypsutil._ffi.load_libc()  # pylint: disable=protected-access
+
+    proc = pypsutil.Process()
+
+    assert proc.fsuid() == libc.setfsuid(-1)
+    assert proc.fsgid() == libc.setfsuid(-1)
+
+    with proc.oneshot():
+        assert proc.fsuid() == libc.setfsuid(-1)
+        assert proc.fsgid() == libc.setfsuid(-1)
 
 
 def test_username() -> None:
