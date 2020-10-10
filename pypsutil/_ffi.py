@@ -2,7 +2,6 @@
 import ctypes
 import ctypes.util
 import os
-import sys
 from typing import Any, Type, Union, cast  # pylint: disable=unused-import
 
 pid_t = ctypes.c_int
@@ -18,31 +17,7 @@ def load_libc() -> ctypes.CDLL:
 
     if _libc is None:
         libc_path = ctypes.util.find_library("c")
-
-        if libc_path is None:
-            # If we couldn't find a libc, sys.executable is probably statically linked.
-            # So we may be able to load *it*.
-            # Statically linked executables may not have all the symbols defined, but the ones
-            # we use are fairly common, so there's a good chance.
-
-            if not sys.executable:
-                raise RuntimeError(
-                    "Could not find libc (is your system statically linked? are you in a chroot?) "
-                    "and sys.executable is not set"
-                )
-
-            libc_path = sys.executable
-
-        try:
-            _libc = ctypes.CDLL(libc_path, use_errno=True)
-        except OSError as ex:
-            if libc_path == sys.executable:
-                raise RuntimeError(
-                    "Could not find libc, and encountered an error trying to load the Python "
-                    "executable as a shared library (are you in a chroot?): {}".format(ex)
-                ) from ex
-            else:
-                raise RuntimeError("Error loading libc at {}: {}".format(libc_path, ex)) from ex
+        _libc = ctypes.CDLL(libc_path, use_errno=True)
 
     return _libc
 
