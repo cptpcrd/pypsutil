@@ -7,7 +7,7 @@ import pypsutil
 from .util import linux_only, populate_directory, replace_info_directories
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_temperature(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -74,7 +74,7 @@ def test_sensors_temperature(tmp_path: pathlib.Path) -> None:
         assert pypsutil.sensors_temperatures() == {}  # type: ignore
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_temp_sensor_farenheit() -> None:
     sensor_a = pypsutil.TempSensorInfo(  # type: ignore
         label="sensor_a", current=0, high=100, critical=100

@@ -9,7 +9,7 @@ import pypsutil
 from .util import linux_only, populate_directory, replace_info_directories
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_freq_sysfs(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -49,7 +49,7 @@ def test_cpu_freq_sysfs(tmp_path: pathlib.Path) -> None:
         )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_freq_procfs(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -80,7 +80,7 @@ cpu MHz: 2500
         )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_freq_none(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -93,7 +93,7 @@ def test_cpu_freq_none(tmp_path: pathlib.Path) -> None:
         assert pypsutil.cpu_freq() is None  # type: ignore
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_stats(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "stat", "w") as file:
         file.write(
@@ -123,7 +123,7 @@ softirq 900 0 500 400
 CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_times(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "stat", "w") as file:
         file.write(
@@ -152,7 +152,7 @@ swap 0 0
         )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
     # No "cpu" or "cpuN" entries
     with open(tmp_path / "stat", "w") as file:
@@ -165,7 +165,7 @@ def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
         assert pypsutil.percpu_times() == []  # type: ignore
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_percpu_times(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "stat", "w") as file:
         file.write(

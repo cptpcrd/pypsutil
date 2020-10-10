@@ -35,7 +35,7 @@ def test_physical_cpu_count() -> None:
         assert phys_count <= logical_count
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cpu_info(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(procfs=str(tmp_path)):
         # /proc/cpuinfo doesn't exist

@@ -102,7 +102,7 @@ def test_open_files_no_proc() -> None:
         proc.open_files()
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_open_file_mode() -> None:
     assert pypsutil.ProcessOpenFile(path="", fd=3, position=0, flags=os.O_RDONLY).mode == "r"
 
@@ -119,7 +119,7 @@ def test_open_file_mode() -> None:
     )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_open_files_bad_fdinfo(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),

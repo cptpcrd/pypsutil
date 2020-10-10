@@ -12,7 +12,7 @@ def build_supply_uevent(data: Dict[str, str]) -> str:
     return "".join("POWER_SUPPLY_{}={}\n".format(key.upper(), value) for key, value in data.items())
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_power(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
@@ -186,7 +186,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
         assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_battery(tmp_path: pathlib.Path) -> None:
     def test_info(
         ps_info: Dict[str, Dict[str, str]],
@@ -334,7 +334,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
         )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
     def test_info(
         ps_info: Dict[str, Dict[str, str]],
@@ -431,7 +431,7 @@ def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
         )
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(sysfs=str(tmp_path)):
         assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore
@@ -445,7 +445,7 @@ def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
         assert pypsutil.sensors_is_on_ac_power() is None  # type: ignore
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),

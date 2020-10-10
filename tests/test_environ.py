@@ -31,7 +31,7 @@ def test_environ_no_proc() -> None:
         proc.environ()
 
 
-@macos_only  # type: ignore
+@macos_only
 def test_environ_pid_0() -> None:
     proc = pypsutil.Process(0)
 

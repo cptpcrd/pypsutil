@@ -10,14 +10,14 @@ def test_zombie_status() -> None:
         assert proc.status() == pypsutil.ProcessStatus.ZOMBIE
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_cmdline_zombie() -> None:
     with managed_zombie_process() as proc:
         with pytest.raises(pypsutil.ZombieProcess):
             proc.cmdline()
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_umask_zombie() -> None:
     with managed_zombie_process() as proc:
         with pytest.raises(pypsutil.ZombieProcess):

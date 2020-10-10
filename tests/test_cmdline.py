@@ -28,7 +28,7 @@ def test_cmdline_no_proc() -> None:
         proc.cmdline()
 
 
-@macos_only  # type: ignore
+@macos_only
 def test_cmdline_pid_0() -> None:
     proc = pypsutil.Process(0)
 
@@ -36,7 +36,7 @@ def test_cmdline_pid_0() -> None:
         proc.cmdline()
 
 
-@linux_only  # type: ignore
+@linux_only
 def test_exe_no_exist(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
