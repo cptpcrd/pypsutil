@@ -40,11 +40,11 @@ def test_fsugid() -> None:
     proc = pypsutil.Process()
 
     assert proc.fsuid() == libc.setfsuid(-1)
-    assert proc.fsgid() == libc.setfsuid(-1)
+    assert proc.fsgid() == libc.setfsgid(-1)
 
     with proc.oneshot():
         assert proc.fsuid() == libc.setfsuid(-1)
-        assert proc.fsgid() == libc.setfsuid(-1)
+        assert proc.fsgid() == libc.setfsgid(-1)
 
 
 def test_username() -> None:
