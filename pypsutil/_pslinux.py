@@ -205,9 +205,15 @@ def proc_status(proc: "Process") -> ProcessStatus:
     return _PROC_STATUSES[_get_proc_stat_fields(proc)[2]]
 
 
+def _remove_deleted_suffix(fname: str) -> str:
+    return fname[:-10] if fname.endswith(" (deleted)") else fname
+
+
 def proc_cwd(proc: "Process") -> str:
     try:
-        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "cwd"))
+        return _remove_deleted_suffix(
+            os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "cwd"))
+        )
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
 
@@ -228,7 +234,7 @@ def proc_exe(proc: "Process") -> str:
         raise ProcessLookupError from ex
 
     try:
-        return os.readlink("exe", dir_fd=pid_fd)
+        return _remove_deleted_suffix(os.readlink("exe", dir_fd=pid_fd))
     except FileNotFoundError:
         return ""
     finally:
@@ -237,7 +243,9 @@ def proc_exe(proc: "Process") -> str:
 
 def proc_root(proc: "Process") -> str:
     try:
-        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
+        return _remove_deleted_suffix(
+            os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
+        )
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
 
