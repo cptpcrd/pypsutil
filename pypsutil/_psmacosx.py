@@ -463,7 +463,9 @@ def _get_kinfo_proc(proc: "Process") -> KinfoProc:
 def _list_kinfo_procs() -> List[KinfoProc]:
     kinfo_proc_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
     nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
-    return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
+    return list(
+        (KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data)  # pytype: disable=invalid-typevar
+    )
 
 
 def _proc_pidinfo(
@@ -589,10 +591,10 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
     if proc.pid == 0:
         raise PermissionError
 
-    argmax_arr = (ctypes.c_int * 1)()
+    argmax_arr = (ctypes.c_int * 1)()  # pytype: disable=not-callable
     _bsd.sysctl([CTL_KERN, KERN_ARGMAX], None, argmax_arr)
 
-    buf = (ctypes.c_char * argmax_arr[0])()
+    buf = (ctypes.c_char * argmax_arr[0])()  # pytype: disable=not-callable
 
     try:
         nbytes = _bsd.sysctl([CTL_KERN, KERN_PROCARGS2, proc.pid], None, buf)
@@ -641,7 +643,7 @@ def _list_proc_fds(proc: "Process") -> List[ProcFdInfo]:
         maxfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, None) // ctypes.sizeof(ProcFdInfo)
 
         # We add an extra 1 just in case
-        buf = (ProcFdInfo * (maxfds + 1))()
+        buf = (ProcFdInfo * (maxfds + 1))()  # pytype: disable=not-callable
 
         nfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, buf) // ctypes.sizeof(ProcFdInfo)
 
@@ -678,7 +680,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 
 
 def proc_exe(proc: "Process") -> str:
-    buf = (ctypes.c_char * PROC_PIDPATHINFO_MAXSIZE)()
+    buf = (ctypes.c_char * PROC_PIDPATHINFO_MAXSIZE)()  # pytype: disable=not-callable
     if libc.proc_pidpath(proc.pid, buf, ctypes.sizeof(buf)) <= 0:
         raise _ffi.build_oserror(ctypes.get_errno())
 

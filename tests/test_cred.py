@@ -35,6 +35,8 @@ def test_gids() -> None:
 
 @linux_only
 def test_fsugid() -> None:
+    assert hasattr(pypsutil.Process, "fsuid") and hasattr(pypsutil.Process, "fsgid")
+
     libc = pypsutil._ffi.load_libc()  # pylint: disable=protected-access
 
     proc = pypsutil.Process()

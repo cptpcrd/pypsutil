@@ -100,6 +100,7 @@ class Process:
             return self._proc.getpriority()
 
     if pypsutil.LINUX:
+        assert hasattr(pypsutil.Process, "rlimit")
 
         @overload
         def rlimit(self, resource: int, limits: Tuple[int, int]) -> None:

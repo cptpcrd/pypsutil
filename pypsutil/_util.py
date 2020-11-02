@@ -22,7 +22,7 @@ from typing import (
 from ._errors import AccessDenied, NoSuchProcess
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ._process import Process
+    from ._process import Process  # pytype: disable=pyi-error
 
 RESOURCE_NUMS = set()
 for name in dir(resource):

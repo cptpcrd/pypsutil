@@ -19,6 +19,8 @@ def test_cmdline_zombie() -> None:
 
 @linux_only
 def test_umask_zombie() -> None:
+    assert hasattr(pypsutil.Process, "umask")
+
     with managed_zombie_process() as proc:
         with pytest.raises(pypsutil.ZombieProcess):
             proc.umask()

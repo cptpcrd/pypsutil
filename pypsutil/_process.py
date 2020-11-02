@@ -333,7 +333,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     for entry in pts_names:
                         try:
                             if entry.stat().st_rdev == tty_rdev:
-                                return entry.path
+                                return entry.path  # pytype: disable=bad-return-type
                         except OSError:
                             pass
             except OSError:
@@ -345,7 +345,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                         if entry.name.startswith("tty") and len(entry.name) > 3:
                             try:
                                 if entry.stat().st_rdev == tty_rdev:
-                                    return entry.path
+                                    return entry.path  # pytype: disable=bad-return-type
                             except OSError:
                                 pass
             except OSError:
@@ -524,7 +524,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
             return not self._dead
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: Any) -> Union[bool, type(NotImplemented)]:
         if isinstance(other, Process):
             return self._pid == other._pid and self._raw_create_time == other._raw_create_time
 

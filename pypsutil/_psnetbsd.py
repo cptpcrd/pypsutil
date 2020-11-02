@@ -444,7 +444,7 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
             // kinfo_size
         )
 
-        proc_arr = (KinfoProc2 * nprocs)()
+        proc_arr = (KinfoProc2 * nprocs)()  # pytype: disable=not-callable
 
         try:
             nprocs = (
@@ -468,7 +468,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
     )
 
-    files = (KinfoFile * num_files)()
+    files = (KinfoFile * num_files)()  # pytype: disable=not-callable
 
     num_files = _bsd.sysctl(
         [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
@@ -646,7 +646,7 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
 
 
 def cpu_times() -> CPUTimes:
-    cptimes = (ctypes.c_uint64 * 5)()
+    cptimes = (ctypes.c_uint64 * 5)()  # pytype: disable=not-callable
 
     _bsd.sysctl([CTL_KERN, KERN_CP_TIME], None, cptimes)
 
@@ -656,7 +656,7 @@ def cpu_times() -> CPUTimes:
 def percpu_times() -> List[CPUTimes]:
     results: List[CPUTimes] = []
 
-    cptimes = (ctypes.c_uint64 * 5)()
+    cptimes = (ctypes.c_uint64 * 5)()  # pytype: disable=not-callable
 
     while True:
         try:

@@ -238,7 +238,7 @@ def proc_exe(proc: "Process") -> str:
     except FileNotFoundError:
         return ""
     finally:
-        os.close(pid_fd)
+        os.close(pid_fd)  # pytype: disable=bad-return-type
 
 
 def proc_root(proc: "Process") -> str:
@@ -285,7 +285,11 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
             except FileNotFoundError:
                 pass
             else:
-                results.append(ProcessOpenFile(fd=fd, path=path, flags=flags, position=position))
+                results.append(
+                    ProcessOpenFile(  # pytype: disable=wrong-keyword-args
+                        fd=fd, path=path, flags=flags, position=position
+                    )
+                )
 
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
@@ -781,7 +785,11 @@ class PowerSupplyInfo:
 
             self.data[key] = value
 
-        return default if value is self._empty else cast(Union[str, T], value)
+        return (
+            default
+            if value is self._empty
+            else cast(Union[str, T], value)  # pytype: disable=invalid-typevar
+        )
 
     def __contains__(self, key: str) -> bool:
         return self.get(key, None) is not None

@@ -569,7 +569,9 @@ def _get_kinfo_proc(proc: "Process") -> KinfoProc:
 def _list_kinfo_procs() -> List[KinfoProc]:
     kinfo_proc_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC, KERN_PROC_ALL], None)
     nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
-    return list((KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data))
+    return list(
+        (KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data)  # pytype: disable=invalid-typevar
+    )
 
 
 def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
@@ -696,7 +698,7 @@ def proc_getgroups(proc: "Process") -> List[int]:
         ngroups = groupsize // ctypes.sizeof(gid_t)
 
         # Create an array with that many elements
-        groups = (gid_t * ngroups)()
+        groups = (gid_t * ngroups)()  # pytype: disable=not-callable
 
         try:
             # Get the actual group list
@@ -857,7 +859,7 @@ def physical_cpu_count() -> Optional[int]:
 
 
 def cpu_times() -> CPUTimes:
-    cptimes = (ctypes.c_long * 5)()
+    cptimes = (ctypes.c_long * 5)()  # pytype: disable=not-callable
 
     _bsd.sysctlbyname("kern.cp_time", None, cptimes)
 
@@ -867,7 +869,7 @@ def cpu_times() -> CPUTimes:
 def percpu_times() -> List[CPUTimes]:
     cptimes_len = _bsd.sysctlbyname("kern.cp_times", None, None) // ctypes.sizeof(ctypes.c_long)
 
-    cptimes = (ctypes.c_long * cptimes_len)()
+    cptimes = (ctypes.c_long * cptimes_len)()  # pytype: disable=not-callable
 
     _bsd.sysctlbyname("kern.cp_times", None, cptimes)
 
