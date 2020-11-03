@@ -508,6 +508,29 @@ Process information
       Kills the process, preemptively checking for PID reuse. Equivalent to
       ``proc.send_signal(signal.SIGKELL)``.
 
+   .. py:method:: num_fds()
+
+      Get the number of file descriptors this process has open.
+
+      :returns: The number of file descriptors this process has open
+      :rtype: int
+
+   .. py:method:: open_files()
+
+      Return a list of dataclasses containing information on all the regular files this process has open.
+      Each entry has the following attributes.
+
+      - ``path``: The absolute path to the file.
+      - ``fd``: The file descriptor number.
+      - ``position`` (Linux-only): The current seek position.
+      - ``flags`` (Linux-only): The flags passed to the underlying ``open()`` C call.
+      - ``mode`` (Linux-only): A string, derived from ``flags``, that approximates the likely ``mode``
+        argument as for :py:func:`open()`. Possible values are ``"r"``, ``"w"``, ``"a"``, ``"r+"``,
+        ``"a+"``.
+
+      :returns: A list of dataclasses containing information on all the regular files this process has open
+      :rtype: list[ProcessOpenFile]
+
    .. py:method:: is_running()
 
       Checks if the process is still running. Unlike ``pid_exists(proc.pid)``, this also checks for PID
