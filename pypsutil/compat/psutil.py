@@ -128,8 +128,8 @@ class Process:
     def memory_info(self) -> pypsutil.ProcessMemoryInfo:
         return self._proc.memory_info()
 
-    def memory_percent(self) -> pypsutil.ProcessMemoryInfo:
-        return self._proc.memory_percent()
+    def memory_percent(self, memtype: str = "rss") -> float:
+        return self._proc.memory_percent(memtype)
 
     def is_running(self) -> bool:
         return self._proc.is_running()
