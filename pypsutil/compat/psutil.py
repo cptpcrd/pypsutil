@@ -2,6 +2,7 @@ import os
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Iterable,
     Iterator,
@@ -47,12 +48,6 @@ class Process:
 
     def create_time(self) -> float:
         return self._proc.create_time()
-
-    def pgid(self) -> int:
-        return self._proc.pgid()
-
-    def sid(self) -> int:
-        return self._proc.sid()
 
     def status(self) -> pypsutil.ProcessStatus:
         return self._proc.status()
@@ -117,8 +112,24 @@ class Process:
 
             return res if limits is None else None
 
+    if hasattr(pypsutil.Process, "num_threads"):
+
+        def num_threads(self) -> int:
+            return self._proc.num_threads()
+
+    if hasattr(pypsutil.Process, "threads"):
+
+        def threads(self) -> List[pypsutil.ThreadInfo]:
+            return self._proc.threads()
+
     def cpu_times(self) -> pypsutil.ProcessCPUTimes:
         return self._proc.cpu_times()
+
+    def memory_info(self) -> pypsutil.ProcessMemoryInfo:
+        return self._proc.memory_info()
+
+    def memory_percent(self) -> pypsutil.ProcessMemoryInfo:
+        return self._proc.memory_percent()
 
     def is_running(self) -> bool:
         return self._proc.is_running()
@@ -140,6 +151,9 @@ class Process:
 
     def wait(self, timeout: Union[int, float, None] = None) -> Optional[int]:
         return self._proc.wait(timeout=timeout)
+
+    def oneshot(self) -> ContextManager[None]:
+        return self._proc.oneshot()
 
     def __repr__(self) -> str:
         return "pypsutil.compat.psutil.{}(pid={})".format(self.__class__.__name__, self.pid)
