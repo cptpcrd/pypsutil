@@ -1,6 +1,8 @@
+import datetime
 import os
 import sys
 import time
+from typing import Union
 
 import pytest
 
@@ -101,6 +103,34 @@ def test_parent() -> None:
     with managed_child_process([sys.executable, "-c", "exit()"]) as child_proc:
         assert child_proc.ppid() == cur_proc.pid
         assert child_proc.parent() == cur_proc
+
+
+def format_create_time(create_time: Union[int, float]) -> str:
+    creation = datetime.datetime.fromtimestamp(create_time)
+    return (
+        creation.strftime("%H:%M:%S")
+        if creation.date() == datetime.datetime.now().date()
+        else creation.strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+
+def test_repr() -> None:
+    cur_proc = pypsutil.Process()
+
+    assert repr(cur_proc) == "Process(pid={}, name={!r}, status={!r}, started={!r})".format(
+        cur_proc.pid,
+        cur_proc.name(),
+        cur_proc.status().value,  # type: ignore[attr-defined]
+        format_create_time(cur_proc.create_time()),
+    )
+
+
+def test_repr_no_proc() -> None:
+    proc = get_dead_process()
+
+    assert repr(proc) == "Process(pid={}, status='terminated', started={!r})".format(
+        proc.pid, format_create_time(proc.create_time())
+    )
 
 
 if hasattr(pypsutil.Process, "umask"):

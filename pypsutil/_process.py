@@ -3,6 +3,7 @@
 # pytype: disable=module-attr
 import collections
 import contextlib
+import datetime
 import os
 import pwd
 import resource
@@ -534,7 +535,34 @@ class Process:  # pylint: disable=too-many-instance-attributes
         return hash((self._pid, self._raw_create_time))
 
     def __repr__(self) -> str:
-        return "{}(pid={})".format(self.__class__.__name__, self._pid)
+        try:
+            status = self.status().value
+        except NoSuchProcess:
+            status = "terminated"
+        except AccessDenied:
+            status = "unknown"
+
+        name = None
+        try:
+            name = self.name()
+        except (NoSuchProcess, AccessDenied):
+            pass
+
+        creation = datetime.datetime.fromtimestamp(self.create_time())
+        now = datetime.datetime.now()
+
+        if creation.date() == now.date():
+            start_time = creation.strftime("%H:%M:%S")
+        else:
+            start_time = creation.strftime("%Y-%m-%d %H:%M:%S")
+
+        return "{}(pid={}, {}status={!r}, started={!r})".format(
+            self.__class__.__name__,
+            self._pid,
+            "name={!r}, ".format(name) if name is not None else "",
+            status,
+            start_time,
+        )
 
 
 class Popen(Process):
