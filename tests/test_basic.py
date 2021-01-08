@@ -133,6 +133,27 @@ def test_repr_no_proc() -> None:
     )
 
 
+def test_eq() -> None:
+    # pylint: disable=comparison-with-itself
+
+    cur_proc = pypsutil.Process()
+    dead_proc = get_dead_process()
+
+    # Make sure it works properly when comparing to other Process objects
+    assert cur_proc == cur_proc
+    assert dead_proc == dead_proc
+    assert cur_proc != dead_proc
+
+    # Comparing to other types returns False
+    assert cur_proc != 0
+    assert cur_proc != ""
+
+
+def test_hash() -> None:
+    # Make sure the hashed value is consistent
+    assert hash(pypsutil.Process()) == hash(pypsutil.Process())
+
+
 if hasattr(pypsutil.Process, "umask"):
 
     def test_umask() -> None:
