@@ -8,4 +8,4 @@ for cmd in flake8 isort mypy pylint; do
     fi
 done
 
-flake8 pypsutil tests && isort --check pypsutil tests && mypy --strict -p pypsutil -p tests && pylint pypsutil tests
+flake8 pypsutil tests && isort --check pypsutil tests && mypy --show-error-codes --strict -p pypsutil -p tests && pylint pypsutil tests
