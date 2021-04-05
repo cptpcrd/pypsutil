@@ -14,6 +14,9 @@ import threading
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
+if hasattr(os, "pidfd_open"):
+    import select
+
 from . import _system, _util
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
@@ -465,6 +468,29 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     if self._wait_child_poll():
                         return self._exitcode
                 except ChildProcessError:
+                    # On Linux 5.3+ (and Python 3.9+), pidfd_open() may avoid a busy loop
+                    if hasattr(os, "pidfd_open"):
+                        assert self._pid > 0
+                        assert timeout is not None
+
+                        try:
+                            pidfd = os.pidfd_open(self._pid)
+                        except OSError:
+                            pass
+                        else:
+                            remaining_time = (
+                                (start_time + timeout) - time.monotonic() if timeout > 0 else 0
+                            )
+
+                            r, _, _ = select.select([pidfd], [], [], max(remaining_time, 0))
+                            os.close(pidfd)
+                            if not r:
+                                # Timeout expired, and still not dead
+                                raise TimeoutExpired(timeout, pid=self._pid)
+
+                            # Dead, but now it may be a zombie, so we need to keep watching it
+                            # Fall through to the normal monitoring code
+
                     # Switch to pid_exists()
                     is_child = False
                     # Restart the loop so it gets checked immediately, not 0.01 seconds from now
