@@ -33,6 +33,18 @@ Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
 
+if getattr(_psimpl.pid_raw_create_time, "works_on_zombies", True):
+
+    def raw_create_times_eq(t1: float, t2: float) -> bool:
+        return t1 == t2
+
+
+else:
+
+    def raw_create_times_eq(t1: float, t2: float) -> bool:
+        return t1 == t2 or t1 == 0 or t2 == 0
+
+
 class Process:  # pylint: disable=too-many-instance-attributes
     _raw_create_time: Optional[float] = None
     _create_time: Optional[float] = None
@@ -543,7 +555,9 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 return False
 
             try:
-                self._dead = self._raw_create_time != _psimpl.pid_raw_create_time(self._pid)
+                self._dead = not raw_create_times_eq(
+                    self._raw_create_time, _psimpl.pid_raw_create_time(self._pid)
+                )
             except ProcessLookupError:
                 self._dead = True
             except PermissionError as ex:
@@ -553,12 +567,14 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
     def __eq__(self, other: Any) -> Union[bool, type(NotImplemented)]:
         if isinstance(other, Process):
-            return self._pid == other._pid and self._raw_create_time == other._raw_create_time
+            return self._pid == other._pid and raw_create_times_eq(
+                self._raw_create_time, other._raw_create_time
+            )
 
         return NotImplemented
 
     def __hash__(self) -> int:
-        return hash((self._pid, self._raw_create_time))
+        return self._pid
 
     def __repr__(self) -> str:
         try:

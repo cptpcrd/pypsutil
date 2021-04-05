@@ -507,6 +507,9 @@ def pid_raw_create_time(pid: int) -> float:
     return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
 
 
+pid_raw_create_time.works_on_zombies = False  # type: ignore[attr-defined]
+
+
 def translate_create_time(raw_create_time: float) -> float:
     return raw_create_time
 
