@@ -516,8 +516,7 @@ _PROC_STATUSES = {
     2: ProcessStatus.RUNNING,
     3: ProcessStatus.SLEEPING,
     4: ProcessStatus.STOPPED,
-    5: ProcessStatus.ZOMBIE,
-    6: ProcessStatus.DEAD,
+    6: ProcessStatus.ZOMBIE,
     7: ProcessStatus.RUNNING,  # 7 is SONPROC; i.e. actually executing
 }
 
