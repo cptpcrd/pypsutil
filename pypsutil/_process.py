@@ -14,13 +14,13 @@ import threading
 import time
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
-if hasattr(os, "pidfd_open"):
-    import select
-
 from . import _system, _util
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._util import translate_proc_errors
+
+if hasattr(os, "pidfd_open"):
+    import select
 
 ThreadInfo = _util.ThreadInfo
 
@@ -35,14 +35,14 @@ Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
 if getattr(_psimpl.pid_raw_create_time, "works_on_zombies", True):
 
-    def raw_create_times_eq(t1: float, t2: float) -> bool:
-        return t1 == t2
+    def raw_create_times_eq(time1: float, time2: float) -> bool:
+        return time1 == time2
 
 
 else:
 
-    def raw_create_times_eq(t1: float, t2: float) -> bool:
-        return t1 == t2 or t1 == 0 or t2 == 0
+    def raw_create_times_eq(time1: float, time2: float) -> bool:
+        return time1 == time2 or time1 == 0 or time2 == 0
 
 
 class Process:  # pylint: disable=too-many-instance-attributes
@@ -494,11 +494,13 @@ class Process:  # pylint: disable=too-many-instance-attributes
                                 (start_time + timeout) - time.monotonic() if timeout > 0 else 0
                             )
 
-                            r, _, _ = select.select([pidfd], [], [], max(remaining_time, 0))
+                            readfds, _, _ = select.select([pidfd], [], [], max(remaining_time, 0))
                             os.close(pidfd)
-                            if not r:
+                            if not readfds:
                                 # Timeout expired, and still not dead
-                                raise TimeoutExpired(timeout, pid=self._pid)
+                                raise TimeoutExpired(  # pylint: disable=raise-missing-from
+                                    timeout, pid=self._pid
+                                )
 
                             # Dead, but now it may be a zombie, so we need to keep watching it
                             # Fall through to the normal monitoring code
