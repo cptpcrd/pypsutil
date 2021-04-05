@@ -66,6 +66,7 @@ def sysctl(
 
 
 if not sys.platform.startswith("openbsd"):
+
     def sysctlnametomib(name: str, *, maxlen: Optional[int] = None) -> List[int]:
         miblen = ctypes.c_size_t()
 
@@ -82,7 +83,6 @@ if not sys.platform.startswith("openbsd"):
             raise _ffi.build_oserror(ctypes.get_errno())
 
         return mib[: miblen.value]
-
 
     def sysctlbyname(
         name: str,
@@ -128,6 +128,7 @@ def sysctl_bytes_retry(mib: Collection[int], new: Optional[bytes], trim_nul: boo
 
 
 if not sys.platform.startswith("openbsd"):
+
     def sysctlbyname_bytes_retry(name: str, new: Optional[bytes], trim_nul: bool = False) -> bytes:
         while True:
             old_len = sysctlbyname(name, None, None)
@@ -161,6 +162,7 @@ def sysctl_into(
 
 
 if not sys.platform.startswith("openbsd"):
+
     def sysctlbyname_into(
         name: str,
         old: C,

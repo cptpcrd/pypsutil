@@ -474,7 +474,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
     )
 
-    return files[:num_files // kinfo_file_size]
+    return files[: num_files // kinfo_file_size]
 
 
 def iter_pid_raw_create_time(
@@ -551,8 +551,8 @@ def proc_cwd(proc: "Process") -> str:
 
 
 def _skip_ptrs(data: bytes) -> bytes:
-    ptrsize = ctypes.sizeof(ctypes.c_voidp)
-    while ctypes.c_voidp.from_buffer_copy(data).value:
+    ptrsize = ctypes.sizeof(ctypes.c_void_p)
+    while ctypes.c_void_p.from_buffer_copy(data).value:
         data = data[ptrsize:]
     return data[ptrsize:]
 
