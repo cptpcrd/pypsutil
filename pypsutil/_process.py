@@ -486,7 +486,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                         assert timeout is not None
 
                         try:
-                            pidfd = os.pidfd_open(self._pid)
+                            pidfd = os.pidfd_open(self._pid)  # pylint: disable=no-member
                         except OSError:
                             pass
                         else:
