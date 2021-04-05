@@ -45,7 +45,7 @@ KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
 KI_WMESGLEN = 8
 KI_MAXLOGNAME = 32
-KI_MAXEMULLEN = 16
+KI_EMULNAMELEN = 8
 
 KI_MNAMELEN = 96
 KI_UNPPATHLEN = 104
@@ -171,7 +171,7 @@ class KinfoProc(ctypes.Structure):
         ("p_vm_ssize", ctypes.c_int32),
         ("p_uvalid", ctypes.c_int64),
         ("p_ustart_sec", ctypes.c_uint64),
-        ("p_ustart_usec", ctypes.c_uint64),
+        ("p_ustart_usec", ctypes.c_uint32),
         ("p_uutime_sec", ctypes.c_uint32),
         ("p_uutime_usec", ctypes.c_uint32),
         ("p_ustime_sec", ctypes.c_uint32),
@@ -192,13 +192,11 @@ class KinfoProc(ctypes.Structure):
         ("p_uru_nivcsw", ctypes.c_uint64),
         ("p_uctime_sec", ctypes.c_uint32),
         ("p_uctime_usec", ctypes.c_uint32),
-        ("p_uctime_sec", ctypes.c_uint32),
-        ("p_uctime_usec", ctypes.c_uint32),
-        ("p_psflags", ctypes.c_int32),
+        ("p_psflags", ctypes.c_uint32),
         ("p_spare", ctypes.c_int32),
         ("p_svuid", ctypes.c_uint32),
         ("p_svgid", ctypes.c_uint32),
-        ("p_emul", (ctypes.c_char * KI_MAXEMULLEN)),
+        ("p_emul", (ctypes.c_char * KI_EMULNAMELEN)),
         ("p_rlim_rss_cur", ctypes.c_uint64),
         ("p_cpuid", ctypes.c_uint64),
         ("p_vm_map_size", ctypes.c_uint64),
@@ -476,7 +474,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
     )
 
-    return files[:num_files]
+    return files[:num_files // kinfo_file_size]
 
 
 def iter_pid_raw_create_time(
@@ -539,7 +537,7 @@ def proc_uids(proc: "Process") -> Tuple[int, int, int]:
 
 def proc_gids(proc: "Process") -> Tuple[int, int, int]:
     kinfo = _get_kinfo_proc(proc)
-    return kinfo.p_rgid, kinfo.p_egid, kinfo.p_svgid
+    return kinfo.p_rgid, kinfo.p_gid, kinfo.p_svgid
 
 
 def proc_getgroups(proc: "Process") -> List[int]:
@@ -552,16 +550,23 @@ def proc_cwd(proc: "Process") -> str:
     )
 
 
+def _skip_ptrs(data: bytes) -> bytes:
+    ptrsize = ctypes.sizeof(ctypes.c_voidp)
+    while ctypes.c_voidp.from_buffer_copy(data).value:
+        data = data[ptrsize:]
+    return data[ptrsize:]
+
+
 def proc_cmdline(proc: "Process") -> List[str]:
     cmdline_nul = _bsd.sysctl_bytes_retry(
-        [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ARGV, proc.pid], None
+        [CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_ARGV], None
     )
-    return _util.parse_cmdline_bytes(cmdline_nul)
+    return _util.parse_cmdline_bytes(_skip_ptrs(cmdline_nul))
 
 
 def proc_environ(proc: "Process") -> Dict[str, str]:
-    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ENV, proc.pid], None)
-    return _util.parse_environ_bytes(env_data)
+    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_ENV], None)
+    return _util.parse_environ_bytes(_skip_ptrs(env_data))
 
 
 def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
