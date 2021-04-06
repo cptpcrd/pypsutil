@@ -21,6 +21,7 @@ KERN_BOOTTIME = 21
 KERN_PROC = 14
 KERN_PROC_ALL = 0
 KERN_PROC_PID = 1
+KERN_PROC_INC_THREAD = 0x10
 KERN_PROC_ARGS = 7
 KERN_PROC_PATHNAME = 12
 KERN_PROC_FILEDESC = 33
@@ -170,6 +171,7 @@ class ProcessMemoryInfo:
 
 
 ProcessOpenFile = _util.ProcessOpenFile
+ThreadInfo = _util.ThreadInfo
 
 PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 BatteryStatus = _util.BatteryStatus
@@ -574,6 +576,16 @@ def _list_kinfo_procs() -> List[KinfoProc]:
     )
 
 
+def _list_kinfo_threads(pid: int) -> List[KinfoProc]:
+    kinfo_proc_data = _bsd.sysctl_bytes_retry(
+        [CTL_KERN, KERN_PROC, KERN_PROC_PID | KERN_PROC_INC_THREAD, pid], None
+    )
+    nprocs = len(kinfo_proc_data) // ctypes.sizeof(KinfoProc)
+    return list(
+        (KinfoProc * nprocs).from_buffer_copy(kinfo_proc_data)  # pytype: disable=invalid-typevar
+    )
+
+
 def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
     kinfo_file_data = _bsd.sysctl_bytes_retry(
         [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None
@@ -650,6 +662,17 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 
 def proc_num_threads(proc: "Process") -> int:
     return cast(int, _get_kinfo_proc(proc).ki_numthreads)
+
+
+def proc_threads(proc: "Process") -> List[ThreadInfo]:
+    return [
+        ThreadInfo(
+            id=kinfo.p_tid,
+            user_time=kinfo.ki_rusage.ru_utime.to_float(),
+            system_time=kinfo.ki_rusage.ru_stime.to_float(),
+        )
+        for kinfo in _list_kinfo_threads(proc.pid)
+    ]
 
 
 def proc_name(proc: "Process") -> str:
