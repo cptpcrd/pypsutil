@@ -299,10 +299,10 @@ Process information
 
         Note: On FreeBSD, this will raise :py:class:`AccessDenied` for PID 0.
 
-        Availability: Linux (4.7+), FreeBSD
-
         :return: The umask of this process
         :rtype: int or None
+
+        Availability: Linux (4.7+), FreeBSD
 
    .. py:method:: sigmasks(\*, include_internal=False)
 
