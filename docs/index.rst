@@ -521,6 +521,25 @@ Process information
       Kills the process, preemptively checking for PID reuse. Equivalent to
       ``proc.send_signal(signal.SIGKELL)``.
 
+   .. py:method:: num_threads()
+
+      The number of threads in this process (including the main thread).
+
+      :returns: The number of threads in this process
+      :rtype: int
+
+      Availability: Linux, FreeBSD, OpenBSD
+
+   .. py:method:: threads()
+
+      Returns a list of :py:class:`ThreadInfo` structures with information on the threads in this
+      process.
+
+      :returns: A list of :py:class:`ThreadInfo` structures with information on this process's threads
+      :rtype: list[ThreadInfo]
+
+      Availability: Linux, FreeBSD, OpenBSD
+
    .. py:method:: num_fds()
 
       Get the number of file descriptors this process has open.
@@ -657,6 +676,29 @@ Process information
    .. py:data:: IDLE
    .. py:data:: LOCKED
    .. py:data:: WAITING
+
+
+.. py:class:: ThreadInfo
+
+   A dataclass containing information on the threads in this process.
+
+   .. py:attribute:: id
+
+        :type: int
+
+       The thread ID.
+
+   .. py:attribute:: user_time
+
+        :type: float
+
+       The time this thread spent in user mode.
+
+   .. py:attribute:: system_time
+
+        :type: float
+
+       The time this thread spent in system mode.
 
 
 .. py:function:: pids()
