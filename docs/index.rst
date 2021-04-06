@@ -1034,7 +1034,7 @@ Sensor information
    :py:func:`sensors_power()` or :py:func:`sensors_battery_total()` instead.
 
    :returns: Battery information
-   :rtype: BetteryInfo or None
+   :rtype: BatteryInfo or None
 
    Availability: Linux, FreeBSD
 
@@ -1050,7 +1050,7 @@ Sensor information
    it.
 
    :returns: Totaled battery information
-   :rtype: BetteryInfo or None
+   :rtype: BatteryInfo or None
 
    Availability: Linux, FreeBSD
 
