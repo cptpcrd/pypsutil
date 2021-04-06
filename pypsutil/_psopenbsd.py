@@ -23,6 +23,7 @@ KERN_BOOTTIME = 21
 KERN_PROC = 66
 KERN_PROC_PID = 1
 KERN_PROC_KTHREAD = 7
+KERN_PROC_SHOW_THREADS = 0x40000000
 KERN_PROC_ARGS = 55
 KERN_PROC_CWD = 78
 KERN_PROC_ARGV = 1
@@ -95,6 +96,7 @@ class ProcessMemoryInfo:
 
 
 ProcessOpenFile = _util.ProcessOpenFile
+ThreadInfo = _util.ThreadInfo
 
 
 class Timeval(ctypes.Structure):
@@ -204,6 +206,9 @@ class KinfoProc(ctypes.Structure):
         ("p_rtableid", ctypes.c_uint32),
         ("p_pledge", ctypes.c_uint64),
     ]
+
+    def create_time(self) -> float:
+        return cast(float, self.p_ustart_sec + self.p_ustart_usec / 1000000.0)
 
     def get_groups(self) -> List[int]:
         return list(self.p_groups[: self.p_ngroups])
@@ -461,6 +466,55 @@ def _list_kinfo_procs() -> List[KinfoProc]:
             return proc_arr[:nprocs]
 
 
+def _list_kinfo_threads(pid: int) -> List[KinfoProc]:
+    kinfo_size = ctypes.sizeof(KinfoProc)
+
+    while True:
+        nprocs = (
+            _bsd.sysctl(
+                [
+                    CTL_KERN,
+                    KERN_PROC,
+                    KERN_PROC_PID | KERN_PROC_SHOW_THREADS,
+                    pid,
+                    kinfo_size,
+                    1000000,
+                ],
+                None,
+                None,
+            )
+            // kinfo_size
+        )
+
+        proc_arr = (KinfoProc * nprocs)()  # pytype: disable=not-callable
+
+        try:
+            nprocs = (
+                _bsd.sysctl(
+                    [
+                        CTL_KERN,
+                        KERN_PROC,
+                        KERN_PROC_PID | KERN_PROC_SHOW_THREADS,
+                        pid,
+                        kinfo_size,
+                        nprocs,
+                    ],
+                    None,
+                    proc_arr,
+                )
+                // kinfo_size
+            )
+        except OSError as ex:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
+                raise
+        else:
+            if nprocs == 0:
+                raise ProcessLookupError
+
+            return proc_arr[:nprocs]
+
+
 def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
@@ -503,8 +557,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 
 
 def pid_raw_create_time(pid: int) -> float:
-    kinfo = _get_kinfo_proc_pid(pid)
-    return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
+    return _get_kinfo_proc_pid(pid).create_time()
 
 
 pid_raw_create_time.works_on_zombies = False  # type: ignore[attr-defined]
@@ -580,6 +633,28 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
         ignored=_util.expand_sig_bitmask(kinfo.p_sigignore, include_internal=include_internal),
         caught=_util.expand_sig_bitmask(kinfo.p_sigcatch, include_internal=include_internal),
     )
+
+
+def proc_num_threads(proc: "Process") -> int:
+    return sum(kinfo.p_tid != -1 for kinfo in _list_kinfo_threads(proc.pid))
+
+
+def proc_threads(proc: "Process") -> List[ThreadInfo]:
+    threads = []
+
+    for kinfo in _list_kinfo_threads(proc.pid):
+        if kinfo.p_tid == -1:
+            continue
+
+        threads.append(
+            ThreadInfo(
+                id=kinfo.p_tid,
+                user_time=kinfo.p_uutime_sec + kinfo.p_uutime_usec / 1000000,
+                system_time=kinfo.p_ustime_sec + kinfo.p_ustime_usec / 1000000,
+            )
+        )
+
+    return threads
 
 
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
