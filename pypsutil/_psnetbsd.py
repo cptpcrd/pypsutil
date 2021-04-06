@@ -562,6 +562,19 @@ def proc_exe(proc: "Process") -> str:
     )
 
 
+def proc_root(proc: "Process") -> str:
+    try:
+        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
+    except FileNotFoundError as ex:
+        from ._process import pid_exists  # pylint: disable=import-outside-toplevel
+
+        if not pid_exists(proc.pid):
+            raise ProcessLookupError from ex
+
+        # It looks like procfs just isn't mounted; FileNotFoundError is appropriate
+        raise
+
+
 def proc_cmdline(proc: "Process") -> List[str]:
     cmdline_nul = _bsd.sysctl_bytes_retry(
         [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ARGV, proc.pid], None

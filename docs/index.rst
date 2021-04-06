@@ -221,7 +221,7 @@ Process information
         :return: This process's root directory
         :rtype: str
 
-        Availability: Linux, FreeBSD
+        Availability: Linux, FreeBSD, NetBSD
 
    .. py:method:: environ()
 
