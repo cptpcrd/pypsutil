@@ -509,7 +509,7 @@ Process information
    .. py:method:: resume()
 
       Resumes process execution, preemptively checking for PID reuse. Equivalent to
-      ``proc.send_signal(signal.SIGSCONT)``.
+      ``proc.send_signal(signal.SIGCONT)``.
 
    .. py:method:: terminate()
 
@@ -519,7 +519,7 @@ Process information
    .. py:method:: kill()
 
       Kills the process, preemptively checking for PID reuse. Equivalent to
-      ``proc.send_signal(signal.SIGKELL)``.
+      ``proc.send_signal(signal.SIGKILL)``.
 
    .. py:method:: num_threads()
 
