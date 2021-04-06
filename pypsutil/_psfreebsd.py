@@ -844,6 +844,11 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return _get_kinfo_proc(proc).get_tdev()
 
 
+def proc_cpu_num(proc: "Process") -> int:
+    kinfo = _get_kinfo_proc(proc)
+    return cast(int, kinfo.ki_lastcpu if kinfo.ki_oncpu == -1 else kinfo.ki_oncpu)
+
+
 def physical_cpu_count() -> Optional[int]:
     # https://manpages.ubuntu.com/manpages/precise/man4/smp.4freebsd.html
 

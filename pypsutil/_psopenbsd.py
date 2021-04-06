@@ -51,6 +51,8 @@ KI_EMULNAMELEN = 8
 KI_MNAMELEN = 96
 KI_UNPPATHLEN = 104
 
+KI_NOCPU = 2 ** 64 - 1
+
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
 
@@ -724,6 +726,11 @@ def proc_getpriority(proc: "Process") -> int:
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc(proc).p_tdev
     return tdev if tdev != 2 ** 32 - 1 else None
+
+
+def proc_cpu_num(proc: "Process") -> int:
+    cpuid = _get_kinfo_proc(proc).p_cpuid
+    return cast(int, cpuid if cpuid != KI_NOCPU else -1)
 
 
 def cpu_times() -> CPUTimes:

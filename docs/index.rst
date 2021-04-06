@@ -462,6 +462,19 @@ Process information
       :return: The name of this process's controlling terminal
       :rtype: str or None
 
+   .. py:method:: cpu_num()
+
+      Get number of the CPU this process is running on (or was last running on if it is not currently
+      running).
+
+      This will return -1 if the CPU number cannot be determined (for example, on FreeBSD with certain
+      kernel processes).
+
+      :return: The number of the CPU this process is running on (or was last running on)
+      :rtype: int
+
+      Availability: Linux, FreeBSD, OpenBSD, NetBSD
+
    .. py:method:: getpriority()
 
       Equivalent to ``os.getpriority(os.PRIO_PROCESS, proc.pid)`` in most cases. (However, on systems

@@ -51,6 +51,8 @@ KI_WMESGLEN = 8
 KI_MAXLOGNAME = 24
 KI_MAXEMULLEN = 16
 
+KI_NOCPU = 2 ** 64 - 1
+
 rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
@@ -683,6 +685,11 @@ def proc_getpriority(proc: "Process") -> int:
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc2(proc).p_tdev
     return tdev if tdev != 2 ** 32 - 1 else None
+
+
+def proc_cpu_num(proc: "Process") -> int:
+    cpuid = _get_kinfo_proc2(proc).p_cpuid
+    return cast(int, cpuid if cpuid != KI_NOCPU else -1)
 
 
 def cpu_times() -> CPUTimes:

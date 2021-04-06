@@ -536,6 +536,10 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
     return tty_nr if tty_nr != 0 else None
 
 
+def proc_cpu_num(proc: "Process") -> int:
+    return int(_get_proc_stat_fields(proc)[38])
+
+
 def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
     try:
         with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "statm")) as file:

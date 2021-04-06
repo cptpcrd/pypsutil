@@ -371,6 +371,12 @@ class Process:  # pylint: disable=too-many-instance-attributes
         else:
             return None
 
+    if hasattr(_psimpl, "proc_cpu_num"):
+
+        @translate_proc_errors
+        def cpu_num(self) -> int:
+            return _psimpl.proc_cpu_num(self)
+
     @translate_proc_errors
     def cpu_times(self) -> ProcessCPUTimes:
         return _psimpl.proc_cpu_times(self)
