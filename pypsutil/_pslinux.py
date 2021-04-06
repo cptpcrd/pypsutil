@@ -305,7 +305,11 @@ def proc_num_fds(proc: "Process") -> int:
 
 
 def proc_num_threads(proc: "Process") -> int:
-    return int(_get_proc_stat_fields(proc)[19])
+    # Surprisingly, this is actually faster than checking the field in /proc/$PID/stat
+    try:
+        return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")))
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
 
 
 def proc_threads(proc: "Process") -> List[ThreadInfo]:
