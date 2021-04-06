@@ -162,18 +162,25 @@ def _get_proc_stat_fields(proc: "Process") -> List[str]:
 
 
 @_cache.CachedByProcess
-def _get_proc_status_dict(proc: "Process") -> Dict[str, str]:
+def _get_proc_status_text(proc: "Process") -> str:
     try:
-        res = {}
-
-        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "status")) as file:
-            for line in file:
-                name, value = line.split(":\t", maxsplit=1)
-                res[name] = value.rstrip("\n")
-
-        return res
+        return _util.read_file(os.path.join(_util.get_procfs_path(), str(proc.pid), "status"))
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
+
+
+def _iter_proc_status_entries(proc: "Process") -> Iterator[Tuple[str, str]]:
+    for line in _get_proc_status_text(proc).splitlines():
+        name, value = line.split(":\t", maxsplit=1)
+        yield name, value.rstrip("\n")
+
+
+def _get_proc_status_entry(proc: "Process", name: str) -> str:
+    for entry_name, entry_value in _iter_proc_status_entries(proc):
+        if entry_name == name:
+            return entry_value
+
+    raise KeyError
 
 
 def pid_raw_create_time(pid: int) -> float:
@@ -385,52 +392,63 @@ def proc_ppid(proc: "Process") -> int:
 
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
-    ruid, euid, suid, _ = map(int, _get_proc_status_dict(proc)["Uid"].split())
+    ruid, euid, suid, _ = map(int, _get_proc_status_entry(proc, "Uid").split())
     return ruid, euid, suid
 
 
 def proc_gids(proc: "Process") -> Tuple[int, int, int]:
-    rgid, egid, sgid, _ = map(int, _get_proc_status_dict(proc)["Gid"].split())
+    rgid, egid, sgid, _ = map(int, _get_proc_status_entry(proc, "Gid").split())
     return rgid, egid, sgid
 
 
 def proc_fsuid(proc: "Process") -> int:
-    return int(_get_proc_status_dict(proc)["Uid"].rsplit(maxsplit=1)[1])
+    return int(_get_proc_status_entry(proc, "Uid").rsplit(maxsplit=1)[1])
 
 
 def proc_fsgid(proc: "Process") -> int:
-    return int(_get_proc_status_dict(proc)["Gid"].rsplit(maxsplit=1)[1])
+    return int(_get_proc_status_entry(proc, "Gid").rsplit(maxsplit=1)[1])
 
 
 def proc_getgroups(proc: "Process") -> List[int]:
-    return list(map(int, _get_proc_status_dict(proc)["Groups"].split()))
+    return list(map(int, _get_proc_status_entry(proc, "Groups").split()))
 
 
 def proc_umask(proc: "Process") -> Optional[int]:
-    proc_status_info = _get_proc_status_dict(proc)
+    for name, value in _iter_proc_status_entries(proc):
+        if name == "State":
+            if value.startswith("Z"):
+                raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
+        elif name == "Umask":
+            return int(value, 8)
 
-    try:
-        umask_str = proc_status_info["Umask"]
-    except KeyError:
-        if proc_status_info["State"].startswith("Z"):
-            raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
-        else:
-            return None
-    else:
-        return int(umask_str, 8)
+    return None
 
 
 def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> ProcessSignalMasks:
-    proc_status_info = _get_proc_status_dict(proc)
+    process_pending = set()
+    pending = set()
+    blocked = set()
+    ignored = set()
+    caught = set()
+
+    for name, value in _iter_proc_status_entries(proc):
+        if name == "ShdPnd":
+            process_pending = parse_sigmask(value, include_internal=include_internal)
+        elif name == "SigPnd":
+            pending = parse_sigmask(value, include_internal=include_internal)
+        elif name == "SigBlk":
+            blocked = parse_sigmask(value, include_internal=include_internal)
+        elif name == "SigIgn":
+            ignored = parse_sigmask(value, include_internal=include_internal)
+        elif name == "SigCgt":
+            caught = parse_sigmask(value, include_internal=include_internal)
 
     return ProcessSignalMasks(  # pytype: disable=wrong-keyword-args
-        process_pending=parse_sigmask(
-            proc_status_info["ShdPnd"], include_internal=include_internal
-        ),
-        pending=parse_sigmask(proc_status_info["SigPnd"], include_internal=include_internal),
-        blocked=parse_sigmask(proc_status_info["SigBlk"], include_internal=include_internal),
-        ignored=parse_sigmask(proc_status_info["SigIgn"], include_internal=include_internal),
-        caught=parse_sigmask(proc_status_info["SigCgt"], include_internal=include_internal),
+        process_pending=process_pending,
+        pending=pending,
+        blocked=blocked,
+        ignored=ignored,
+        caught=caught,
     )
 
 
