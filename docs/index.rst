@@ -528,7 +528,7 @@ Process information
       :returns: The number of threads in this process
       :rtype: int
 
-      Availability: Linux, FreeBSD, OpenBSD
+      Availability: Linux, macOS, FreeBSD, OpenBSD
 
    .. py:method:: threads()
 
@@ -538,7 +538,7 @@ Process information
       :returns: A list of :py:class:`ThreadInfo` structures with information on this process's threads
       :rtype: list[ThreadInfo]
 
-      Availability: Linux, FreeBSD, OpenBSD
+      Availability: Linux, macOS, FreeBSD, OpenBSD
 
    .. py:method:: num_fds()
 

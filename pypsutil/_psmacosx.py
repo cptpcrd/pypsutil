@@ -49,6 +49,8 @@ MAXCOMLEN = 16
 
 MAXPATHLEN = 1024
 
+MAXTHREADNAMESIZE = 64
+
 CTL_KERN = 1
 KERN_ARGMAX = 8
 KERN_PROCARGS2 = 49
@@ -66,6 +68,8 @@ VM_SWAPUSAGE = 5
 PROC_PIDVNODEPATHINFO = 9
 PROC_PIDPATHINFO_MAXSIZE = 4 * MAXPATHLEN
 PROC_PIDTASKINFO = 4
+PROC_PIDTHREADID64INFO = 15
+PROC_PIDLISTTHREADIDS = 28
 
 PROC_PIDLISTFDS = 1
 PROX_FDTYPE_VNODE = 1
@@ -137,6 +141,7 @@ class VirtualMemoryInfo:  # pylint: disable=too-many-instance-attributes
 
 
 ProcessOpenFile = _util.ProcessOpenFile
+ThreadInfo = _util.ThreadInfo
 
 SwapInfo = _util.SwapInfo
 
@@ -381,6 +386,22 @@ class ProcTaskInfo(ctypes.Structure):
     ]
 
 
+class ProcThreadInfo(ctypes.Structure):
+    _fields_ = [
+        ("pth_user_time", ctypes.c_uint64),
+        ("pth_system_time", ctypes.c_uint64),
+        ("pth_policy", ctypes.c_int32),
+        ("pth_policy", ctypes.c_int32),
+        ("pth_run_state", ctypes.c_int32),
+        ("pth_flags", ctypes.c_int32),
+        ("pth_sleep_time", ctypes.c_int32),
+        ("pth_curpri", ctypes.c_int32),
+        ("pth_priority", ctypes.c_int32),
+        ("pth_maxpriority", ctypes.c_int32),
+        ("pth_name", (ctypes.c_char * MAXTHREADNAMESIZE)),
+    ]
+
+
 class ProcFdInfo(ctypes.Structure):
     _fields_ = [
         ("proc_fd", ctypes.c_int32),
@@ -515,10 +536,20 @@ def _get_proc_vnode_info(proc: "Process") -> ProcVnodePathInfo:
     return info
 
 
+def _get_pid_task_info(pid: int) -> ProcTaskInfo:
+    info = ProcTaskInfo()
+    _proc_pidinfo(pid, PROC_PIDTASKINFO, 0, info)
+    return info
+
+
 @_cache.CachedByProcess
 def _get_proc_task_info(proc: "Process") -> ProcTaskInfo:
-    info = ProcTaskInfo()
-    _proc_pidinfo(proc.pid, PROC_PIDTASKINFO, 0, info)
+    return _get_pid_task_info(proc.pid)
+
+
+def _get_proc_thread_info(proc: "Process", tid: int) -> ProcThreadInfo:
+    info = ProcThreadInfo()
+    _proc_pidinfo(proc.pid, PROC_PIDTHREADID64INFO, tid, info)
     return info
 
 
@@ -636,6 +667,48 @@ def proc_cmdline(proc: "Process") -> List[str]:
 
 def proc_environ(proc: "Process") -> Dict[str, str]:
     return _proc_cmdline_environ(proc)[1]
+
+
+def proc_num_threads(proc: "Process") -> int:
+    return cast(int, _get_proc_task_info(proc).pti_threadnum)
+
+
+def _list_proc_thread_ids(proc: "Process") -> List[int]:
+    # Similar strategy to _list_proc_fds() below: find the number of threads, allocate a buffer
+    # (with a +1 for detecting truncation), then read into the buffer.
+
+    while True:
+        # We can't use proc_num_threads() because that's cached in a oneshot(); it could put us in
+        # an infinite loop if the process has since spawned another thread.
+        maxthreads = _get_pid_task_info(proc.pid).pti_threadnum
+        buf = (ctypes.c_uint64 * (maxthreads + 1))()
+
+        nthreads = _proc_pidinfo(proc.pid, PROC_PIDLISTTHREADIDS, 0, buf) // ctypes.sizeof(
+            ctypes.c_uint64
+        )
+
+        if nthreads <= maxthreads:
+            return list(buf[:nthreads])
+
+
+def proc_threads(proc: "Process") -> List[ThreadInfo]:
+    threads = []
+
+    for tid in _list_proc_thread_ids(proc):
+        try:
+            tinfo = _get_proc_thread_info(proc, tid)
+        except ProcessLookupError:
+            pass
+        else:
+            threads.append(
+                ThreadInfo(
+                    id=tid,
+                    user_time=tinfo.pth_user_time / 1000000000,
+                    system_time=tinfo.pth_system_time / 1000000000,
+                )
+            )
+
+    return threads
 
 
 def _list_proc_fds(proc: "Process") -> List[ProcFdInfo]:
