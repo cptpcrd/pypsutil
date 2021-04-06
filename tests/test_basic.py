@@ -32,6 +32,8 @@ def test_basic_info() -> None:
 def test_basic_info_oneshot() -> None:
     proc = pypsutil.Process()
 
+    name = proc.name()
+
     with proc.oneshot():
         assert proc.pid == os.getpid()
         assert proc.ppid() == os.getppid()
@@ -46,6 +48,8 @@ def test_basic_info_oneshot() -> None:
         assert proc.create_time() >= pypsutil.boot_time()
 
         assert os.path.samefile(proc.cwd(), os.getcwd())
+
+        assert proc.name() == name
 
 
 def test_oneshot_nested() -> None:

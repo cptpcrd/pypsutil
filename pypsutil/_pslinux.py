@@ -365,7 +365,15 @@ def proc_environ(proc: "Process") -> Dict[str, str]:
 
 
 def proc_name(proc: "Process") -> str:
-    return _get_proc_stat_fields(proc)[1]
+    if proc._is_cache_enabled():  # pylint: disable=protected-access
+        return _get_proc_stat_fields(proc)[1]
+    else:
+        try:
+            return _util.read_file_first_line(
+                os.path.join(_util.get_procfs_path(), str(proc.pid), "comm")
+            )
+        except FileNotFoundError as ex:
+            raise ProcessLookupError from ex
 
 
 def proc_ppid(proc: "Process") -> int:
