@@ -667,7 +667,7 @@ def proc_num_threads(proc: "Process") -> int:
 def proc_threads(proc: "Process") -> List[ThreadInfo]:
     return [
         ThreadInfo(
-            id=kinfo.p_tid,
+            id=kinfo.ki_tid,
             user_time=kinfo.ki_rusage.ru_utime.to_float(),
             system_time=kinfo.ki_rusage.ru_stime.to_float(),
         )
