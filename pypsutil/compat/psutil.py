@@ -122,6 +122,17 @@ class Process:
         def threads(self) -> List[pypsutil.ThreadInfo]:
             return self._proc.threads()
 
+    if hasattr(pypsutil.Process, "cpu_num"):
+
+        def cpu_num(self) -> int:
+            return self._proc.cpu_num()
+
+    def num_fds(self) -> int:
+        return self._proc.num_fds()
+
+    def open_files(self) -> List[pypsutil.ProcessOpenFile]:
+        return self._proc.open_files()
+
     def cpu_times(self) -> pypsutil.ProcessCPUTimes:
         return self._proc.cpu_times()
 
@@ -157,6 +168,15 @@ class Process:
 
     def __repr__(self) -> str:
         return "pypsutil.compat.psutil.{}(pid={})".format(self.__class__.__name__, self.pid)
+
+    def __eq__(self, other: Any) -> Union[bool, type(NotImplemented)]:  # type: ignore[valid-type]
+        if isinstance(other, Process):
+            return self._proc == other._proc
+
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self._proc)
 
 
 class Popen(Process):
@@ -198,6 +218,12 @@ class Popen(Process):
         self._proc.__exit__(exc_type, exc_value, traceback)
 
 
+Error = pypsutil.Error
+NoSuchProcess = pypsutil.NoSuchProcess
+ZombieProcess = pypsutil.ZombieProcess
+AccessDenied = pypsutil.AccessDenied
+TimeoutExpired = pypsutil.TimeoutExpired
+
 pids = pypsutil.pids
 pid_exists = pypsutil.pid_exists
 
@@ -234,11 +260,25 @@ def wait_procs(
     return [proc_map[proc] for proc in gone], [proc_map[proc] for proc in alive]
 
 
+disk_usage = pypsutil.disk_usage
+
+virtual_memory = pypsutil.virtual_memory  # type: ignore[attr-defined]  # pylint: disable=no-member
+swap_memory = pypsutil.swap_memory  # type: ignore[attr-defined]  # pylint: disable=no-member
+
 boot_time = pypsutil.boot_time
 time_since_boot = pypsutil.time_since_boot
 
 if hasattr(pypsutil, "uptime"):
     uptime = pypsutil.uptime  # type: ignore  # pylint: disable=no-member
+
+if hasattr(pypsutil, "cpu_stats"):
+    cpu_stats = pypsutil.cpu_stats  # type: ignore  # pylint: disable=no-member
+
+if hasattr(pypsutil, "sensors_battery"):
+    sensors_battery = pypsutil.sensors_battery  # type: ignore  # pylint: disable=no-member
+
+if hasattr(pypsutil, "sensors_temperature"):
+    sensors_temperature = pypsutil.sensors_temperature  # type: ignore  # pylint: disable=no-member
 
 
 def cpu_count(logical: bool = True) -> Optional[int]:
@@ -265,3 +305,25 @@ if (
         percpu: bool = False,
     ) -> Union[pypsutil.CPUTimes, List[pypsutil.CPUTimes]]:  # type: ignore
         return pypsutil.percpu_times() if percpu else pypsutil.cpu_times()  # type: ignore
+
+
+if (
+    hasattr(pypsutil, "cpu_freq")
+    and hasattr(pypsutil, "percpu_freq")
+    and hasattr(pypsutil, "CPUFrequencies")
+):
+
+    # pylint: disable=no-member
+
+    @overload
+    def cpu_freq(percpu: False = False) -> pypsutil.CPUFrequencies:  # type: ignore
+        ...
+
+    @overload
+    def cpu_freq(percpu: True) -> List[pypsutil.CPUFrequencies]:  # type: ignore
+        ...
+
+    def cpu_freq(
+        percpu: bool = False,
+    ) -> Union[pypsutil.CPUFrequencies, List[pypsutil.CPUFrequencies]]:
+        return pypsutil.percpu_freq() if percpu else pypsutil.cpu_freq()  # type: ignore
