@@ -323,17 +323,13 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def open_files(self) -> List[ProcessOpenFile]:
         return _psimpl.proc_open_files(self)
 
-    if hasattr(_psimpl, "proc_num_threads"):
+    @translate_proc_errors
+    def num_threads(self) -> int:
+        return _psimpl.proc_num_threads(self)
 
-        @translate_proc_errors
-        def num_threads(self) -> int:
-            return _psimpl.proc_num_threads(self)
-
-    if hasattr(_psimpl, "proc_threads"):
-
-        @translate_proc_errors
-        def threads(self) -> List[ThreadInfo]:
-            return _psimpl.proc_threads(self)
+    @translate_proc_errors
+    def threads(self) -> List[ThreadInfo]:
+        return _psimpl.proc_threads(self)
 
     @translate_proc_errors
     def has_terminal(self) -> bool:
