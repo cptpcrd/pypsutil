@@ -312,11 +312,14 @@ def proc_num_fds(proc: "Process") -> int:
 
 
 def proc_num_threads(proc: "Process") -> int:
-    # Surprisingly, this is actually faster than checking the field in /proc/$PID/stat
-    try:
-        return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")))
-    except FileNotFoundError as ex:
-        raise ProcessLookupError from ex
+    if proc._is_cache_enabled():  # pylint: disable=protected-access
+        return int(_get_proc_stat_fields(proc)[19])
+    else:
+        # Surprisingly, this is actually faster than checking the field in /proc/$PID/stat
+        try:
+            return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "task")))
+        except FileNotFoundError as ex:
+            raise ProcessLookupError from ex
 
 
 def proc_threads(proc: "Process") -> List[ThreadInfo]:

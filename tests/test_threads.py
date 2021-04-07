@@ -34,6 +34,10 @@ if hasattr(pypsutil.Process, "num_threads"):
 
             assert pypsutil.Process().num_threads() == nthreads
 
+            proc = pypsutil.Process()
+            with proc.oneshot():
+                assert proc.num_threads() == nthreads
+
     def test_num_threads_subproc() -> None:
         with managed_child_process2(
             [
