@@ -27,10 +27,13 @@ from ._system import (
     DiskUsage,
     PowerSupplySensorInfo,
     SwapInfo,
+    VirtualMemoryInfo,
     boot_time,
     disk_usage,
     physical_cpu_count,
+    swap_memory,
     time_since_boot,
+    virtual_memory,
 )
 
 _OPTIONAL_FUNCS = [
@@ -41,9 +44,6 @@ _OPTIONAL_FUNCS = [
     "CPUTimes",
     "cpu_times",
     "percpu_times",
-    "VirtualMemoryInfo",
-    "virtual_memory",
-    "swap_memory",
     "sensors_power",
     "sensors_battery",
     "sensors_battery_total",
@@ -84,6 +84,9 @@ __all__ = [
     "DiskUsage",
     "ProcessSignalMasks",
     "SwapInfo",
+    "VirtualMemoryInfo",
+    "virtual_memory",
+    "swap_memory",
     "PowerSupplySensorInfo",
     "ACPowerInfo",
     "BatteryInfo",

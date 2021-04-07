@@ -262,8 +262,8 @@ def wait_procs(
 
 disk_usage = pypsutil.disk_usage
 
-virtual_memory = pypsutil.virtual_memory  # type: ignore[attr-defined]  # pylint: disable=no-member
-swap_memory = pypsutil.swap_memory  # type: ignore[attr-defined]  # pylint: disable=no-member
+virtual_memory = pypsutil.virtual_memory
+swap_memory = pypsutil.swap_memory
 
 boot_time = pypsutil.boot_time
 time_since_boot = pypsutil.time_since_boot
