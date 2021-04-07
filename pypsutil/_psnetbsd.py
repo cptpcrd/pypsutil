@@ -553,6 +553,10 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         // kinfo_file_size
     )
 
+    if num_files == 0:
+        # Check that the process is alive
+        _get_kinfo_proc2_pid(proc.pid)
+
     return files[:num_files]
 
 
@@ -587,21 +591,15 @@ def _einval_to_esrch(func: F) -> F:
 
 
 def proc_num_fds(proc: "Process") -> int:
-    # Check validity
-    _get_kinfo_proc2_pid(proc.pid)
-
-    return sum(kfile.ki_fd >= 0 for kfile in _list_kinfo_files(proc))
+    return len(_list_kinfo_files(proc))
 
 
 @_einval_to_esrch
 def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
-    # Check validity
-    _get_kinfo_proc2_pid(proc.pid)
-
     return [
         ProcessOpenFile(fd=kfile.ki_fd, path="")
         for kfile in _list_kinfo_files(proc)
-        if kfile.ki_fd >= 0 and kfile.ki_ftype == DTYPE_VNODE and kfile.ki_vtype == VREG
+        if kfile.ki_ftype == DTYPE_VNODE and kfile.ki_vtype == VREG
     ]
 
 
