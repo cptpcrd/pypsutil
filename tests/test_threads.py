@@ -71,6 +71,22 @@ if hasattr(pypsutil.Process, "threads"):
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.threads()
 
+    def test_threads_oneshot() -> None:
+        proc = pypsutil.Process()
+
+        with proc.oneshot():
+            # On some platforms, this will store the information needed to calculate num_threads()
+            # in the cache
+            assert proc.num_threads() == len(proc.threads())
+            assert len(proc.threads()) == threading.active_count()
+
+            # Now spawn a thread
+            with managed_background_thread():
+                # Make sure the cached num_threads() value (if applicable) doesn't mess up threads()
+                # If the cached value is used improperly, threads() could hang or return invalid
+                # results
+                assert len(proc.threads()) == threading.active_count()
+
 
 if (
     hasattr(pypsutil.Process, "num_threads")

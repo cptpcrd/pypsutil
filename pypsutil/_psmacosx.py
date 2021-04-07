@@ -677,10 +677,10 @@ def _list_proc_thread_ids(proc: "Process") -> List[int]:
     # Similar strategy to _list_proc_fds() below: find the number of threads, allocate a buffer
     # (with a +1 for detecting truncation), then read into the buffer.
 
+    # This may be cached by a oneshot(), so it *could* be inaccurate
+    maxthreads = proc_num_threads(proc)
+
     while True:
-        # We can't use proc_num_threads() because that's cached in a oneshot(); it could put us in
-        # an infinite loop if the process has since spawned another thread.
-        maxthreads = _get_pid_task_info(proc.pid).pti_threadnum
         buf = (ctypes.c_uint64 * (maxthreads + 1))()
 
         nthreads = _proc_pidinfo(proc.pid, PROC_PIDLISTTHREADIDS, 0, buf) // ctypes.sizeof(
@@ -689,6 +689,9 @@ def _list_proc_thread_ids(proc: "Process") -> List[int]:
 
         if nthreads <= maxthreads:
             return list(buf[:nthreads])
+
+        # The cached value was incorrect; look up the real value this time around
+        maxthreads = _get_pid_task_info(proc.pid).pti_threadnum
 
 
 def proc_threads(proc: "Process") -> List[ThreadInfo]:
