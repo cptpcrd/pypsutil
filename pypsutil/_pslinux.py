@@ -271,7 +271,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
                 if path[0] != "/":
                     continue
 
-                if not os.path.isfile(path):
+                if not os.path.isfile(os.path.join(proc_dir, "fd", name)):
                     continue
 
                 position = None
