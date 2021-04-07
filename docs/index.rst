@@ -829,21 +829,28 @@ Process information
         A file on the disk. Note that this doesn't necessarily mean a *regular* file, it could still
         be a directory, block device, etc.
 
+        On Linux, macOS, and OpenBSD, :py:attr:`ProcessFd.extra_info` may contain an ``nlink`` field
+        specifying the number of links to the file.
+
    .. py:data:: SOCKET
 
         A socket. Note that for Unix sockets, whether or not the path is returned in
         :py:attr:`ProcessFd.path` is platform-dependent.
 
-        On FreeBSD, :py:attr:`ProcessFd.extra_info` will contain ``domain``, ``type``, and ``protocol``,
-        ``recvq``, and ``sendq`` fields indicating these attributes of the socket.
+        On macOS, FreeBSD, OpenBSD, :py:attr:`ProcessFd.extra_info` will contain ``domain``, ``type``,
+        and ``protocol``, ``recvq``, and ``sendq`` fields indicating these attributes of the socket.
 
    .. py:data:: PIPE
 
         A pipe.
 
-        On FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``buffer_cnt`` field specifying
-        the amount of data in the pipe's read buffer. (Note that since pipes are bidirectional on
-        FreeBSD, this means the amount of data waiting to be *read* by this end of the pipe.)
+        On macOS and FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``buffer_cnt`` field
+        specifying the amount of data in the pipe's read buffer. (Note that since pipes are
+        bidirectional on FreeBSD, this means the amount of data waiting to be *read* by this end of
+        the pipe.)
+
+        On macOS, :py:attr:`ProcessFd.extra_info` will also contain a ``buffer_max`` field specifying
+        the size of the pipe's read buffer.
 
    .. py:data:: FIFO
 
@@ -852,6 +859,9 @@ Process information
    .. py:data:: KQUEUE
 
         (\*BSD) A kqueue instance.
+
+        On macOS/FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``kq_count`` field indicating
+        the number of pending events on the kqueue instance.
 
    .. py:data:: PROCDESC
 
