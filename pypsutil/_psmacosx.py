@@ -835,6 +835,29 @@ def physical_cpu_count() -> Optional[int]:
     return count.value or None
 
 
+def cpu_freq() -> Optional[Tuple[float, float, float]]:
+    try:
+        cur_freq = ctypes.c_ulonglong()
+        _bsd.sysctlbyname_into("hw.cpufrequency", cur_freq)
+
+        min_freq = ctypes.c_ulonglong(0)
+        try:
+            _bsd.sysctlbyname_into("hw.cpufrequency_min", min_freq)
+        except OSError:
+            pass
+
+        max_freq = ctypes.c_ulonglong(0)
+        try:
+            _bsd.sysctlbyname_into("hw.cpufrequency_max", max_freq)
+        except OSError:
+            pass
+
+        return (cur_freq.value / 1000000, min_freq.value / 1000000, max_freq.value / 1000000)
+
+    except FileNotFoundError:
+        return None
+
+
 def _get_vmstats64() -> VmStatistics64:
     host = libc.mach_host_self()
     if host is None:
