@@ -172,7 +172,13 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
 
         if pypsutil.FREEBSD or pypsutil.MACOS:
             assert pfds[r].extra_info["buffer_cnt"] == 3
+
+        if pypsutil.FREEBSD:
+            # FreeBSD looks at this end of the pipe (since they're bidirectional on FreeBSD)
             assert pfds[w].extra_info["buffer_cnt"] == 0
+        elif pypsutil.MACOS:
+            # macOS switches to the other end of the pipe
+            assert pfds[w].extra_info["buffer_cnt"] == 3
 
 
 @linux_only
