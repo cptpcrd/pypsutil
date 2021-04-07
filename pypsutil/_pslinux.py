@@ -2,8 +2,10 @@
 import ctypes
 import dataclasses
 import os
+import re
 import resource
 import signal
+import stat
 import sys
 import time
 from typing import (
@@ -23,7 +25,7 @@ from typing import (
 
 from . import _cache, _ffi, _psposix, _util
 from ._errors import AccessDenied, ZombieProcess
-from ._util import ProcessCPUTimes, ProcessStatus
+from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -36,18 +38,7 @@ class ProcessOpenFile(_util.ProcessOpenFile):
 
     @property
     def mode(self) -> str:
-        if self.flags & os.O_WRONLY == os.O_WRONLY:
-            if self.flags & os.O_APPEND == os.O_APPEND:
-                return "a"
-            else:
-                return "w"
-        elif self.flags & os.O_RDWR == os.O_RDWR:
-            if self.flags & os.O_APPEND == os.O_APPEND:
-                return "a+"
-            else:
-                return "r+"
-        else:
-            return "r"
+        return _util.flags_to_mode(self.flags)
 
 
 @dataclasses.dataclass
@@ -307,6 +298,102 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 def proc_num_fds(proc: "Process") -> int:
     try:
         return len(os.listdir(os.path.join(_util.get_procfs_path(), str(proc.pid), "fd")))
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+
+
+_ANON_FD_TYPES = {
+    "[eventpoll]": ProcessFdType.EPOLL,
+    "[eventfd]": ProcessFdType.EVENTFD,
+    "[signalfd]": ProcessFdType.SIGNALFD,
+    "[timerfd]": ProcessFdType.TIMERFD,
+    "inotify": ProcessFdType.INOTIFY,
+}
+
+
+_TFD_REGEX = re.compile(r"\s*([^\s:]+):\s*([^ ]*)\s*")
+
+
+def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
+    proc_dir = os.path.join(_util.get_procfs_path(), str(proc.pid))
+
+    try:
+        with os.scandir(os.path.join(proc_dir, "fd")) as dir_it:
+            for entry in dir_it:
+                fd = int(entry.name)
+                try:
+                    target = os.readlink(entry.path)
+                    fd_stat = entry.stat()
+                    fdinfo = _util.read_file(os.path.join(proc_dir, "fdinfo", entry.name))
+                except FileNotFoundError:
+                    continue
+
+                extra_info: Dict[str, Any] = {"nlink": fd_stat.st_nlink}
+
+                position = 0
+                flags = None
+                for line in fdinfo.splitlines():
+                    if line.startswith("pos:"):
+                        position = int(line[4:].strip())
+                    elif line.startswith("flags:"):
+                        flags = int(line[6:].strip(), 8)
+
+                    elif line.startswith(("mnt_id:", "scm_fds:", "eventfd-count:")):
+                        key, value = line.split(":", 1)
+                        extra_info[key] = int(value.strip())
+
+                    elif line.startswith("tfd:"):
+                        extra_info.setdefault("tfds", {})
+                        tfd, rest = line[4:].strip().split(maxsplit=1)
+                        data: Dict[str, int] = {}
+                        extra_info["tfds"][int(tfd)] = data
+
+                        for (key, value) in _TFD_REGEX.findall(rest):
+                            if key == "pos":
+                                data[key] = int(value)
+                            elif key in ("events", "data", "ino", "sdev"):
+                                data[key] = int(value, 16)
+
+                    elif line.startswith("sigmask:"):
+                        extra_info["sigmask"] = parse_sigmask(line[8:].strip())
+
+                assert flags is not None
+
+                if target.startswith("/"):
+                    if stat.S_ISFIFO(fd_stat.st_mode):
+                        fdtype = ProcessFdType.FIFO
+                    else:
+                        fdtype = ProcessFdType.FILE
+
+                    if target.endswith(" (deleted)") and fd_stat.st_nlink == 0:
+                        target = target[:-10]
+
+                elif target.startswith("pipe:"):
+                    fdtype = ProcessFdType.PIPE
+
+                elif target.startswith("socket:"):
+                    fdtype = ProcessFdType.SOCKET
+
+                elif target.startswith("anon_inode:"):
+                    fdtype = _ANON_FD_TYPES.get(target[11:], ProcessFdType.UNKNOWN)
+
+                else:
+                    fdtype = ProcessFdType.UNKNOWN
+
+                yield ProcessFd(
+                    path=(target if target.startswith("/") else ""),
+                    fd=fd,
+                    fdtype=fdtype,
+                    flags=flags,
+                    position=position,
+                    dev=fd_stat.st_dev,
+                    rdev=fd_stat.st_rdev,
+                    ino=fd_stat.st_ino,
+                    mode=fd_stat.st_mode,
+                    size=fd_stat.st_size,
+                    extra_info=extra_info,
+                )
+
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
 

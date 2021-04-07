@@ -563,6 +563,15 @@ Process information
       :returns: A list of dataclasses containing information on all the regular files this process has open
       :rtype: list[ProcessOpenFile]
 
+   .. py:method:: iter_fds()
+
+      Return an iterator that yields a series of :py:class:`ProcessFd` s containing information on
+      all the file descriptors this process has open.
+
+      :returns:
+            An iterator yielding :py:class:`ProcessFd` s
+      :rtype: iter[ProcessFd]
+
    .. py:method:: is_running()
 
       Checks if the process is still running. Unlike ``pid_exists(proc.pid)``, this also checks for PID
@@ -701,6 +710,192 @@ Process information
         :type: float
 
        The time this thread spent in system mode.
+
+.. py:class:: ProcessFd
+
+   .. note::
+
+        Availability of ``dev``, ``ino``, and ``rdev``, ``size``, and ``mode``:
+
+        - Always set on Linux (though they are meaningless for some file types)
+        - Always ``None`` on NetBSD (except ``size`` and part of ``mode``; see notes below)
+        - Availability on macOS/FreeBSD/OpenBSD varies depending on the file type. They are usually
+          only available for :py:attr:`ProcessFdType.FILE` s.
+
+   .. warning::
+
+        On macOS, ``position`` and ``flags`` may be -1 for some special file descriptors.
+
+   .. py:attribute:: path
+
+         :type: str
+
+        The path to the file. This will be empty if this cannot be retrieved, or if it is
+        not meaningful for the file type in question.
+
+   .. py:attribute:: fd
+
+         :type: int
+
+        The file descriptor number.
+
+   .. py:attribute:: fdtype
+
+        :type: ProcessFdType
+
+        The file descriptor type (one of the values in the :py:class:`ProcessFdType` enum).
+
+   .. py:attribute:: dev
+
+         :type: int or None
+
+        The device ID of the device containing the file, or ``None`` if not available.
+
+   .. py:attribute:: ino
+
+         :type: int or None
+
+        The inode of the file, or ``None`` if not available.
+
+   .. py:attribute:: rdev
+
+         :type: int or None
+
+        The device ID of the file (if it is a special file that represents a
+        device) or ``None`` if not available.
+
+   .. py:attribute:: mode
+
+         :type: int or None
+
+        The mode of the file (i.e. ``st_mode``), or ``None`` if not available. For
+        :py:attr:`ProcessFdType.FILE` s, this can be used to get the file type.
+
+        .. warning::
+
+            On NetBSD, this is set for :py:attr:`ProcessFdType.FILE` s, but only the file type
+            portion is filled in; i.e. ``stat.S_IMODE(fd.mode) == 0``. Be careful!
+
+   .. py:attribute:: size
+
+         :type: int or None
+
+        The size of the file, or ``None`` if not available.
+
+        On NetBSD, this is only set for type :py:attr:`ProcessFdType.FILE` s.
+
+   .. py:attribute:: position
+
+         :type: int
+
+        The current offset of the file.
+
+   .. py:attribute:: flags
+
+         :type: int
+
+        The flags passed to the underlying ``open()`` C call.
+
+        This will include ``O_CLOEXEC`` if the file descriptor's close-on-exec flag is set (except
+        on FreeBSD).
+
+   .. py:attribute:: open_mode
+
+         :type: str
+
+        A string, derived from ``flags``, that approximates the likely ``mode``
+        argument as for :py:func:`open()`. Possible values are ``"r"``, ``"w"``, ``"a"``, ``"r+"``,
+
+   .. py:attribute:: extra_info
+
+         :type: dict[str, Any]
+
+        A dictionary containing extra information about the file descriptor.
+
+        The contents of this dictionary are highly dependent on the OS and the file descriptor
+        type. See :py:class:`ProcessFdType` for more information on the data that may be stored in
+        here for different file descriptor types. (On Linux, they generally correspond to fields in
+        ``/proc/$PID/fdinfo/$FD``.)
+
+.. py:class:: ProcessFdType
+
+   An enum representing the possible file types that can be returned for a :py:class:`ProcessFd`.
+
+   Note that all of the variants here are added on all OSes. For example, :py:attr:`ProcessFdType.KQUEUE`
+   is available on Linux, though it is BSD/macOS-specific. It will simply never actually be returned.
+
+   .. py:data:: FILE
+
+        A file on the disk. Note that this doesn't necessarily mean a *regular* file, it could still
+        be a directory, block device, etc.
+
+   .. py:data:: SOCKET
+
+        A socket. Note that for Unix sockets, whether or not the path is returned in
+        :py:attr:`ProcessFd.path` is platform-dependent.
+
+        On FreeBSD, :py:attr:`ProcessFd.extra_info` will contain ``domain``, ``type``, and ``protocol``,
+        ``recvq``, and ``sendq`` fields indicating these attributes of the socket.
+
+   .. py:data:: PIPE
+
+        A pipe.
+
+        On FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``buffer_cnt`` field specifying
+        the amount of data in the pipe's read buffer. (Note that since pipes are bidirectional on
+        FreeBSD, this means the amount of data waiting to be *read* by this end of the pipe.)
+
+   .. py:data:: FIFO
+
+        A named pipe.
+
+   .. py:data:: KQUEUE
+
+        (\*BSD) A kqueue instance.
+
+   .. py:data:: PROCDESC
+
+        (FreeBSD) A process descriptor.
+
+        On FreeBSD 12+, :py:attr:`ProcessFd.extra_info` will contain a ``pid`` field containing the
+        PID of the process referred to by this process descriptor.
+
+   .. py:data:: INOTIFY
+
+        (Linux) An inotify instance.
+
+   .. py:data:: SIGNALFD
+
+        (Linux) A signalfd instance.
+
+        On Linux 3.8+, :py:attr:`ProcessFd.extra_info` will contain a ``sigmask`` field with a set
+        containing the signals that this signalfd instance is monitoring.
+
+   .. py:data:: EPOLL
+
+        (Linux) An epoll instance.
+
+        On Linux 3.8+, :py:attr:`ProcessFd.extra_info` will contain a ``tfds`` field with a
+        dictionary of information on the file descriptors being monitored by this epoll instance.
+
+   .. py:data:: TIMERFD
+
+        (Linux) A timerfd instance.
+
+   .. py:data:: EVENTFD
+
+        (Linux/FreeBSD) An eventfd.
+
+        On Linux 3.8+, :py:attr:`ProcessFd.extra_info` will contain an ``eventfd-count`` field with
+        the current value of the eventfd's counter.
+
+        On FreeBSD, :py:attr:`ProcessFd.extra_info` will contain an ``eventfd_value`` field with
+        the current value of the eventfd's counter, and an ``eventfd_flags`` field with the flags
+        used when creating the eventfd.
+
+   .. py:data:: UNKNOWN
+
+        An unknown file type.
 
 
 .. py:function:: pids()

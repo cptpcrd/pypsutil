@@ -1,6 +1,8 @@
 # mypy: ignore-errors
 import os
 import pathlib
+import select
+import socket
 import subprocess
 import sys
 
@@ -12,6 +14,7 @@ from .util import (
     get_dead_process,
     linux_only,
     managed_child_process2,
+    managed_pipe,
     populate_directory,
     replace_info_directories,
 )
@@ -102,6 +105,128 @@ def test_open_files_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.open_files()
+
+
+def test_iter_fds(tmp_path: pathlib.Path) -> None:
+    # pylint: disable=invalid-name
+
+    proc = pypsutil.Process()
+
+    os.mkfifo(tmp_path / "fifo")
+
+    with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
+        socket.AF_INET
+    ) as sock_in, managed_pipe() as (r, w), open(
+        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+    ) as fifo, open(
+        tmp_path / "file", "w"
+    ) as file:
+        sock_un = sock_un.fileno()
+        sock_in = sock_in.fileno()
+        fifo = fifo.fileno()
+        file = file.fileno()
+
+        os.write(w, b"abc")
+
+        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+
+        for fd in [0, 1, 2, sock_un, sock_in, r, w, fifo, file]:
+            st = os.fstat(fd)
+            assert pfds[fd].rdev in (st.st_rdev, None)
+            assert pfds[fd].dev in (st.st_dev, None)
+            assert pfds[fd].ino in (st.st_ino, None)
+
+        for fd in [0, 1, 2]:
+            if pfds[fd].path:
+                try:
+                    tty = os.ttyname(fd)
+                except OSError:
+                    pass
+                else:
+                    assert os.path.samefile(pfds[fd].path, tty)
+
+            if not pypsutil.FREEBSD:
+                assert pfds[fd].flags & os.O_CLOEXEC == 0
+
+        for fd in [sock_un, sock_in, r, w, fifo]:
+            assert pfds[fd].position == 0
+
+            if not pypsutil.FREEBSD:
+                assert pfds[fd].flags & os.O_CLOEXEC == os.O_CLOEXEC
+
+        for fd in [sock_un, sock_in, r, w]:
+            assert not pfds[fd].path
+
+        if pfds[fifo].path:
+            assert os.path.samefile(pfds[fifo].path, tmp_path / "fifo")
+        if pfds[file].path:
+            assert os.path.samefile(pfds[file].path, tmp_path / "file")
+
+        assert pfds[sock_un].fdtype == pypsutil.ProcessFdType.SOCKET
+        assert pfds[sock_in].fdtype == pypsutil.ProcessFdType.SOCKET
+        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
+        assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
+
+        if pypsutil.FREEBSD:
+            assert pfds[r].extra_info["buffer_cnt"] == 3
+            assert pfds[w].extra_info["buffer_cnt"] == 0
+
+
+@linux_only
+def test_iter_fds_epoll(tmp_path: pathlib.Path) -> None:
+    # pylint: disable=invalid-name,no-member
+
+    proc = pypsutil.Process()
+
+    os.mkfifo(tmp_path / "fifo")
+
+    with select.epoll() as epoll, managed_pipe() as (r, w), open(
+        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+    ) as fifo:
+        epoll.register(r, select.EPOLLIN)
+        epoll.register(w, select.EPOLLOUT)
+        epoll.register(fifo.fileno(), select.EPOLLIN)
+
+        epoll = epoll.fileno()
+        fifo = fifo.fileno()
+
+        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+
+        st = os.fstat(epoll)
+        assert pfds[epoll].rdev in (st.st_rdev, None)
+        assert pfds[epoll].dev in (st.st_dev, None)
+        assert pfds[epoll].ino in (st.st_ino, None)
+
+        assert pfds[epoll].position == 0
+        assert pfds[epoll].flags & os.O_CLOEXEC == os.O_CLOEXEC
+
+        assert not pfds[epoll].path
+
+        assert pfds[epoll].fdtype == pypsutil.ProcessFdType.EPOLL
+        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
+
+        tfds = pfds[epoll].extra_info["tfds"]
+
+        assert tfds[r]["pos"] == 0
+        assert tfds[r]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
+        assert tfds[r]["ino"] == pfds[r].ino
+
+        assert tfds[w]["pos"] == 0
+        assert tfds[w]["events"] == select.EPOLLOUT | select.EPOLLERR | select.EPOLLHUP
+        assert tfds[w]["ino"] == pfds[w].ino
+
+        assert tfds[fifo]["pos"] == 0
+        assert tfds[fifo]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
+        assert tfds[fifo]["ino"] == pfds[fifo].ino
+
+
+def test_iter_fds_no_proc() -> None:
+    proc = get_dead_process()
+
+    with pytest.raises(pypsutil.NoSuchProcess):
+        next(proc.iter_fds())
 
 
 @linux_only

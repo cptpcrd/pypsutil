@@ -4,6 +4,7 @@ import dataclasses
 import errno
 import functools
 import os
+import stat
 import time
 from typing import (
     TYPE_CHECKING,
@@ -19,7 +20,7 @@ from typing import (
 )
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
+from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -54,7 +55,16 @@ VM_METER = 1
 VM_UVMEXP2 = 5
 
 DTYPE_VNODE = 1
+DTYPE_SOCKET = 2
+DTYPE_PIPE = 3
+DTYPE_KQUEUE = 4
 VREG = 1
+VDIR = 2
+VBLK = 3
+VCHR = 4
+VLNK = 5
+VSOCK = 6
+VFIFO = 7
 
 MAXCOMLEN = 16
 
@@ -601,6 +611,65 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
         for kfile in _list_kinfo_files(proc)
         if kfile.ki_ftype == DTYPE_VNODE and kfile.ki_vtype == VREG
     ]
+
+
+_VTYPE_TO_ST_MODE = {
+    VREG: stat.S_IFREG,
+    VDIR: stat.S_IFDIR,
+    VBLK: stat.S_IFBLK,
+    VCHR: stat.S_IFCHR,
+    VLNK: stat.S_IFLNK,
+    VSOCK: stat.S_IFSOCK,
+}
+
+
+def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
+    kfiles = _list_kinfo_files(proc)
+
+    for kfile in kfiles:
+        mode = None
+        size = None
+        extra_info: Dict[str, Any] = {}
+
+        if kfile.ki_ftype == DTYPE_VNODE:
+            if kfile.ki_vtype == VFIFO:
+                fdtype = ProcessFdType.FIFO
+            else:
+                fdtype = ProcessFdType.FILE
+                size = kfile.ki_vsize
+                mode = _VTYPE_TO_ST_MODE.get(kfile.ki_vtype, None)
+
+        elif kfile.ki_ftype == DTYPE_SOCKET:
+            fdtype = ProcessFdType.SOCKET
+
+        elif kfile.ki_ftype == DTYPE_PIPE:
+            fdtype = ProcessFdType.PIPE
+
+        elif kfile.ki_ftype == DTYPE_KQUEUE:
+            fdtype = ProcessFdType.KQUEUE
+
+        else:
+            fdtype = ProcessFdType.UNKNOWN
+
+        flags = kfile.ki_flag
+        if kfile.ki_ofileflags & 1:
+            flags |= os.O_CLOEXEC
+        else:
+            flags &= ~os.O_CLOEXEC
+
+        yield ProcessFd(
+            path="",
+            fd=kfile.ki_fd,
+            fdtype=fdtype,
+            flags=flags,
+            position=kfile.ki_foffset,
+            dev=None,
+            rdev=None,
+            ino=None,
+            size=size,
+            mode=mode,
+            extra_info=extra_info,
+        )
 
 
 def pid_raw_create_time(pid: int) -> float:

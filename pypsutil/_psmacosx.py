@@ -1,16 +1,17 @@
-# pylint: disable=invalid-name,too-few-public-methods
+# pylint: disable=invalid-name,too-few-public-methods,too-many-lines,fixme
 import ctypes
 import dataclasses
 import errno
 import os
 import signal
+import socket
 import struct
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
-from ._util import ProcessCPUTimes, ProcessStatus
+from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -73,13 +74,24 @@ PROC_PIDLISTTHREADIDS = 28
 
 PROC_PIDLISTFDS = 1
 PROX_FDTYPE_VNODE = 1
+PROX_FDTYPE_SOCKET = 2
+PROX_FDTYPE_KQUEUE = 5
+PROX_FDTYPE_PIPE = 6
+
+PROC_FP_CLEXEC = 2
 
 PROC_PIDFDVNODEPATHINFO = 2
+PROC_PIDFDSOCKETINFO = 3
+PROC_PIDFDPIPEINFO = 6
+PROC_PIDFDKQUEUEINFO = 7
 
 VREG = 1
+VFIFO = 7
 
 HOST_VM_INFO64 = 4
 KERN_SUCCESS = 0
+
+SOCK_MAXADDRLEN = 255
 
 CLOCK_UPTIME_RAW = 8
 
@@ -93,6 +105,7 @@ suseconds_t = ctypes.c_int32
 sigset_t = ctypes.c_uint32
 fsid_t = ctypes.c_int32 * 2
 off_t = ctypes.c_int64
+sa_family_t = ctypes.c_uint8
 
 natural_t = ctypes.c_uint
 kern_return_t = ctypes.c_int
@@ -174,6 +187,14 @@ class Rusage(ctypes.Structure):
         ("ru_nsignals", ctypes.c_long),
         ("ru_nvcsw", ctypes.c_long),
         ("ru_nivcsw", ctypes.c_long),
+    ]
+
+
+class SockaddrUn(ctypes.Structure):
+    _fields_ = [
+        ("sun_len", ctypes.c_uint8),
+        ("sun_family", sa_family_t),
+        ("sun_path", (ctypes.c_char * 104)),
     ]
 
 
@@ -316,7 +337,7 @@ class KinfoProc(ctypes.Structure):
 
 class VinfoStat(ctypes.Structure):
     _fields_ = [
-        ("vst_dev", ctypes.c_uint32),
+        ("vst_dev", ctypes.c_int32),
         ("vst_mode", ctypes.c_uint16),
         ("vst_nlink", ctypes.c_uint16),
         ("vst_ino", ctypes.c_uint64),
@@ -335,7 +356,7 @@ class VinfoStat(ctypes.Structure):
         ("vst_blksize", ctypes.c_int32),
         ("vst_flags", ctypes.c_uint32),
         ("vst_gen", ctypes.c_uint32),
-        ("vst_rdev", ctypes.c_uint32),
+        ("vst_rdev", ctypes.c_int32),
         ("vst_qspare", (ctypes.c_int64 * 2)),
     ]
 
@@ -353,6 +374,84 @@ class VnodeInfoPath(ctypes.Structure):
     _fields_ = [
         ("vip_vi", VnodeInfo),
         ("vip_path", (ctypes.c_char * MAXPATHLEN)),
+    ]
+
+
+class PipeInfo(ctypes.Structure):
+    _fields_ = [
+        ("pipe_stat", VinfoStat),
+        ("pipe_handle", ctypes.c_uint64),
+        ("pipe_peerhandle", ctypes.c_uint64),
+        ("pipe_status", ctypes.c_int),
+        ("rfu_1", ctypes.c_int),
+    ]
+
+
+class KqueueInfo(ctypes.Structure):
+    _fields_ = [
+        ("kq_stat", VinfoStat),
+        ("kq_state", ctypes.c_uint32),
+        ("rfu_1", ctypes.c_uint32),
+    ]
+
+
+class InSockinfo(ctypes.Structure):
+    _fields_ = [
+        ("insi_fport", ctypes.c_int),
+        ("insi_lport", ctypes.c_int),
+        # TODO: Add missing fields
+    ]
+
+
+class UnSockinfoAddr(ctypes.Structure):
+    _fields_ = [
+        ("ua_sun", SockaddrUn),
+        ("ua_dummy", (ctypes.c_char * SOCK_MAXADDRLEN)),
+    ]
+
+
+class UnSockinfo(ctypes.Structure):
+    _fields_ = [
+        ("unsi_conn_so", ctypes.c_uint64),
+        ("unsi_conn_pcb", ctypes.c_uint64),
+        ("unsi_addr", UnSockinfoAddr),
+        ("unsi_caddr", UnSockinfoAddr),
+    ]
+
+
+class SockInfoProto(ctypes.Union):
+    _fields_ = [
+        # TODO: Fill out missing structures
+        # (UnSockinfo is the largest field, so this should still be long enough)
+        ("pri_in", InSockinfo),
+        # ("pri_tcp", TcpSockinfo),
+        ("pri_un", UnSockinfo),
+        # ("pri_ndrv", NdrvInfo),
+        # ("pri_kern_event", KernEventInfo),
+        # ("pri_kern_ctl", KernCtlInfo),
+        # ("pri_vsock", VsockSockinfo),
+    ]
+
+
+class SocketInfo(ctypes.Structure):
+    _fields_ = [
+        ("soi_stat", VinfoStat),
+        ("soi_so", ctypes.c_uint64),
+        ("soi_pcb", ctypes.c_uint64),
+        ("soi_type", ctypes.c_int),
+        ("soi_protocol", ctypes.c_int),
+        ("soi_family", ctypes.c_int),
+        ("soi_options", ctypes.c_short),
+        ("soi_linger", ctypes.c_short),
+        ("soi_state", ctypes.c_short),
+        ("soi_qlen", ctypes.c_short),
+        ("soi_incqlen", ctypes.c_short),
+        ("soi_qlimit", ctypes.c_short),
+        ("soi_timeo", ctypes.c_short),
+        ("soi_error", ctypes.c_ushort),
+        ("soi_oobmark", ctypes.c_uint32),
+        ("rfu_1", ctypes.c_uint32),
+        ("soi_proto", SockInfoProto),
     ]
 
 
@@ -423,6 +522,27 @@ class VnodeFdInfoWithPath(ctypes.Structure):
     _fields_ = [
         ("pfi", ProcFileInfo),
         ("pvip", VnodeInfoPath),
+    ]
+
+
+class PipeFdInfo(ctypes.Structure):
+    _fields_ = [
+        ("pfi", ProcFileInfo),
+        ("pipeinfo", PipeInfo),
+    ]
+
+
+class KqueueFdInfo(ctypes.Structure):
+    _fields_ = [
+        ("pfi", ProcFileInfo),
+        ("kqueueinfo", KqueueInfo),
+    ]
+
+
+class SocketFdInfo(ctypes.Structure):
+    _fields_ = [
+        ("pfi", ProcFileInfo),
+        ("psi", SocketInfo),
     ]
 
 
@@ -753,6 +873,140 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
                 )
 
     return results
+
+
+def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
+    for fdinfo in _list_proc_fds(proc):
+        path = ""
+        dev = None
+        ino = None
+        rdev = None
+        size = None
+        mode = None
+        extra_info = {}
+
+        flags = -1
+        offset = -1
+
+        pfi = None
+        vi_stat = None
+
+        if fdinfo.proc_fdtype == PROX_FDTYPE_VNODE:
+            vinfo = VnodeFdInfoWithPath()
+            try:
+                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDVNODEPATHINFO, vinfo)
+            except OSError as ex:
+                if ex.errno in (errno.ENOENT, errno.EBADF):
+                    continue
+                else:
+                    raise
+
+            fdtype = (
+                ProcessFdType.FIFO if vinfo.pvip.vip_vi.vi_type == VFIFO else ProcessFdType.FILE
+            )
+
+            path = os.fsdecode(vinfo.pvip.vip_path)
+            pfi = vinfo.pfi
+            vi_stat = vinfo.pvip.vip_vi.vi_stat
+
+        elif fdinfo.proc_fdtype == PROX_FDTYPE_SOCKET:
+            fdtype = ProcessFdType.SOCKET
+
+            sinfo = SocketFdInfo()
+            try:
+                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
+            except OSError as ex:
+                if ex.errno in (errno.ENOENT, errno.EBADF):
+                    continue
+                else:
+                    raise
+
+            pfi = sinfo.pfi
+
+            extra_info["family"] = sinfo.psi.soi_family
+            extra_info["protocol"] = sinfo.psi.soi_protocol
+            extra_info["type"] = sinfo.psi.soi_type
+
+            if sinfo.psi.soi_family == socket.AF_UNIX:
+                path = os.fsdecode(
+                    sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path
+                    or sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path
+                )
+
+            elif sinfo.psi.soi_family in (socket.AF_INET, socket.AF_INET6):
+                extra_info["local_port"] = sinfo.psi.soi_proto.pri_in.insi_lport
+                extra_info["foreign_port"] = sinfo.psi.soi_proto.pri_in.insi_fport
+
+        elif fdinfo.proc_fdtype == PROX_FDTYPE_PIPE:
+            fdtype = ProcessFdType.PIPE
+
+            pinfo = PipeFdInfo()
+            try:
+                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDPIPEINFO, pinfo)
+            except OSError as ex:
+                if ex.errno in (errno.ENOENT, errno.EBADF):
+                    continue
+                else:
+                    raise
+
+            pfi = pinfo.pfi
+
+            mode = pinfo.pipeinfo.pipe_stat.vst_mode
+            size = pinfo.pipeinfo.pipe_stat.vst_size
+            extra_info["buffer_max"] = pinfo.pipeinfo.pipe_stat.vst_blksize
+            extra_info["buffer_cnt"] = size
+
+        elif fdinfo.proc_fdtype == PROX_FDTYPE_KQUEUE:
+            fdtype = ProcessFdType.KQUEUE
+
+            kinfo = KqueueFdInfo()
+            try:
+                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDKQUEUEINFO, kinfo)
+            except OSError as ex:
+                if ex.errno in (errno.ENOENT, errno.EBADF):
+                    continue
+                else:
+                    raise
+
+            pfi = pinfo.pfi
+
+            size = pinfo.kqueueinfo.kq_stat.vst_size
+            mode = pinfo.kqueueinfo.kq_stat.vst_mode
+            extra_info["kq_count"] = size
+
+        else:
+            fdtype = ProcessFdType.UNKNOWN
+
+        if pfi is not None:
+            offset = pfi.fi_offset
+
+            flags = pfi.fi_openflags
+            if pfi.fi_status & PROC_FP_CLEXEC:
+                flags |= os.O_CLOEXEC
+            else:
+                flags &= ~os.O_CLOEXEC
+
+        if vi_stat is not None:
+            dev = vi_stat.vst_dev or None
+            ino = vi_stat.vst_ino
+            rdev = vi_stat.vst_rdev
+            size = vi_stat.vst_size
+            mode = vi_stat.vst_mode
+            extra_info["nlink"] = vi_stat.vst_nlink
+
+        yield ProcessFd(
+            path=path,
+            fd=fdinfo.proc_fd,
+            fdtype=fdtype,
+            flags=flags,
+            position=offset,
+            dev=dev,
+            rdev=rdev,
+            ino=ino,
+            size=size,
+            mode=mode,
+            extra_info=extra_info,
+        )
 
 
 def proc_exe(proc: "Process") -> str:

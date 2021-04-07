@@ -56,6 +56,45 @@ class ProcessOpenFile:
     fd: int
 
 
+class ProcessFdType(enum.Enum):
+    FILE = "file"
+    SOCKET = "socket"
+    PIPE = "pipe"
+    # Note: Not all OSes allow differentiating pipes from FIFOs; on those OSes FIFOs will be given
+    # type PIPE.
+    FIFO = "fifo"
+
+    KQUEUE = "kqueue"
+    PROCDESC = "procdesc"
+
+    INOTIFY = "inotify"
+    SIGNALFD = "signalfd"
+    EPOLL = "epoll"
+    TIMERFD = "timerfd"
+    EVENTFD = "eventfd"
+
+    UNKNOWN = "unknown"
+
+
+@dataclasses.dataclass
+class ProcessFd:  # pylint: disable=too-many-instance-attributes
+    path: str
+    fd: int
+    position: int
+    flags: int
+    fdtype: ProcessFdType
+    dev: Optional[int]
+    ino: Optional[int]
+    rdev: Optional[int]
+    mode: Optional[int]
+    size: Optional[int]
+    extra_info: Dict[str, str]
+
+    @property
+    def open_mode(self) -> Optional[str]:
+        return flags_to_mode(self.flags)
+
+
 @dataclasses.dataclass
 class ProcessSignalMasks:
     pending: Set[Union[signal.Signals, int]]  # pylint: disable=no-member
@@ -276,6 +315,21 @@ def parse_environ_bytes(env: bytes) -> Dict[str, str]:
             res[key] = value
 
     return res
+
+
+def flags_to_mode(flags: int) -> str:
+    if flags & os.O_ACCMODE == os.O_WRONLY:  # type: ignore[attr-defined]
+        if flags & os.O_APPEND == os.O_APPEND:
+            return "a"
+        else:
+            return "w"
+    elif flags & os.O_ACCMODE == os.O_RDWR:  # type: ignore[attr-defined]
+        if flags & os.O_APPEND == os.O_APPEND:
+            return "a+"
+        else:
+            return "r+"
+    else:
+        return "r"
 
 
 # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators

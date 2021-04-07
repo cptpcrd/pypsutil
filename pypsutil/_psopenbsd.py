@@ -3,11 +3,12 @@ import ctypes
 import dataclasses
 import errno
 import os
+import socket
 import time
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
+from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -31,6 +32,8 @@ KERN_PROC_ENV = 3
 KERN_FILE = 73
 KERN_FILE_BYPID = 2
 
+UF_EXCLOSE = 0x1
+
 VM_METER = 1
 VM_UVMEXP = 4
 
@@ -40,7 +43,11 @@ VFS_GENERIC = 0
 VFS_BCACHESTAT = 3
 
 DTYPE_VNODE = 1
+DTYPE_SOCKET = 2
+DTYPE_PIPE = 3
+DTYPE_KQUEUE = 4
 VREG = 1
+VFIFO = 7
 
 KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
@@ -556,6 +563,85 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
         for kfile in _list_kinfo_files(proc)
         if kfile.fd_fd >= 0 and kfile.f_type == DTYPE_VNODE and kfile.v_type == VREG
     ]
+
+
+def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
+    for kfile in _list_kinfo_files(proc):
+        if kfile.fd_fd < 0:
+            continue
+
+        path = ""
+        ino = None
+        dev = None
+        rdev = None
+        mode = None
+        size = None
+
+        extra_info = {
+            "rbytes": kfile.f_rbytes,
+            "wbytes": kfile.f_wbytes,
+            "rxfer": kfile.f_rxfer,
+            "rwfer": kfile.f_rwfer,
+        }
+
+        if kfile.f_type == DTYPE_VNODE:
+            if kfile.v_type == VFIFO:
+                fdtype = ProcessFdType.FIFO
+            else:
+                fdtype = ProcessFdType.FILE
+
+                if kfile.va_mode != 0:
+                    # The va_* fields were filled in
+                    ino = kfile.va_fileid
+                    mode = kfile.va_mode
+                    dev = kfile.va_fsid
+                    # It seems va_rdev may be 0 when it shouldn't be sometimes
+                    rdev = kfile.va_rdev or None
+                    size = kfile.va_size
+                    extra_info["nlink"] = kfile.va_nlink
+
+        elif kfile.f_type == DTYPE_SOCKET:
+            fdtype = ProcessFdType.SOCKET
+            extra_info["type"] = kfile.so_type
+            extra_info["protocol"] = kfile.so_protocol
+            extra_info["family"] = kfile.so_family
+
+            if kfile.so_family == socket.AF_UNIX:
+                path = os.fsdecode(kfile.unp_path)
+
+            elif kfile.so_family in (socket.AF_INET, socket.AF_INET6):
+                extra_info["local_port"] = kfile.inp_lport
+                extra_info["foreign_port"] = kfile.inp_fport
+
+        elif kfile.f_type == DTYPE_PIPE:
+            fdtype = ProcessFdType.PIPE
+
+        elif kfile.f_type == DTYPE_KQUEUE:
+            fdtype = ProcessFdType.KQUEUE
+            extra_info["kq_count"] = kfile.kq_count
+
+        else:
+            fdtype = ProcessFdType.UNKNOWN
+
+        flags = kfile.f_flags
+        if kfile.fd_ofileflags & UF_EXCLOSE:
+            flags |= os.O_CLOEXEC
+        else:
+            flags &= ~os.O_CLOEXEC
+
+        yield ProcessFd(
+            path=path,
+            fd=kfile.fd_fd,
+            fdtype=fdtype,
+            flags=flags,
+            position=kfile.f_offset,
+            dev=dev,
+            rdev=rdev,
+            ino=ino,
+            size=size,
+            mode=mode,
+            extra_info=extra_info,
+        )
 
 
 def pid_raw_create_time(pid: int) -> float:

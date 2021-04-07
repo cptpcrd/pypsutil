@@ -29,6 +29,8 @@ ProcessSignalMasks = _psimpl.ProcessSignalMasks
 ProcessCPUTimes = _psimpl.ProcessCPUTimes
 ProcessMemoryInfo = _psimpl.ProcessMemoryInfo
 ProcessOpenFile = _psimpl.ProcessOpenFile
+ProcessFd = _psimpl.ProcessFd
+ProcessFdType = _psimpl.ProcessFdType
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -314,6 +316,14 @@ class Process:  # pylint: disable=too-many-instance-attributes
             return _psimpl.proc_getrlimit(self, res)
 
         getrlimit.is_atomic = getattr(_psimpl.proc_getrlimit, "is_atomic", False)
+
+    def iter_fds(self) -> Iterator[ProcessFd]:
+        try:
+            yield from _psimpl.proc_iter_fds(self)
+        except ProcessLookupError as ex:
+            raise NoSuchProcess(pid=self.pid) from ex
+        except PermissionError as ex:
+            raise AccessDenied(pid=self.pid) from ex
 
     @translate_proc_errors
     def num_fds(self) -> int:

@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
+from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -54,6 +54,13 @@ PATH_MAX = 1024
 KI_CRF_GRP_OVERFLOW = 0x80000000
 
 KF_TYPE_VNODE = 1
+KF_TYPE_SOCKET = 2
+KF_TYPE_PIPE = 3
+KF_TYPE_FIFO = 4
+KF_TYPE_KQUEUE = 5
+KF_TYPE_PTS = 10
+KF_TYPE_PROCDESC = 11
+KF_TYPE_EVENTFD = 13
 KF_VTYPE_VREG = 1
 KF_FD_TYPE_ROOT = -2
 
@@ -658,6 +665,75 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
         and kfile.kf_type == KF_TYPE_VNODE
         and kfile.kf_un.kf_file.kf_file_type == KF_VTYPE_VREG
     ]
+
+
+def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
+    for kfile in _iter_kinfo_files(proc):
+        if kfile.kf_fd < 0:
+            continue
+
+        dev = None
+        ino = None
+        rdev = None
+        size = None
+        mode = None
+        extra_info = {}
+
+        if kfile.kf_type == KF_TYPE_VNODE:
+            fdtype = ProcessFdType.FILE
+            dev = kfile.kf_un.kf_file.kf_file_fsid
+            rdev = kfile.kf_un.kf_file.kf_file_rdev
+            ino = kfile.kf_un.kf_file.kf_file_fileid
+            size = kfile.kf_un.kf_file.kf_file_size
+            mode = kfile.kf_un.kf_file.kf_file_mode
+
+        elif kfile.kf_type == KF_TYPE_SOCKET:
+            fdtype = ProcessFdType.SOCKET
+            extra_info["sendq"] = kfile.kf_un.kf_sock.kf_sock_sendq
+            extra_info["recvq"] = kfile.kf_un.kf_sock.kf_sock_recvq
+            extra_info["domain"] = kfile.kf_un.kf_sock.kf_sock_domain0
+            extra_info["type"] = kfile.kf_un.kf_sock.kf_sock_type0
+            extra_info["protocol"] = kfile.kf_un.kf_sock.kf_sock_protocol0
+
+        elif kfile.kf_type == KF_TYPE_PTS:
+            fdtype = ProcessFdType.FILE
+            rdev = kfile.kf_un.kf_pts.kf_pts_dev
+
+        elif kfile.kf_type == KF_TYPE_PIPE:
+            fdtype = ProcessFdType.PIPE
+            extra_info["buffer_cnt"] = kfile.kf_un.kf_pipe.kf_pipe_buffer_cnt
+
+        elif kfile.kf_type == KF_TYPE_FIFO:
+            fdtype = ProcessFdType.FIFO
+
+        elif kfile.kf_type == KF_TYPE_KQUEUE:
+            fdtype = ProcessFdType.KQUEUE
+
+        elif kfile.kf_type == KF_TYPE_EVENTFD:
+            fdtype = ProcessFdType.EVENTFD
+            extra_info["eventfd_value"] = kfile.kf_un.kf_eventfd.kf_eventfd_value
+            extra_info["eventfd_flags"] = kfile.kf_un.kf_eventfd.kf_eventfd_flags
+
+        elif kfile.kf_type == KF_TYPE_PROCDESC:
+            fdtype = ProcessFdType.PROCDESC
+            extra_info["pid"] = kfile.kf_un.kf_proc.kf_pid
+
+        else:
+            fdtype = ProcessFdType.UNKNOWN
+
+        yield ProcessFd(
+            path=(os.fsdecode(kfile.kf_path) if kfile.kf_path.startswith(b"/") else ""),
+            fd=kfile.kf_fd,
+            fdtype=fdtype,
+            flags=kfile.kf_flags,
+            position=kfile.kf_offset,
+            dev=dev,
+            rdev=rdev,
+            ino=ino,
+            size=size,
+            mode=mode,
+            extra_info=extra_info,
+        )
 
 
 def proc_num_threads(proc: "Process") -> int:

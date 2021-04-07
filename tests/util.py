@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
@@ -130,3 +130,16 @@ def populate_directory(root_dir: str, structure: Dict[str, Any]) -> None:
         else:
             os.mkdir(path)
             populate_directory(path, item)
+
+
+@contextlib.contextmanager
+def managed_pipe() -> Iterator[Tuple[int, int]]:
+    # pylint: disable=invalid-name
+
+    r, w = os.pipe()
+
+    try:
+        yield (r, w)
+    finally:
+        os.close(r)
+        os.close(w)
