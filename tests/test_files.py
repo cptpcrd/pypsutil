@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+import contextlib
 import os
 import pathlib
 import select
@@ -13,6 +14,7 @@ import pypsutil
 from .util import (
     get_dead_process,
     linux_only,
+    macos_bsd_only,
     managed_child_process2,
     managed_pipe,
     populate_directory,
@@ -168,7 +170,7 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
         assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
         assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
 
-        if pypsutil.FREEBSD:
+        if pypsutil.FREEBSD or pypsutil.MACOS:
             assert pfds[r].extra_info["buffer_cnt"] == 3
             assert pfds[w].extra_info["buffer_cnt"] == 0
 
@@ -220,6 +222,48 @@ def test_iter_fds_epoll(tmp_path: pathlib.Path) -> None:
         assert tfds[fifo]["pos"] == 0
         assert tfds[fifo]["events"] == select.EPOLLIN | select.EPOLLERR | select.EPOLLHUP
         assert tfds[fifo]["ino"] == pfds[fifo].ino
+
+
+@macos_bsd_only
+def test_iter_fds_kqueue(tmp_path: pathlib.Path) -> None:
+    # pylint: disable=invalid-name,no-member
+
+    proc = pypsutil.Process()
+
+    os.mkfifo(tmp_path / "fifo")
+
+    with contextlib.closing(select.kqueue()) as kqueue, managed_pipe() as (r, w), open(
+        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+    ) as fifo:
+        kqueue.control([select.kevent(r, select.KQ_FILTER_READ)], 0)
+        kqueue.control([select.kevent(w, select.KQ_FILTER_WRITE)], 0)
+        kqueue.control([select.kevent(fifo.fileno(), select.KQ_FILTER_READ)], 0)
+
+        kqueue = kqueue.fileno()
+        fifo = fifo.fileno()
+
+        os.write(w, b"abc")
+
+        pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
+
+        st = os.fstat(kqueue)
+        assert pfds[kqueue].rdev in (st.st_rdev, None)
+        assert pfds[kqueue].dev in (st.st_dev, None)
+        assert pfds[kqueue].ino in (st.st_ino, None)
+
+        assert pfds[kqueue].position == 0
+
+        if not pypsutil.FREEBSD:
+            assert pfds[kqueue].flags & os.O_CLOEXEC == os.O_CLOEXEC
+
+        assert not pfds[kqueue].path
+
+        assert pfds[kqueue].fdtype == pypsutil.ProcessFdType.KQUEUE
+        assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
+        assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
+
+        if pypsutil.OPENBSD or pypsutil.MACOS:
+            assert pfds[kqueue].extra_info["kq_count"] == 2
 
 
 def test_iter_fds_no_proc() -> None:
