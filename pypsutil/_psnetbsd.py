@@ -739,7 +739,7 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
 
 
 def proc_num_threads(proc: "Process") -> int:
-    return _get_kinfo_proc2(proc).p_nlwps
+    return cast(int, _get_kinfo_proc2(proc).p_nlwps)
 
 
 def proc_threads(proc: "Process") -> List[ThreadInfo]:
