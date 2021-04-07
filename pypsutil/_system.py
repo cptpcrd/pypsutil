@@ -41,12 +41,33 @@ else:
 if hasattr(_psimpl, "cpu_freq"):
 
     def cpu_freq() -> Optional[CPUFrequencies]:
-        result = _psimpl.cpu_freq()
+        result = _psimpl.cpu_freq()  # pylint: disable=no-member
 
         if result is not None:
             return CPUFrequencies(current=result[0], min=result[1], max=result[2])
         else:
             return None
+
+
+elif hasattr(_psimpl, "percpu_freq"):
+
+    def cpu_freq() -> Optional[CPUFrequencies]:
+        freqs = _psimpl.percpu_freq()
+        if not freqs:
+            return None
+
+        cur_total = 0.0
+        min_total = 0.0
+        max_total = 0.0
+
+        for cur_freq, min_freq, max_freq in freqs:
+            cur_total += cur_freq
+            min_total += min_freq
+            max_total += max_freq
+
+        return CPUFrequencies(
+            current=cur_total / len(freqs), min=min_total / len(freqs), max=max_total / len(freqs)
+        )
 
 
 if hasattr(_psimpl, "cpu_stats"):

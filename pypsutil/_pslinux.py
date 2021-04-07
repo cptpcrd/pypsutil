@@ -671,23 +671,6 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
         return []
 
 
-def cpu_freq() -> Optional[Tuple[float, float, float]]:
-    freqs = percpu_freq()
-    if not freqs:
-        return None
-
-    cur_total = 0.0
-    min_total = 0.0
-    max_total = 0.0
-
-    for cur_freq, min_freq, max_freq in freqs:
-        cur_total += cur_freq
-        min_total += min_freq
-        max_total += max_freq
-
-    return cur_total / len(freqs), min_total / len(freqs), max_total / len(freqs)
-
-
 def cpu_stats() -> Tuple[int, int, int, int]:
     ctx_switches = 0
     interrupts = 0
