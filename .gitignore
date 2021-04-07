@@ -5,6 +5,7 @@ __pycache__/
 .pytype/
 
 .coverage
+.coverage.*
 htmlcov/
 
 build/
