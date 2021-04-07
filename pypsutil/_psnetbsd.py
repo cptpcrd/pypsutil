@@ -44,6 +44,7 @@ KERN_PROC_ARGV = 1
 KERN_PROC_ENV = 3
 KERN_PROC_PATHNAME = 5
 KERN_PROC_CWD = 6
+KERN_LWP = 64
 KERN_FILE2 = 77
 KERN_FILE_BYPID = 2
 
@@ -62,6 +63,7 @@ KI_MAXCOMLEN = 24
 KI_WMESGLEN = 8
 KI_MAXLOGNAME = 24
 KI_MAXEMULLEN = 16
+KI_LNAMELEN = 20
 
 KI_NOCPU = 2 ** 64 - 1
 
@@ -168,6 +170,7 @@ class ProcessMemoryInfo:
 
 
 ProcessOpenFile = _util.ProcessOpenFile
+ThreadInfo = _util.ThreadInfo
 
 
 class Timespec(ctypes.Structure):
@@ -291,6 +294,35 @@ class KinfoProc2(ctypes.Structure):
 
     def get_groups(self) -> List[int]:
         return list(self.p_groups[: self.p_ngroups])
+
+
+class KinfoLwp(ctypes.Structure):
+    _fields_ = [
+        ("l_forw", ctypes.c_uint64),
+        ("l_back", ctypes.c_uint64),
+        ("l_laddr", ctypes.c_uint64),
+        ("l_addr", ctypes.c_uint64),
+        ("l_lid", ctypes.c_int32),
+        ("l_flag", ctypes.c_int32),
+        ("l_swtime", ctypes.c_uint32),
+        ("l_slptime", ctypes.c_uint32),
+        ("l_schedflags", ctypes.c_int32),
+        ("l_holdcnt", ctypes.c_int32),
+        ("l_priority", ctypes.c_uint8),
+        ("l_usrpri", ctypes.c_uint8),
+        ("l_stat", ctypes.c_int8),
+        ("l_pad1", ctypes.c_int8),
+        ("l_pad2", ctypes.c_int32),
+        ("l_wmesg", (ctypes.c_char * KI_WMESGLEN)),
+        ("l_wchan", ctypes.c_uint64),
+        ("l_cpuid", ctypes.c_uint64),
+        ("l_rtime_sec", ctypes.c_uint32),
+        ("l_rtime_usec", ctypes.c_uint32),
+        ("l_cpticks", ctypes.c_uint32),
+        ("l_pctcpu", ctypes.c_uint32),
+        ("l_pid", ctypes.c_uint32),
+        ("l_name", (ctypes.c_char * KI_LNAMELEN)),
+    ]
 
 
 class KinfoFile(ctypes.Structure):
@@ -467,6 +499,29 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
                 _bsd.sysctl(
                     [CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0, kinfo_size, nprocs], None, proc_arr
                 )
+                // kinfo_size
+            )
+        except OSError as ex:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
+                raise
+        else:
+            return proc_arr[:nprocs]
+
+
+def _list_kinfo_lwps(pid: int) -> List[KinfoLwp]:
+    kinfo_size = ctypes.sizeof(KinfoLwp)
+
+    while True:
+        nprocs = (
+            _bsd.sysctl([CTL_KERN, KERN_LWP, pid, kinfo_size, 1000000], None, None) // kinfo_size
+        )
+
+        proc_arr = (KinfoLwp * nprocs)()  # pytype: disable=not-callable
+
+        try:
+            nprocs = (
+                _bsd.sysctl([CTL_KERN, KERN_LWP, pid, kinfo_size, nprocs], None, proc_arr)
                 // kinfo_size
             )
         except OSError as ex:
@@ -681,6 +736,27 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
         ),
         caught=_util.expand_sig_bitmask(kinfo.p_sigcatch.pack(), include_internal=include_internal),
     )
+
+
+def proc_num_threads(proc: "Process") -> int:
+    return _get_kinfo_proc2(proc).p_nlwps
+
+
+def proc_threads(proc: "Process") -> List[ThreadInfo]:
+    threads = []
+
+    for kinfo in _list_kinfo_lwps(proc.pid):
+        rtime = kinfo.l_rtime_sec + kinfo.l_rtime_usec / 1000000
+
+        threads.append(
+            ThreadInfo(
+                id=kinfo.l_lid,
+                user_time=rtime,
+                system_time=rtime,
+            )
+        )
+
+    return threads
 
 
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
