@@ -968,10 +968,10 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                 else:
                     raise
 
-            pfi = pinfo.pfi
+            pfi = kinfo.pfi
 
-            size = pinfo.kqueueinfo.kq_stat.vst_size
-            mode = pinfo.kqueueinfo.kq_stat.vst_mode
+            size = kinfo.kqueueinfo.kq_stat.vst_size
+            mode = kinfo.kqueueinfo.kq_stat.vst_mode
             extra_info["kq_count"] = size
 
         else:
