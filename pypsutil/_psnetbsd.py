@@ -2,9 +2,21 @@
 import ctypes
 import dataclasses
 import errno
+import functools
 import os
 import time
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    cast,
+)
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import ProcessCPUTimes, ProcessSignalMasks, ProcessStatus
@@ -61,7 +73,7 @@ rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
 
 
 def _proc_rlimit_getset(proc: "Process", res: int, new_limit: Optional[int], hard: bool) -> int:
-    new_limit_raw = ctypes.byref(rlim_t(new_limit)) if new_limit is not None else None
+    new_limit_raw = rlim_t(new_limit) if new_limit is not None else None
     old_limit = rlim_t(0)
 
     _bsd.sysctl(  # pytype: disable=wrong-arg-types
@@ -468,14 +480,22 @@ def _list_kinfo_procs2() -> List[KinfoProc2]:
 def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
-    num_files = _bsd.sysctl(
-        [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
+    num_files = (
+        _bsd.sysctl(
+            [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
+        )
+        // kinfo_file_size
     )
 
     files = (KinfoFile * num_files)()  # pytype: disable=not-callable
 
-    num_files = _bsd.sysctl(
-        [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
+    num_files = (
+        _bsd.sysctl(
+            [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files],
+            None,
+            files,
+        )
+        // kinfo_file_size
     )
 
     return files[:num_files]
@@ -494,11 +514,35 @@ def iter_pids() -> Iterator[int]:
         yield kinfo.p_pid
 
 
+F = TypeVar("F", bound=Callable[..., Any])  # pylint: disable=invalid-name
+
+
+def _einval_to_esrch(func: F) -> F:
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except OSError as ex:
+            if ex.errno == errno.EINVAL:
+                raise _ffi.build_oserror(errno.ESRCH) from ex
+            else:
+                raise
+
+    return cast(F, wrapper)  # pytype: disable=invalid-typevar
+
+
 def proc_num_fds(proc: "Process") -> int:
+    # Check validity
+    _get_kinfo_proc2_pid(proc.pid)
+
     return sum(kfile.ki_fd >= 0 for kfile in _list_kinfo_files(proc))
 
 
+@_einval_to_esrch
 def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
+    # Check validity
+    _get_kinfo_proc2_pid(proc.pid)
+
     return [
         ProcessOpenFile(fd=kfile.ki_fd, path="")
         for kfile in _list_kinfo_files(proc)
@@ -543,10 +587,10 @@ def translate_create_time(raw_create_time: float) -> float:
 _PROC_STATUSES = {
     1: ProcessStatus.IDLE,
     2: ProcessStatus.RUNNING,
-    3: ProcessStatus.STOPPED,
+    3: ProcessStatus.SLEEPING,
     4: ProcessStatus.STOPPED,
     5: ProcessStatus.ZOMBIE,
-    6: ProcessStatus.DEAD,
+    7: ProcessStatus.RUNNING,  # 7 is LSONPROC; i.e. actually executing
 }
 
 
@@ -572,44 +616,57 @@ def proc_getgroups(proc: "Process") -> List[int]:
     return _get_kinfo_proc2(proc).get_groups()
 
 
-def proc_cwd(proc: "Process") -> str:
-    return os.fsdecode(
-        _bsd.sysctl_bytes_retry(
-            [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_CWD, proc.pid], None, trim_nul=True
-        )
-    )
-
-
-def proc_exe(proc: "Process") -> str:
-    return os.fsdecode(
-        _bsd.sysctl_bytes_retry(
-            [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_PATHNAME, proc.pid], None, trim_nul=True
-        )
-    )
-
-
-def proc_root(proc: "Process") -> str:
+def _procfs_readlink(proc: "Process", name: str) -> str:
     try:
-        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), "root"))
+        return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), name))
     except FileNotFoundError as ex:
         from ._process import pid_exists  # pylint: disable=import-outside-toplevel
 
         if not pid_exists(proc.pid):
             raise ProcessLookupError from ex
 
-        # It looks like procfs just isn't mounted; FileNotFoundError is appropriate
-        raise
+        # It looks like procfs just isn't mounted
+        return ""
 
 
+def proc_cwd(proc: "Process") -> str:
+    try:
+        return os.fsdecode(
+            _bsd.sysctl_bytes_retry(
+                [CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_CWD], None, trim_nul=True
+            )
+        )
+    except OSError as ex:
+        if ex.errno == errno.EINVAL:
+            # KERN_PROC_CWD was added in NetBSD 9; it may not be available
+            return _procfs_readlink(proc, "cwd")
+        else:
+            raise
+
+
+def proc_exe(proc: "Process") -> str:
+    return os.fsdecode(
+        _bsd.sysctl_bytes_retry(
+            [CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_PATHNAME], None, trim_nul=True
+        )
+    )
+
+
+def proc_root(proc: "Process") -> str:
+    return _procfs_readlink(proc, "root")
+
+
+@_einval_to_esrch
 def proc_cmdline(proc: "Process") -> List[str]:
     cmdline_nul = _bsd.sysctl_bytes_retry(
-        [CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ARGV, proc.pid], None
+        [CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_ARGV], None
     )
     return _util.parse_cmdline_bytes(cmdline_nul)
 
 
+@_einval_to_esrch
 def proc_environ(proc: "Process") -> Dict[str, str]:
-    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, KERN_PROC_ENV, proc.pid], None)
+    env_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_PROC_ARGS, proc.pid, KERN_PROC_ENV], None)
     return _util.parse_environ_bytes(env_data)
 
 
@@ -717,7 +774,9 @@ def percpu_times() -> List[CPUTimes]:
 
 
 def _get_uvmexp() -> UvmExpSysctl:
-    return _bsd.sysctl_into([CTL_VM, VM_UVMEXP2], UvmExpSysctl())
+    uvmexp = UvmExpSysctl()
+    _bsd.sysctl([CTL_VM, VM_UVMEXP2], None, uvmexp)
+    return uvmexp
 
 
 def cpu_stats() -> Tuple[int, int, int, int]:

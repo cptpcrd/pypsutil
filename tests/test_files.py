@@ -16,18 +16,20 @@ from .util import (
     replace_info_directories,
 )
 
+# NetBSD opens an extra file descriptor
+if not pypsutil.NETBSD:
 
-def test_num_fds() -> None:
-    with managed_child_process2(
-        [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
-        close_fds=True,
-        stdout=subprocess.PIPE,
-        bufsize=0,
-    ) as proc:
-        assert proc.stdout is not None
-        assert proc.stdout.read(1) == b"a"
+    def test_num_fds() -> None:
+        with managed_child_process2(
+            [sys.executable, "-c", "import time; print('a', flush=True); time.sleep(10)"],
+            close_fds=True,
+            stdout=subprocess.PIPE,
+            bufsize=0,
+        ) as proc:
+            assert proc.stdout is not None
+            assert proc.stdout.read(1) == b"a"
 
-        assert proc.num_fds() == 3
+            assert proc.num_fds() == 3
 
 
 def test_num_fds_no_proc() -> None:
@@ -61,10 +63,10 @@ def test_open_files_2(tmp_path: pathlib.Path) -> None:
             "-c",
             """
 import os, sys, time
-os.open("/", os.O_RDONLY)
-os.open(sys.executable, os.O_RDONLY)
-os.open(sys.argv[1], os.O_RDWR | os.O_APPEND | os.O_CREAT)
-print('a', flush=True)
+fd1 = os.open("/", os.O_RDONLY)
+fd2 = os.open(sys.executable, os.O_RDONLY)
+fd3 = os.open(sys.argv[1], os.O_RDWR | os.O_APPEND | os.O_CREAT)
+print(fd1, fd2, fd3, flush=True)
 time.sleep(10)
 """,
             str(tmp_path / "a"),
@@ -76,19 +78,19 @@ time.sleep(10)
         bufsize=0,
     ) as proc:
         assert proc.stdout is not None
-        assert proc.stdout.read(1) == b"a"
+        _, fd2, fd3 = map(int, proc.stdout.readline().split())
 
         open_files = proc.open_files()
 
         assert len(open_files) == 2
 
-        assert open_files[0].fd == 4
+        assert open_files[0].fd == fd2
         if open_files[0].path:
             assert os.path.samefile(open_files[0].path, sys.executable)
         if hasattr(pypsutil.ProcessOpenFile, "flags"):
             assert open_files[0].flags == os.O_RDONLY
 
-        assert open_files[1].fd == 5
+        assert open_files[1].fd == fd3
         if open_files[1].path:
             assert os.path.samefile(open_files[1].path, tmp_path / "a")
         if hasattr(pypsutil.ProcessOpenFile, "flags"):
