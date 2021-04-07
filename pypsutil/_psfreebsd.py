@@ -886,6 +886,36 @@ def physical_cpu_count() -> Optional[int]:
     return len(root.findall("group/children/group")) or None
 
 
+def percpu_freq() -> List[Tuple[float, float, float]]:
+    results = []
+
+    try:
+        i = 0
+        while True:
+            cur_freq = ctypes.c_int()
+            _bsd.sysctlbyname_into("dev.cpu.{}.freq".format(i), cur_freq)
+
+            try:
+                levels = _bsd.sysctlbyname_bytes_retry(
+                    "dev.cpu.{}.freq_levels".format(i), None, trim_nul=True
+                )
+            except OSError:
+                min_freq = 0
+                max_freq = 0
+            else:
+                all_freqs = [int(chunk.split(b"/", 1)[0]) for chunk in levels.split()]
+                min_freq = min(all_freqs, default=0)
+                max_freq = max(all_freqs, default=0)
+
+            results.append((float(cur_freq.value), float(min_freq), float(max_freq)))
+            i += 1
+
+    except FileNotFoundError:
+        pass
+
+    return results
+
+
 def cpu_times() -> CPUTimes:
     cptimes = (ctypes.c_long * 5)()  # pytype: disable=not-callable
 
