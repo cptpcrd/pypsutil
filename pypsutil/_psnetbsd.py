@@ -635,6 +635,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
     kfiles = _list_kinfo_files(proc)
 
     for kfile in kfiles:
+        path = ""
         mode = None
         size = None
         extra_info: Dict[str, Any] = {}
@@ -646,6 +647,16 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                 fdtype = ProcessFdType.FILE
                 size = kfile.ki_vsize
                 mode = _VTYPE_TO_ST_MODE.get(kfile.ki_vtype, None)
+
+            if kfile.ki_vtype == VDIR:
+                # NetBSD's procfs allows readlink()ing /proc/$PID/fd/$FD if the file descriptor
+                # refers to a directory
+                try:
+                    path = os.readlink(
+                        os.path.join(_util.get_procfs_path(), str(proc.pid), "fd", str(kfile.ki_fd))
+                    )
+                except OSError:
+                    pass
 
         elif kfile.ki_ftype == DTYPE_SOCKET:
             fdtype = ProcessFdType.SOCKET
@@ -666,7 +677,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             flags &= ~os.O_CLOEXEC
 
         yield ProcessFd(
-            path="",
+            path=path,
             fd=kfile.ki_fd,
             fdtype=fdtype,
             flags=flags,
