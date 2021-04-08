@@ -891,91 +891,73 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         pfi = None
         vi_stat = None
 
-        if fdinfo.proc_fdtype == PROX_FDTYPE_VNODE:
-            vinfo = VnodeFdInfoWithPath()
-            try:
+        try:
+            if fdinfo.proc_fdtype == PROX_FDTYPE_VNODE:
+                vinfo = VnodeFdInfoWithPath()
                 _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDVNODEPATHINFO, vinfo)
-            except OSError as ex:
-                if ex.errno in (errno.ENOENT, errno.EBADF):
-                    continue
-                else:
-                    raise
-
-            fdtype = (
-                ProcessFdType.FIFO if vinfo.pvip.vip_vi.vi_type == VFIFO else ProcessFdType.FILE
-            )
-
-            path = os.fsdecode(vinfo.pvip.vip_path)
-            pfi = vinfo.pfi
-            vi_stat = vinfo.pvip.vip_vi.vi_stat
-
-        elif fdinfo.proc_fdtype == PROX_FDTYPE_SOCKET:
-            fdtype = ProcessFdType.SOCKET
-
-            sinfo = SocketFdInfo()
-            try:
-                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
-            except OSError as ex:
-                if ex.errno in (errno.ENOENT, errno.EBADF):
-                    continue
-                else:
-                    raise
-
-            pfi = sinfo.pfi
-
-            extra_info["family"] = sinfo.psi.soi_family
-            extra_info["protocol"] = sinfo.psi.soi_protocol
-            extra_info["type"] = sinfo.psi.soi_type
-
-            if sinfo.psi.soi_family == socket.AF_UNIX:
-                path = os.fsdecode(
-                    sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path
-                    or sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path
+                fdtype = (
+                    ProcessFdType.FIFO if vinfo.pvip.vip_vi.vi_type == VFIFO else ProcessFdType.FILE
                 )
 
-            elif sinfo.psi.soi_family in (socket.AF_INET, socket.AF_INET6):
-                extra_info["local_port"] = sinfo.psi.soi_proto.pri_in.insi_lport
-                extra_info["foreign_port"] = sinfo.psi.soi_proto.pri_in.insi_fport
+                path = os.fsdecode(vinfo.pvip.vip_path)
+                pfi = vinfo.pfi
+                vi_stat = vinfo.pvip.vip_vi.vi_stat
 
-        elif fdinfo.proc_fdtype == PROX_FDTYPE_PIPE:
-            fdtype = ProcessFdType.PIPE
+            elif fdinfo.proc_fdtype == PROX_FDTYPE_SOCKET:
+                fdtype = ProcessFdType.SOCKET
 
-            pinfo = PipeFdInfo()
-            try:
+                sinfo = SocketFdInfo()
+                _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
+
+                pfi = sinfo.pfi
+
+                extra_info["family"] = sinfo.psi.soi_family
+                extra_info["protocol"] = sinfo.psi.soi_protocol
+                extra_info["type"] = sinfo.psi.soi_type
+
+                if sinfo.psi.soi_family == socket.AF_UNIX:
+                    path = os.fsdecode(
+                        sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path
+                        or sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path
+                    )
+
+                elif sinfo.psi.soi_family in (socket.AF_INET, socket.AF_INET6):
+                    extra_info["local_port"] = sinfo.psi.soi_proto.pri_in.insi_lport
+                    extra_info["foreign_port"] = sinfo.psi.soi_proto.pri_in.insi_fport
+
+            elif fdinfo.proc_fdtype == PROX_FDTYPE_PIPE:
+                fdtype = ProcessFdType.PIPE
+
+                pinfo = PipeFdInfo()
                 _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDPIPEINFO, pinfo)
-            except OSError as ex:
-                if ex.errno in (errno.ENOENT, errno.EBADF):
-                    continue
-                else:
-                    raise
 
-            pfi = pinfo.pfi
+                pfi = pinfo.pfi
 
-            mode = pinfo.pipeinfo.pipe_stat.vst_mode
-            size = pinfo.pipeinfo.pipe_stat.vst_size
-            extra_info["buffer_max"] = pinfo.pipeinfo.pipe_stat.vst_blksize
-            extra_info["buffer_cnt"] = size
+                mode = pinfo.pipeinfo.pipe_stat.vst_mode
+                size = pinfo.pipeinfo.pipe_stat.vst_size
+                extra_info["buffer_max"] = pinfo.pipeinfo.pipe_stat.vst_blksize
+                extra_info["buffer_cnt"] = size
 
-        elif fdinfo.proc_fdtype == PROX_FDTYPE_KQUEUE:
-            fdtype = ProcessFdType.KQUEUE
+            elif fdinfo.proc_fdtype == PROX_FDTYPE_KQUEUE:
+                fdtype = ProcessFdType.KQUEUE
 
-            kinfo = KqueueFdInfo()
-            try:
+                kinfo = KqueueFdInfo()
                 _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDKQUEUEINFO, kinfo)
-            except OSError as ex:
-                if ex.errno in (errno.ENOENT, errno.EBADF):
-                    continue
-                else:
-                    raise
 
-            pfi = kinfo.pfi
+                pfi = kinfo.pfi
 
-            size = kinfo.kqueueinfo.kq_stat.vst_size
-            mode = kinfo.kqueueinfo.kq_stat.vst_mode
-            extra_info["kq_count"] = size
+                size = kinfo.kqueueinfo.kq_stat.vst_size
+                mode = kinfo.kqueueinfo.kq_stat.vst_mode
+                extra_info["kq_count"] = size
 
-        else:
-            fdtype = ProcessFdType.UNKNOWN
+            else:
+                fdtype = ProcessFdType.UNKNOWN
+
+        except OSError as ex:
+            if ex.errno in (errno.ENOENT, errno.EBADF):
+                continue
+            else:
+                raise
 
         if pfi is not None:
             offset = pfi.fi_offset
