@@ -49,6 +49,13 @@ DTYPE_KQUEUE = 4
 VREG = 1
 VFIFO = 7
 
+SIDL = 1
+SRUN = 2
+SSLEEP = 3
+SSTOP = 4
+SDEAD = 6
+SONPROC = 7
+
 KI_NGROUPS = 16
 KI_MAXCOMLEN = 24
 KI_WMESGLEN = 8
@@ -656,12 +663,12 @@ def translate_create_time(raw_create_time: float) -> float:
 
 
 _PROC_STATUSES = {
-    1: ProcessStatus.IDLE,
-    2: ProcessStatus.RUNNING,
-    3: ProcessStatus.SLEEPING,
-    4: ProcessStatus.STOPPED,
-    6: ProcessStatus.ZOMBIE,
-    7: ProcessStatus.RUNNING,  # 7 is SONPROC; i.e. actually executing
+    SIDL: ProcessStatus.IDLE,
+    SRUN: ProcessStatus.RUNNING,
+    SSLEEP: ProcessStatus.SLEEPING,
+    SSTOP: ProcessStatus.STOPPED,
+    SDEAD: ProcessStatus.ZOMBIE,
+    SONPROC: ProcessStatus.RUNNING,  # 7 is SONPROC; i.e. actually executing
 }
 
 

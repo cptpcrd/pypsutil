@@ -66,6 +66,14 @@ VLNK = 5
 VSOCK = 6
 VFIFO = 7
 
+LSIDL = 1
+LSRUN = 2
+LSSLEEP = 3
+LSSTOP = 4
+LSZOMB = 5
+LSONPROC = 7
+LSSUSPENDED = 8
+
 MAXCOMLEN = 16
 
 KI_NGROUPS = 16
@@ -707,12 +715,13 @@ def translate_create_time(raw_create_time: float) -> float:
 
 
 _PROC_STATUSES = {
-    1: ProcessStatus.IDLE,
-    2: ProcessStatus.RUNNING,
-    3: ProcessStatus.SLEEPING,
-    4: ProcessStatus.STOPPED,
-    5: ProcessStatus.ZOMBIE,
-    7: ProcessStatus.RUNNING,  # 7 is LSONPROC; i.e. actually executing
+    LSIDL: ProcessStatus.IDLE,
+    LSRUN: ProcessStatus.RUNNING,
+    LSSLEEP: ProcessStatus.SLEEPING,
+    LSSTOP: ProcessStatus.STOPPED,
+    LSZOMB: ProcessStatus.ZOMBIE,
+    LSONPROC: ProcessStatus.RUNNING,
+    LSSUSPENDED: ProcessStatus.SUSPENDED,
 }
 
 

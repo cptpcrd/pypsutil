@@ -49,6 +49,14 @@ KI_NGROUPS = 16
 LOGNAMELEN = 17
 LOGINCLASSLEN = 17
 
+SIDL = 1
+SRUN = 2
+SSLEEP = 3
+SSTOP = 4
+SZOMB = 5
+SWAIT = 6
+SLOCK = 7
+
 PATH_MAX = 1024
 
 KI_CRF_GRP_OVERFLOW = 0x80000000
@@ -756,13 +764,13 @@ def proc_name(proc: "Process") -> str:
 
 
 _PROC_STATUSES = {
-    1: ProcessStatus.IDLE,
-    2: ProcessStatus.RUNNING,
-    3: ProcessStatus.SLEEPING,
-    4: ProcessStatus.STOPPED,
-    5: ProcessStatus.ZOMBIE,
-    6: ProcessStatus.WAITING,
-    7: ProcessStatus.LOCKED,
+    SIDL: ProcessStatus.IDLE,
+    SRUN: ProcessStatus.RUNNING,
+    SSLEEP: ProcessStatus.SLEEPING,
+    SSTOP: ProcessStatus.STOPPED,
+    SZOMB: ProcessStatus.ZOMBIE,
+    SWAIT: ProcessStatus.WAITING,
+    SLOCK: ProcessStatus.LOCKED,
 }
 
 

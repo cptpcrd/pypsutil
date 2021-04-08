@@ -687,6 +687,7 @@ Process information
    .. py:data:: IDLE
    .. py:data:: LOCKED
    .. py:data:: WAITING
+   .. py:data:: SUSPENDED
 
 
 .. py:class:: ThreadInfo

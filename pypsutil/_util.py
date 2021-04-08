@@ -48,6 +48,7 @@ class ProcessStatus(enum.Enum):
     IDLE = "idle"
     LOCKED = "locked"
     WAITING = "waiting"
+    SUSPENDED = "suspended"
 
 
 @dataclasses.dataclass
