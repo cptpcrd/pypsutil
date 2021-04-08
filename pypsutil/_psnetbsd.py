@@ -815,13 +815,16 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
 
 
 def proc_num_threads(proc: "Process") -> int:
-    return cast(int, _get_kinfo_proc2(proc).p_nlwps)
+    return sum(kinfo.l_stat != LSZOMB for kinfo in _list_kinfo_lwps(proc.pid))
 
 
 def proc_threads(proc: "Process") -> List[ThreadInfo]:
     threads = []
 
     for kinfo in _list_kinfo_lwps(proc.pid):
+        if kinfo.l_stat == LSZOMB:
+            continue
+
         rtime = kinfo.l_rtime_sec + kinfo.l_rtime_usec / 1000000
 
         threads.append(
