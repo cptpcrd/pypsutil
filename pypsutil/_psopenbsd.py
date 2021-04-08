@@ -37,6 +37,7 @@ UF_EXCLOSE = 0x1
 VM_METER = 1
 VM_UVMEXP = 4
 
+HW_CPUSPEED = 12
 HW_PHYSMEM64 = 19
 
 VFS_GENERIC = 0
@@ -857,6 +858,13 @@ def _get_uvmexp() -> UvmExp:
 def cpu_stats() -> Tuple[int, int, int, int]:
     uvmexp = _get_uvmexp()
     return uvmexp.swtch, uvmexp.intrs, uvmexp.softs, uvmexp.syscalls
+
+
+def cpu_freq() -> Optional[Tuple[float, float, float]]:
+    try:
+        return float(_bsd.sysctl_into([CTL_HW, HW_CPUSPEED], ctypes.c_int()).value), 0.0, 0.0
+    except OSError:
+        return None
 
 
 def virtual_memory() -> VirtualMemoryInfo:
