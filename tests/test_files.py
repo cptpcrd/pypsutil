@@ -16,6 +16,7 @@ from .util import (
     linux_only,
     macos_bsd_only,
     managed_child_process2,
+    managed_fd,
     managed_pipe,
     populate_directory,
     replace_info_directories,
@@ -115,6 +116,7 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
     proc = pypsutil.Process()
 
     os.mkfifo(tmp_path / "fifo")
+    os.mkdir(tmp_path / "dir")
 
     with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
         socket.AF_INET
@@ -122,7 +124,9 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
         tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
     ) as fifo, open(
         tmp_path / "file", "w"
-    ) as file:
+    ) as file, managed_fd(
+        os.open(tmp_path / "dir", os.O_RDONLY | os.O_DIRECTORY)
+    ) as dirfd:
         sock_un = sock_un.fileno()
         sock_in = sock_in.fileno()
         fifo = fifo.fileno()
@@ -132,7 +136,7 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
 
         pfds = {pfd.fd: pfd for pfd in proc.iter_fds()}
 
-        for fd in [0, 1, 2, sock_un, sock_in, r, w, fifo, file]:
+        for fd in [0, 1, 2, sock_un, sock_in, r, w, fifo, file, dirfd]:
             st = os.fstat(fd)
             assert pfds[fd].rdev in (st.st_rdev, None)
             assert pfds[fd].dev in (st.st_dev, None)
@@ -150,7 +154,7 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
             if not pypsutil.FREEBSD:
                 assert pfds[fd].flags & os.O_CLOEXEC == 0
 
-        for fd in [sock_un, sock_in, r, w, fifo]:
+        for fd in [sock_un, sock_in, r, w, fifo, dirfd]:
             assert pfds[fd].position == 0
 
             if not pypsutil.FREEBSD:
@@ -163,12 +167,16 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
             assert os.path.samefile(pfds[fifo].path, tmp_path / "fifo")
         if pfds[file].path:
             assert os.path.samefile(pfds[file].path, tmp_path / "file")
+        if pfds[dirfd].path:
+            assert os.path.samefile(pfds[dirfd].path, tmp_path / "dir")
 
         assert pfds[sock_un].fdtype == pypsutil.ProcessFdType.SOCKET
         assert pfds[sock_in].fdtype == pypsutil.ProcessFdType.SOCKET
         assert pfds[r].fdtype == pypsutil.ProcessFdType.PIPE
         assert pfds[w].fdtype == pypsutil.ProcessFdType.PIPE
         assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
+        assert pfds[file].fdtype == pypsutil.ProcessFdType.FILE
+        assert pfds[dirfd].fdtype == pypsutil.ProcessFdType.FILE
 
         if pypsutil.FREEBSD or pypsutil.MACOS:
             assert pfds[r].extra_info["buffer_cnt"] == 3

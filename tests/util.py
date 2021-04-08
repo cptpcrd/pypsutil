@@ -146,3 +146,11 @@ def managed_pipe() -> Iterator[Tuple[int, int]]:
     finally:
         os.close(r)
         os.close(w)
+
+
+@contextlib.contextmanager
+def managed_fd(fd: int) -> Iterator[int]:
+    try:
+        yield fd
+    finally:
+        os.close(fd)
