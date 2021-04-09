@@ -35,6 +35,18 @@ def test_physical_cpu_count() -> None:
         assert phys_count <= logical_count
 
 
+def test_percpu_info() -> None:
+    ncpus = os.cpu_count()
+    if not ncpus:
+        pytest.skip("Unable to detect number of CPUs")
+
+    if hasattr(pypsutil, "percpu_times"):
+        assert len(pypsutil.percpu_times()) == ncpus
+
+    if hasattr(pypsutil, "percpu_freq"):
+        assert len(pypsutil.percpu_freq()) in (0, ncpus)
+
+
 @linux_only
 def test_cpu_info(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(procfs=str(tmp_path)):
