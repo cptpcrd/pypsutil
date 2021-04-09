@@ -861,7 +861,7 @@ Process information
 
         (\*BSD) A kqueue instance.
 
-        On macOS/FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``kq_count`` field indicating
+        On macOS/OpenBSD, :py:attr:`ProcessFd.extra_info` will contain a ``kq_count`` field indicating
         the number of pending events on the kqueue instance.
 
    .. py:data:: PROCDESC
