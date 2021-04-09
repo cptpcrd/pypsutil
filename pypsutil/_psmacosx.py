@@ -95,6 +95,9 @@ SOCK_MAXADDRLEN = 255
 
 CLOCK_UPTIME_RAW = 8
 
+HOST_CPU_LOAD_INFO = 3
+PROCESSOR_CPU_LOAD_INFO = 2
+
 caddr_t = ctypes.c_char_p
 segsz_t = ctypes.c_int32
 dev_t = ctypes.c_int32
@@ -110,7 +113,11 @@ sa_family_t = ctypes.c_uint8
 natural_t = ctypes.c_uint
 kern_return_t = ctypes.c_int
 host_flavor_t = ctypes.c_int
+mach_vm_address_t = ctypes.c_uint64
+processor_flavor_t = ctypes.c_int
 mach_msg_type_number_t = natural_t
+mach_port_name_t = natural_t
+mach_vm_size_t = ctypes.c_uint64
 
 libc.host_statistics64.argtypes = (
     ctypes.c_void_p,
@@ -122,6 +129,35 @@ libc.host_statistics64.restype = kern_return_t
 
 libc.mach_host_self.argtypes = ()
 libc.mach_host_self.restype = ctypes.c_void_p
+
+libc.mach_host_self.argtypes = ()
+libc.mach_host_self.restype = mach_port_name_t
+
+libc.host_processor_info.argtypes = (
+    ctypes.c_void_p,
+    processor_flavor_t,
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    ctypes.POINTER(mach_msg_type_number_t),
+)
+libc.host_processor_info.restype = kern_return_t
+
+libc.vm_deallocate.argtypes = (
+    mach_port_name_t,
+    mach_vm_address_t,
+    mach_vm_size_t,
+)
+libc.vm_deallocate.restype = kern_return_t
+
+
+@dataclasses.dataclass
+class CPUTimes:
+    # The order must match the CPU_STATE_* order in
+    # https://github.com/apple/darwin-xnu/blob/main/osfmk/mach/machine.h#L76
+    user: float
+    system: float
+    idle: float
+    nice: float
 
 
 @dataclasses.dataclass
@@ -1123,6 +1159,65 @@ def _get_vmstats64() -> VmStatistics64:
         raise _ffi.build_oserror(errno.ENOSYS)
 
     return vmstats
+
+
+def cpu_times() -> CPUTimes:
+    host = libc.mach_host_self()
+    if host is None:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    count = mach_msg_type_number_t(ctypes.sizeof(natural_t) * 4 // ctypes.sizeof(ctypes.c_int))
+
+    ticks = (natural_t * 4)()
+
+    if (
+        libc.host_statistics64(host, HOST_CPU_LOAD_INFO, ctypes.byref(ticks), ctypes.byref(count))
+        != KERN_SUCCESS
+    ):
+        raise _ffi.build_oserror(errno.ENOSYS)
+
+    return CPUTimes(*(int(item) / _util.CLK_TCK for item in ticks))
+
+
+def percpu_times() -> List[CPUTimes]:
+    host = libc.mach_host_self()
+    if host is None:
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    pcount = natural_t()
+
+    ticks = ctypes.POINTER(ctypes.c_uint)()
+    tickcount = mach_msg_type_number_t(0)  # pylint: disable=no-member
+
+    if (
+        libc.host_processor_info(
+            host,
+            PROCESSOR_CPU_LOAD_INFO,
+            ctypes.byref(pcount),
+            ctypes.byref(ticks),
+            ctypes.byref(tickcount),
+        )
+        != KERN_SUCCESS
+    ):
+        raise _ffi.build_oserror(errno.ENOSYS)
+
+    times = [
+        CPUTimes(
+            *(
+                int(item) / _util.CLK_TCK  # type: ignore[call-overload]
+                for item in ticks[i * 4: i * 4 + 4]
+            )
+        )
+        for i in range(pcount.value)
+    ]
+
+    libc.vm_deallocate(
+        libc.mach_task_self(),
+        ctypes.addressof(ticks.contents),
+        tickcount.value * ctypes.sizeof(natural_t),
+    )
+
+    return times
 
 
 def virtual_memory() -> VirtualMemoryInfo:
