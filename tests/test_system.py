@@ -2,6 +2,8 @@ import os
 import pathlib
 import time
 
+import pytest
+
 import pypsutil
 
 from .util import linux_only, replace_info_directories
@@ -36,15 +38,17 @@ def test_physical_cpu_count() -> None:
 
 
 def test_percpu_info() -> None:
+    # pylint: disable=no-member
+
     ncpus = os.cpu_count()
     if not ncpus:
         pytest.skip("Unable to detect number of CPUs")
 
     if hasattr(pypsutil, "percpu_times"):
-        assert len(pypsutil.percpu_times()) == ncpus
+        assert len(pypsutil.percpu_times()) == ncpus  # type: ignore[attr-defined]
 
     if hasattr(pypsutil, "percpu_freq"):
-        assert len(pypsutil.percpu_freq()) in (0, ncpus)
+        assert len(pypsutil.percpu_freq()) in (0, ncpus)  # type: ignore[attr-defined]
 
 
 @linux_only
