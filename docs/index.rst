@@ -1083,20 +1083,24 @@ System information
    Returns an instance of a dataclass with ``current``, ``min``, and ``max`` attributes, representing
    the current, minimum, and maximum CPU frequencies.
 
-   :return: An instance of a dataclass containing the current, minimum, and maximum CPU frequencies.
-   :rtype: CPUFrequencies
+   If the frequencies cannot be determined, returns ``None``.
 
-   Availability: Linux
+   :return: An instance of a dataclass containing the current, minimum, and maximum CPU frequencies.
+   :rtype: CPUFrequencies or None
+
+   Availability: Linux, macOS, FreeBSD, OpenBSD
 
 
 .. py:function:: percpu_freq()
 
    Identical to :py:func:`cpu_freq()`, but returns a list representing the frequencies for each CPU.
 
-   :return: A list of the frequencies of each CPU.
-   :rtype: CPUFrequencies
+   If the frequencies cannot be determined, returns an empty list.
 
-   Availability: Linux
+   :return: A list of the frequencies of each CPU.
+   :rtype: list[CPUFrequencies]
+
+   Availability: Linux, FreeBSD
 
 
 .. py:function:: cpu_times()
@@ -1148,7 +1152,7 @@ System information
    :returns: A dataclass containing some CPU statistics.
    :rtype: CPUStats
 
-   Availablity: Linux
+   Availablity: Linux, FreeBSD, OpenBSD
 
 
 Sensor information
