@@ -218,10 +218,12 @@ Process information
 
         Get this process's root directory.
 
+        An empty string is returned if this cannot be obtained.
+
         :return: This process's root directory
         :rtype: str
 
-        Availability: Linux, FreeBSD, NetBSD
+        Availability: Linux, macOS, FreeBSD, NetBSD
 
    .. py:method:: environ()
 
@@ -655,6 +657,12 @@ Process information
       |                                 | :py:meth:`memory_info()`           |                                              |
       +---------------------------------+------------------------------------+----------------------------------------------+
       |                                 | :py:meth:`num_threads()`           |                                              |
+      +---------------------------------+------------------------------------+----------------------------------------------+
+      |                                 |                                    |                                              |
+      +---------------------------------+------------------------------------+----------------------------------------------+
+      |                                 | :py:meth:`cwd()`                   |                                              |
+      +---------------------------------+------------------------------------+----------------------------------------------+
+      |                                 | :py:meth:`root()`                  |                                              |
       +---------------------------------+------------------------------------+----------------------------------------------+
 
       .. [1] These functions, when called inside a :py:meth:`oneshot()` context manager, will retrieve the

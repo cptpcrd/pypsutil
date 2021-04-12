@@ -733,6 +733,19 @@ def proc_cwd(proc: "Process") -> str:
     return os.fsdecode(_get_proc_vnode_info(proc).pvi_cdir.vip_path)
 
 
+def proc_root(proc: "Process") -> str:
+    root_vip = _get_proc_vnode_info(proc).pvi_rdir
+
+    if root_vip.vip_vi.vi_type == 0:
+        # This means the process isn't chroot()ed, so the kernel left pvi_rdir zeroed (0 is not a
+        # valid vnode type)
+        assert not root_vip.vip_path
+        return "/"
+    else:
+        # This will return an empty string if the kernel couldn't get the path
+        return cast(str, root_vip.vip_path.decode())
+
+
 def proc_name(proc: "Process") -> str:
     return os.fsdecode(_get_kinfo_proc(proc).kp_proc.p_comm)
 
