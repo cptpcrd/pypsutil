@@ -873,7 +873,12 @@ def _get_uvmexp() -> UvmExp:
 
 def cpu_stats() -> Tuple[int, int, int, int]:
     uvmexp = _get_uvmexp()
-    return uvmexp.swtch, uvmexp.intrs, uvmexp.softs, uvmexp.syscalls
+    return (
+        ctypes.c_uint(uvmexp.swtch).value,
+        ctypes.c_uint(uvmexp.intrs).value,
+        ctypes.c_uint(uvmexp.softs).value,
+        ctypes.c_uint(uvmexp.syscalls).value,
+    )
 
 
 def cpu_freq() -> Optional[Tuple[float, float, float]]:
