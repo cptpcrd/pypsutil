@@ -1,4 +1,5 @@
 # pylint: disable=invalid-name,too-few-public-methods,too-many-lines,fixme
+import contextlib
 import ctypes
 import dataclasses
 import errno
@@ -89,7 +90,30 @@ VREG = 1
 VFIFO = 7
 
 HOST_VM_INFO64 = 4
+
 KERN_SUCCESS = 0
+KERN_INVALID_ADDRESS = 1
+KERN_PROTECTION_FAILURE = 2
+KERN_NO_SPACE = 3
+KERN_INVALID_ARGUMENT = 4
+KERN_FAILURE = 5
+KERN_RESOURCE_SHORTAGE = 6
+KERN_NOT_RECEIVER = 7
+KERN_NO_ACCESS = 8
+KERN_ALREADY_IN_SET = 11
+KERN_NOT_IN_SET = 12
+KERN_NAME_EXISTS = 13
+KERN_ABORTED = 14
+KERN_INVALID_NAME = 15
+KERN_INVALID_TASK = 16
+KERN_INVALID_RIGHT = 17
+KERN_INVALID_VALUE = 18
+KERN_UREFS_OVERFLOW = 19
+KERN_INVALID_CAPABILITY = 20
+KERN_RIGHT_EXISTS = 21
+KERN_INVALID_HOST = 22
+KERN_TERMINATED = 37
+KERN_DENIED = 53
 
 SOCK_MAXADDRLEN = 255
 
@@ -116,11 +140,15 @@ host_flavor_t = ctypes.c_int
 mach_vm_address_t = ctypes.c_uint64
 processor_flavor_t = ctypes.c_int
 mach_msg_type_number_t = natural_t
+mach_port_t = natural_t
 mach_port_name_t = natural_t
 mach_vm_size_t = ctypes.c_uint64
 
+MACH_PORT_NULL = mach_port_name_t()
+MACH_PORT_DEAD = mach_port_name_t(_ffi.ctypes_int_max(mach_port_name_t))
+
 libc.host_statistics64.argtypes = (
-    ctypes.c_void_p,
+    kern_return_t,
     host_flavor_t,
     ctypes.c_void_p,
     ctypes.POINTER(mach_msg_type_number_t),
@@ -128,19 +156,22 @@ libc.host_statistics64.argtypes = (
 libc.host_statistics64.restype = kern_return_t
 
 libc.mach_host_self.argtypes = ()
-libc.mach_host_self.restype = ctypes.c_void_p
-
-libc.mach_host_self.argtypes = ()
-libc.mach_host_self.restype = mach_port_name_t
+libc.mach_host_self.restype = mach_port_t
 
 libc.host_processor_info.argtypes = (
-    ctypes.c_void_p,
+    kern_return_t,
     processor_flavor_t,
     ctypes.c_void_p,
     ctypes.c_void_p,
     ctypes.POINTER(mach_msg_type_number_t),
 )
 libc.host_processor_info.restype = kern_return_t
+
+libc.mach_port_deallocate.argtypes = (
+    mach_port_t,
+    mach_port_name_t,
+)
+libc.mach_port_deallocate.restype = kern_return_t
 
 libc.vm_deallocate.argtypes = (
     mach_port_name_t,
@@ -1143,79 +1174,113 @@ def cpu_freq() -> Optional[Tuple[float, float, float]]:
         return None
 
 
+_KERN_ERRNO_MAP = {
+    KERN_INVALID_ADDRESS: errno.EFAULT,
+    KERN_PROTECTION_FAILURE: errno.EFAULT,
+    KERN_NO_SPACE: errno.ENOMEM,
+    KERN_INVALID_ARGUMENT: errno.EINVAL,
+    KERN_FAILURE: errno.EIO,
+    KERN_RESOURCE_SHORTAGE: errno.ENOSR,
+    KERN_NOT_RECEIVER: errno.EPERM,
+    KERN_NO_ACCESS: errno.EACCES,
+    KERN_ALREADY_IN_SET: errno.EALREADY,
+    KERN_NOT_IN_SET: errno.ENOENT,
+    KERN_NAME_EXISTS: errno.EEXIST,
+    KERN_ABORTED: errno.EINTR,
+    KERN_INVALID_NAME: errno.ENOENT,
+    KERN_INVALID_TASK: errno.ESRCH,
+    KERN_INVALID_RIGHT: errno.EINVAL,
+    KERN_INVALID_VALUE: errno.ERANGE,
+    KERN_UREFS_OVERFLOW: errno.ERANGE,
+    KERN_INVALID_CAPABILITY: errno.EINVAL,
+    KERN_RIGHT_EXISTS: errno.EEXIST,
+    KERN_INVALID_HOST: errno.ENOENT,
+    KERN_TERMINATED: errno.ENOENT,
+    KERN_DENIED: errno.EPERM,
+}
+
+
+def _check_kernerror(ret: int) -> None:
+    if ret != KERN_SUCCESS:
+        raise _ffi.build_oserror(_KERN_ERRNO_MAP.get(ret, errno.EINVAL))
+
+
+def _mach_task_self() -> mach_port_t:
+    return mach_port_t.in_dll(libc, "mach_task_self_")
+
+
+@contextlib.contextmanager
+def _managed_port(port: mach_port_t) -> Iterator[mach_port_t]:
+    if port == MACH_PORT_NULL:
+        raise _ffi.build_oserror(errno.EINVAL)
+    elif port == MACH_PORT_DEAD:
+        raise _ffi.build_oserror(errno.EINVAL)
+
+    yield port
+
+    _check_kernerror(libc.mach_port_deallocate(_mach_task_self(), port))
+
+
 def _get_vmstats64() -> VmStatistics64:
-    host = libc.mach_host_self()
-    if host is None:
-        raise _ffi.build_oserror(ctypes.get_errno())
+    with _managed_port(libc.mach_host_self()) as host:
+        count = mach_msg_type_number_t(ctypes.sizeof(VmStatistics64) // ctypes.sizeof(ctypes.c_int))
 
-    count = mach_msg_type_number_t(ctypes.sizeof(VmStatistics64) // ctypes.sizeof(ctypes.c_int))
+        vmstats = VmStatistics64()
 
-    vmstats = VmStatistics64()
-
-    if (
-        libc.host_statistics64(host, HOST_VM_INFO64, ctypes.byref(vmstats), ctypes.byref(count))
-        != KERN_SUCCESS
-    ):
-        raise _ffi.build_oserror(errno.ENOSYS)
+        _check_kernerror(
+            libc.host_statistics64(host, HOST_VM_INFO64, ctypes.byref(vmstats), ctypes.byref(count))
+        )
 
     return vmstats
 
 
 def cpu_times() -> CPUTimes:
-    host = libc.mach_host_self()
-    if host is None:
-        raise _ffi.build_oserror(ctypes.get_errno())
+    with _managed_port(libc.mach_host_self()) as host:
+        count = mach_msg_type_number_t(ctypes.sizeof(natural_t) * 4 // ctypes.sizeof(ctypes.c_int))
 
-    count = mach_msg_type_number_t(ctypes.sizeof(natural_t) * 4 // ctypes.sizeof(ctypes.c_int))
+        ticks = (natural_t * 4)()
 
-    ticks = (natural_t * 4)()
-
-    if (
-        libc.host_statistics64(host, HOST_CPU_LOAD_INFO, ctypes.byref(ticks), ctypes.byref(count))
-        != KERN_SUCCESS
-    ):
-        raise _ffi.build_oserror(errno.ENOSYS)
+        _check_kernerror(
+            libc.host_statistics64(
+                host, HOST_CPU_LOAD_INFO, ctypes.byref(ticks), ctypes.byref(count)
+            )
+        )
 
     return CPUTimes(*(int(item) / _util.CLK_TCK for item in ticks))
 
 
 def percpu_times() -> List[CPUTimes]:
-    host = libc.mach_host_self()
-    if host is None:
-        raise _ffi.build_oserror(ctypes.get_errno())
+    with _managed_port(libc.mach_host_self()) as host:
+        pcount = natural_t()
 
-    pcount = natural_t()
+        ticks = ctypes.POINTER(ctypes.c_uint)()
+        tickcount = mach_msg_type_number_t(0)  # pylint: disable=no-member
 
-    ticks = ctypes.POINTER(ctypes.c_uint)()
-    tickcount = mach_msg_type_number_t(0)  # pylint: disable=no-member
-
-    if (
-        libc.host_processor_info(
-            host,
-            PROCESSOR_CPU_LOAD_INFO,
-            ctypes.byref(pcount),
-            ctypes.byref(ticks),
-            ctypes.byref(tickcount),
-        )
-        != KERN_SUCCESS
-    ):
-        raise _ffi.build_oserror(errno.ENOSYS)
-
-    times = [
-        CPUTimes(
-            *(
-                int(item) / _util.CLK_TCK  # type: ignore[call-overload]
-                for item in ticks[i * 4: i * 4 + 4]
+        _check_kernerror(
+            libc.host_processor_info(
+                host,
+                PROCESSOR_CPU_LOAD_INFO,
+                ctypes.byref(pcount),
+                ctypes.byref(ticks),
+                ctypes.byref(tickcount),
             )
         )
-        for i in range(pcount.value)
-    ]
 
-    libc.vm_deallocate(
-        libc.mach_task_self(),
-        ctypes.addressof(ticks.contents),
-        tickcount.value * ctypes.sizeof(natural_t),
-    )
+        times = [
+            CPUTimes(
+                *(
+                    int(item) / _util.CLK_TCK  # type: ignore[call-overload]
+                    for item in ticks[i * 4: i * 4 + 4]
+                )
+            )
+            for i in range(pcount.value)
+        ]
+
+        libc.vm_deallocate(
+            _mach_task_self(),
+            ctypes.addressof(ticks.contents),
+            tickcount.value * ctypes.sizeof(natural_t),
+        )
 
     return times
 
