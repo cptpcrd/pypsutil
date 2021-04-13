@@ -535,17 +535,33 @@ def _list_kinfo_threads(pid: int) -> List[KinfoProc]:
 def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
-    num_files = _bsd.sysctl(
-        [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
-    )
+    while True:
+        nfiles = (
+            _bsd.sysctl(
+                [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000],
+                None,
+                None,
+            )
+            // kinfo_file_size
+        )
 
-    files = (KinfoFile * num_files)()  # pytype: disable=not-callable
+        files = (KinfoFile * nfiles)()  # pytype: disable=not-callable
 
-    num_files = _bsd.sysctl(
-        [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files], None, files
-    )
-
-    return files[: num_files // kinfo_file_size]
+        try:
+            nfiles = (
+                _bsd.sysctl(
+                    [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, nfiles],
+                    None,
+                    files,
+                )
+                // kinfo_file_size
+            )
+        except OSError as ex:
+            # ENOMEM means a range error; retry
+            if ex.errno != errno.ENOMEM:
+                raise
+        else:
+            return files[:nfiles]
 
 
 def iter_pid_raw_create_time(

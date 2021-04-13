@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-lines
 import ctypes
 import dataclasses
 import errno
@@ -553,29 +553,38 @@ def _list_kinfo_lwps(pid: int) -> List[KinfoLwp]:
 def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
-    num_files = (
-        _bsd.sysctl(
-            [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000], None, None
+    while True:
+        nfiles = (
+            _bsd.sysctl(
+                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000],
+                None,
+                None,
+            )
+            // kinfo_file_size
         )
-        // kinfo_file_size
-    )
 
-    files = (KinfoFile * num_files)()  # pytype: disable=not-callable
+        if nfiles == 0:
+            # Check that the process is alive
+            _get_kinfo_proc2_pid(proc.pid)
+            return []
 
-    num_files = (
-        _bsd.sysctl(
-            [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, num_files],
-            None,
-            files,
+        files = (KinfoFile * nfiles)()  # pytype: disable=not-callable
+
+        nfiles = (
+            _bsd.sysctl(
+                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, nfiles],
+                None,
+                files,
+            )
+            // kinfo_file_size
         )
-        // kinfo_file_size
-    )
 
-    if num_files == 0:
-        # Check that the process is alive
-        _get_kinfo_proc2_pid(proc.pid)
-
-    return files[:num_files]
+        if nfiles == 0:
+            # Check that the process is alive
+            _get_kinfo_proc2_pid(proc.pid)
+            return []
+        elif nfiles <= len(files):
+            return files[:nfiles]
 
 
 def iter_pid_raw_create_time(
