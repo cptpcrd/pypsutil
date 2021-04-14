@@ -375,6 +375,80 @@ Process information
           The percent of system memory that is being used by the process as the given memory type.
       :rtype: float
 
+   .. py:method:: memory_maps()
+
+      Retrieve information on this process's memory maps.
+
+      .. warning::
+
+         Unlike ``psutil``'s ``memory_maps()``, this method does NOT "group" mappings from the
+         same file! See :py:meth:`memory_maps_grouped()` if that is what you want.
+
+      This returns a list of dataclasses, each of which represents a memory map.
+
+      The following metadata fields may included (there are slight variations across operating
+      systems):
+
+      - ``path`` (not on OpenBSD): The path to the mapped file. If the mapping does not correspond
+        to a file, this is a string describing the mapping, such as ``[heap]``.
+      - ``addr_start``: The start address of the mapping.
+      - ``addr_end``: The start address of the mapping.
+      - ``perms``: A string describing the permission set of the mapping. On Linux this is e.g.
+        ``rwxp`` or ``-w-s``; on other platforms it is e.g. ``rw-`` or ``r-x``.
+      - ``offset``: The offset into the file at which the mapping starts.
+      - ``dev`` (not on OpenBSD): The device number of the mapped file (or 0 if N/A).
+      - ``ino`` (not on OpenBSD): The device number of the mapped file (or 0 if N/A).
+      - ``size``: The size of the mapping.
+
+      The fields containing statistics on the mapping vary wildly across operating systems:
+
+      +----------------------+------------------+------------------+
+      | **Linux**            | **FreeBSD**      | **OpenBSD**      |
+      +----------------------+------------------+------------------+
+      | ``rss``              | ``rss``          | ``wired_count``  |
+      +----------------------+------------------+------------------+
+      | ``pss``              | ``private``      |                  |
+      +----------------------+------------------+------------------+
+      | ``shared_clean``     | ``ref_count``    |                  |
+      +----------------------+------------------+------------------+
+      | ``shared_dirty``     | ``shadow_count`` |                  |
+      +----------------------+------------------+------------------+
+      | ``private_clean``    |                  |                  |
+      +----------------------+------------------+------------------+
+      | ``private_dirty``    |                  |                  |
+      +----------------------+------------------+------------------+
+      | ``referenced``       |                  |                  |
+      +----------------------+------------------+------------------+
+      | ``anonymous``        |                  |                  |
+      +----------------------+------------------+------------------+
+      | ``swap``             |                  |                  |
+      +----------------------+------------------+------------------+
+
+      The following attributes
+
+      :returns: A list of dataclasses containing information on the process's memory maps
+      :rtype: list[ProcessMemoryMap]
+
+      Availability: Linux, FreeBSD, OpenBSD
+
+   .. py:method:: memory_maps_grouped()
+
+      Retrieve information on this process's memory maps, "grouping" mappings from the same file and
+      summing the fields.
+
+      This is not available on systems where :py:meth:`memory_maps()` does not support retrieving
+      the path of the mapped file, since it's impossible to group the mappings properly in that
+      case.
+
+      The returned structures have all of the same fields as the structures returned by
+      :py:meth:`memory_maps()`, **except** for ``addr_start``, ``addr_end``, ``perms``, and
+      ``offset`` (since they are mapping-specific).
+
+      :returns: A list of dataclasses containing information on the process's "grouped" memory maps
+      :rtype: list[ProcessMemoryMapGrouped]
+
+      Availability: Linux, FreeBSD
+
    .. py:method:: rlimit(res, new_limits=None)
 
       Get/set the soft/hard resource limits of the process. Equivalent to

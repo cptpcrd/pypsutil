@@ -406,6 +406,22 @@ class Process:  # pylint: disable=too-many-instance-attributes
         else:
             return proc_val * 100.0 / sys_meminfo.total
 
+    if hasattr(_psimpl, "proc_memory_maps"):
+
+        @translate_proc_errors
+        def memory_maps(self) -> List[_psimpl.ProcessMemoryMap]:
+            return list(_psimpl.proc_memory_maps(self))
+
+        if hasattr(_psimpl, "group_memory_maps"):
+
+            @translate_proc_errors
+            def memory_maps_grouped(self) -> List[_psimpl.ProcessMemoryMapGrouped]:
+                maps = self.memory_maps()
+                return [
+                    _psimpl.group_memory_maps([mmap for mmap in maps if mmap.path == path])
+                    for path in {mmap.path for mmap in maps}
+                ]
+
     @translate_proc_errors
     def getpriority(self) -> int:
         return _psimpl.proc_getpriority(self)

@@ -88,6 +88,44 @@ class ProcessMemoryInfo:
     data: int
 
 
+@dataclasses.dataclass
+class ProcessMemoryMap:  # pylint: disable=too-many-instance-attributes
+    path: str
+    addr_start: int
+    addr_end: int
+    perms: str
+    offset: int
+    dev: int
+    ino: int
+    size: int
+    rss: int
+    pss: int
+    shared_clean: int
+    shared_dirty: int
+    private_clean: int
+    private_dirty: int
+    referenced: int
+    anonymous: int
+    swap: int
+
+
+@dataclasses.dataclass
+class ProcessMemoryMapGrouped:  # pylint: disable=too-many-instance-attributes
+    path: str
+    dev: int
+    ino: int
+    size: int
+    rss: int
+    pss: int
+    shared_clean: int
+    shared_dirty: int
+    private_clean: int
+    private_dirty: int
+    referenced: int
+    anonymous: int
+    swap: int
+
+
 PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 BatteryInfo = _util.BatteryInfo
 BatteryStatus = _util.BatteryStatus
@@ -645,6 +683,91 @@ def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
             text=items[3] * _util.PAGESIZE,
             data=items[5] * _util.PAGESIZE,
         )
+
+
+_SMAPS_SIZE_NAMES = {
+    "Size": "size",
+    "Rss": "rss",
+    "Pss": "pss",
+    "Shared_Clean": "shared_clean",
+    "Shared_Dirty": "shared_dirty",
+    "Private_Clean": "private_clean",
+    "Private_Dirty": "private_dirty",
+    "Referenced": "referenced",
+    "Anonymous": "anonymous",
+    "Swap": "swap",
+}
+
+
+def proc_memory_maps(proc: "Process") -> List[ProcessMemoryMap]:
+    try:
+        maps = []
+
+        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "smaps")) as file:
+            for line in file:
+                line = line.rstrip("\n")
+
+                if line[0] in "0123456789abcdef":
+                    addr, perms, offset, dev, ino, *path = line.split(maxsplit=5)
+
+                    path = path[0] if path else "[anon]"
+
+                    addr_start, addr_end = (int(addr_part, 16) for addr_part in addr.split("-"))
+
+                    dev_major, dev_minor = map(int, dev.split(":"))
+
+                    maps.append(
+                        ProcessMemoryMap(
+                            path=path,
+                            addr_start=addr_start,
+                            addr_end=addr_end,
+                            perms=perms,
+                            dev=os.makedev(dev_major, dev_minor),
+                            offset=int(offset, 16),
+                            ino=int(ino),
+                            size=0,
+                            rss=0,
+                            pss=0,
+                            shared_clean=0,
+                            shared_dirty=0,
+                            private_clean=0,
+                            private_dirty=0,
+                            referenced=0,
+                            anonymous=0,
+                            swap=0,
+                        )
+                    )
+
+                else:
+                    key, value = map(str.strip, line.split(":"))
+
+                    if value.endswith(" kB") and key in _SMAPS_SIZE_NAMES:
+                        setattr(maps[-1], _SMAPS_SIZE_NAMES[key], int(value[:-3].strip()) * 1024)
+
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+    else:
+        return maps
+
+
+def group_memory_maps(maps: List[ProcessMemoryMap]) -> ProcessMemoryMapGrouped:
+    kwargs = {"path": maps[0].path, "dev": maps[0].dev, "ino": maps[0].ino}
+
+    for name in [
+        "size",
+        "rss",
+        "pss",
+        "shared_clean",
+        "shared_dirty",
+        "private_clean",
+        "private_dirty",
+        "referenced",
+        "anonymous",
+        "swap",
+    ]:
+        kwargs[name] = sum(getattr(mmap, name) for mmap in maps)
+
+    return ProcessMemoryMapGrouped(**kwargs)  # type: ignore[arg-type]
 
 
 def iter_pids() -> Iterator[int]:

@@ -24,6 +24,7 @@ KERN_PROC_PID = 1
 KERN_PROC_INC_THREAD = 0x10
 KERN_PROC_ARGS = 7
 KERN_PROC_PATHNAME = 12
+KERN_PROC_VMMAP = 32
 KERN_PROC_FILEDESC = 33
 KERN_PROC_GROUPS = 34
 KERN_PROC_ENV = 35
@@ -71,6 +72,21 @@ KF_TYPE_PROCDESC = 11
 KF_TYPE_EVENTFD = 13
 KF_VTYPE_VREG = 1
 KF_FD_TYPE_ROOT = -2
+
+KVME_TYPE_NONE = 0
+KVME_TYPE_DEFAULT = 1
+KVME_TYPE_VNODE = 2
+KVME_TYPE_SWAP = 3
+KVME_TYPE_DEVICE = 4
+KVME_TYPE_PHYS = 5
+KVME_TYPE_DEAD = 6
+KVME_TYPE_SG = 7
+KVME_TYPE_MGTDEVICE = 8
+KVME_TYPE_GUARD = 9
+
+KVME_PROT_READ = 0x00000001
+KVME_PROT_WRITE = 0x00000002
+KVME_PROT_EXEC = 0x00000004
 
 XSWDEV_VERSION = 2
 
@@ -183,6 +199,34 @@ class ProcessMemoryInfo:
     text: int
     data: int
     stack: int
+
+
+@dataclasses.dataclass
+class ProcessMemoryMap:  # pylint: disable=too-many-instance-attributes
+    path: str
+    addr_start: int
+    addr_end: int
+    perms: str
+    offset: int
+    dev: int
+    ino: int
+    size: int
+    rss: int
+    private: int
+    ref_count: int
+    shadow_count: int
+
+
+@dataclasses.dataclass
+class ProcessMemoryMapGrouped:  # pylint: disable=too-many-instance-attributes
+    path: str
+    dev: int
+    ino: int
+    size: int
+    rss: int
+    private: int
+    ref_count: int
+    shadow_count: int
 
 
 ProcessOpenFile = _util.ProcessOpenFile
@@ -501,6 +545,33 @@ class KinfoFile(ctypes.Structure):
     ]
 
 
+class KinfoVmentry(ctypes.Structure):
+    _fields_ = [
+        ("kve_structsize", ctypes.c_int),
+        ("kve_type", ctypes.c_int),
+        ("kve_start", ctypes.c_uint64),
+        ("kve_end", ctypes.c_uint64),
+        ("kve_offset", ctypes.c_uint64),
+        ("kve_vn_fileid", ctypes.c_uint64),
+        ("kve_vn_fsid_freebsd11", ctypes.c_uint32),
+        ("kve_flags", ctypes.c_int),
+        ("kve_resident", ctypes.c_int),
+        ("kve_private_resident", ctypes.c_int),
+        ("kve_protection", ctypes.c_int),
+        ("kve_ref_count", ctypes.c_int),
+        ("kve_shadow_count", ctypes.c_int),
+        ("kve_vn_type", ctypes.c_int),
+        ("kve_vn_size", ctypes.c_uint64),
+        ("kve_vn_rdev_freebsd11", ctypes.c_uint32),
+        ("kve_vn_mode", ctypes.c_uint16),
+        ("kve_status", ctypes.c_uint16),
+        ("kve_vn_fsid", ctypes.c_uint64),
+        ("kve_vn_rdev", ctypes.c_uint64),
+        ("_kve_ispare", (ctypes.c_int * 8)),
+        ("kve_path", (ctypes.c_char * PATH_MAX)),
+    ]
+
+
 class XswDev(ctypes.Structure):
     _fields_ = [
         ("xsw_version", ctypes.c_uint),
@@ -730,6 +801,67 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             mode=mode,
             extra_info=extra_info,
         )
+
+
+_KVME_TYPE_NAMES = {
+    KVME_TYPE_NONE: "none",
+    KVME_TYPE_DEFAULT: "default",
+    KVME_TYPE_SWAP: "swap",
+    KVME_TYPE_DEVICE: "device",
+    KVME_TYPE_PHYS: "phys",
+    KVME_TYPE_DEAD: "dead",
+    KVME_TYPE_SG: "sg",
+    KVME_TYPE_MGTDEVICE: "mgtdevice",
+    KVME_TYPE_GUARD: "guard",
+}
+
+
+def proc_memory_maps(proc: "Process") -> Iterator[ProcessMemoryMap]:
+    kinfo_vmentry_data = _bsd.sysctl_bytes_retry(
+        [CTL_KERN, KERN_PROC, KERN_PROC_VMMAP, proc.pid], None
+    )
+
+    for kentry in _util.iter_packed_structures(kinfo_vmentry_data, KinfoVmentry, "kve_structsize"):
+        perms = (
+            ("r" if kentry.kve_protection & KVME_PROT_READ else "-")
+            + ("w" if kentry.kve_protection & KVME_PROT_WRITE else "-")
+            + ("x" if kentry.kve_protection & KVME_PROT_EXEC else "-")
+        )
+
+        if kentry.kve_type == KVME_TYPE_VNODE:
+            path = os.fsdecode(kentry.kve_path)
+        else:
+            path = "[{}]".format(_KVME_TYPE_NAMES.get(kentry.kve_type, "unknown"))
+
+        yield ProcessMemoryMap(
+            path=path,
+            addr_start=kentry.kve_start,
+            addr_end=kentry.kve_end,
+            perms=perms,
+            offset=kentry.kve_offset,
+            ino=kentry.kve_vn_fileid,
+            dev=(kentry.kve_vn_fsid or kentry.kve_vn_fsid_freebsd11),
+            size=(kentry.kve_end - kentry.kve_start),
+            rss=kentry.kve_resident,
+            private=kentry.kve_private_resident,
+            ref_count=kentry.kve_ref_count,
+            shadow_count=kentry.kve_shadow_count,
+        )
+
+
+def group_memory_maps(maps: List[ProcessMemoryMap]) -> ProcessMemoryMapGrouped:
+    kwargs = {"path": maps[0].path, "dev": maps[0].dev, "ino": maps[0].ino}
+
+    for name in [
+        "size",
+        "rss",
+        "private",
+        "ref_count",
+        "shadow_count",
+    ]:
+        kwargs[name] = sum(getattr(mmap, name) for mmap in maps)
+
+    return ProcessMemoryMapGrouped(**kwargs)  # type: ignore[arg-type]
 
 
 def proc_num_threads(proc: "Process") -> int:

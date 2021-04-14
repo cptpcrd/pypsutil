@@ -27,6 +27,7 @@ KERN_PROC_KTHREAD = 7
 KERN_PROC_SHOW_THREADS = 0x40000000
 KERN_PROC_ARGS = 55
 KERN_PROC_CWD = 78
+KERN_PROC_VMMAP = 80
 KERN_PROC_ARGV = 1
 KERN_PROC_ENV = 3
 KERN_FILE = 73
@@ -42,6 +43,10 @@ HW_PHYSMEM64 = 19
 
 VFS_GENERIC = 0
 VFS_BCACHESTAT = 3
+
+PROT_READ = 0x01
+PROT_WRITE = 0x02
+PROT_EXEC = 0x04
 
 DTYPE_VNODE = 1
 DTYPE_SOCKET = 2
@@ -110,6 +115,16 @@ class ProcessMemoryInfo:
     text: int
     data: int
     stack: int
+
+
+@dataclasses.dataclass
+class ProcessMemoryMap:  # pylint: disable=too-many-instance-attributes
+    addr_start: int
+    addr_end: int
+    perms: str
+    offset: int
+    size: int
+    wired_count: int
 
 
 ProcessOpenFile = _util.ProcessOpenFile
@@ -301,6 +316,24 @@ class KinfoFile(ctypes.Structure):
         ("t_snd_wnd", ctypes.c_uint64),
         ("t_snd_cwnd", ctypes.c_uint64),
         ("va_nlink", ctypes.c_uint32),
+    ]
+
+
+class KinfoVmentry(ctypes.Structure):
+    _fields_ = [
+        ("kve_start", ctypes.c_ulong),
+        ("kve_end", ctypes.c_ulong),
+        ("kve_guard", ctypes.c_ulong),
+        ("kve_fspace", ctypes.c_ulong),
+        ("kve_fspace_augment", ctypes.c_ulong),
+        ("kve_offset", ctypes.c_uint64),
+        ("kve_wired_count", ctypes.c_int),
+        ("kve_etype", ctypes.c_int),
+        ("kve_protection", ctypes.c_int),
+        ("kve_max_protection", ctypes.c_int),
+        ("kve_advice", ctypes.c_int),
+        ("kve_inheritance", ctypes.c_int),
+        ("kve_flags", ctypes.c_uint8),
     ]
 
 
@@ -792,6 +825,38 @@ def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
         data=kinfo.p_vm_dsize * _util.PAGESIZE,
         stack=kinfo.p_vm_ssize * _util.PAGESIZE,
     )
+
+
+def proc_memory_maps(proc: "Process") -> Iterator[ProcessMemoryMap]:
+    while True:
+        old_len = _bsd.sysctl([CTL_KERN, KERN_PROC_VMMAP, proc.pid], None, None)
+
+        buf = (KinfoVmentry * (old_len // ctypes.sizeof(KinfoVmentry)))()  # pytype: disable=not-callable
+
+        try:
+            old_len = _bsd.sysctl([CTL_KERN, KERN_PROC_VMMAP, proc.pid], None, buf)
+        except OSError as ex:
+            if ex.errno != errno.ENOMEM:
+                raise
+        else:
+            kentries = buf[:old_len // ctypes.sizeof(KinfoVmentry)]
+            break
+
+    for kentry in kentries:
+        perms = (
+            ("r" if kentry.kve_protection & PROT_READ else "-")
+            + ("w" if kentry.kve_protection & PROT_WRITE else "-")
+            + ("x" if kentry.kve_protection & PROT_EXEC else "-")
+        )
+
+        yield ProcessMemoryMap(
+            addr_start=kentry.kve_start,
+            addr_end=kentry.kve_end,
+            perms=perms,
+            offset=kentry.kve_offset,
+            size=(kentry.kve_end - kentry.kve_start),
+            wired_count=kentry.kve_wired_count,
+        )
 
 
 def proc_ppid(proc: "Process") -> int:
