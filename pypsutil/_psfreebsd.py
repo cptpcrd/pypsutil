@@ -606,19 +606,7 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
         [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None
     )
 
-    kinfo_file_size = ctypes.sizeof(KinfoFile)
-
-    i = 0
-    while i < len(kinfo_file_data):
-        kfile_data = kinfo_file_data[i: i + kinfo_file_size].ljust(kinfo_file_size, b"\0")
-        kfile = KinfoFile.from_buffer_copy(kfile_data)
-
-        if kfile.kf_structsize == 0:
-            break
-
-        yield kfile
-
-        i += kfile.kf_structsize
+    return _util.iter_packed_structures(kinfo_file_data, KinfoFile, "kf_structsize")
 
 
 def iter_pid_raw_create_time(

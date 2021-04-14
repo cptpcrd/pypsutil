@@ -1,3 +1,4 @@
+import ctypes
 import dataclasses
 import enum
 import functools
@@ -369,3 +370,22 @@ def read_file_first_line(fname: str) -> str:
         line = file.readline()
 
     return line[:-1] if line.endswith("\n") else line
+
+
+def iter_packed_structures(
+    data: bytes, struct_type: type, len_attr: str
+) -> Iterator[ctypes.Structure]:
+    struct_size = ctypes.sizeof(struct_type)
+
+    i = 0
+    while i < len(data):
+        struct_data = data[i: i + struct_size].ljust(struct_size, b"\0")
+        item = struct_type.from_buffer_copy(struct_data)
+
+        length = getattr(item, len_attr)
+        if length == 0:
+            yield item
+            break
+
+        yield item
+        i += length
