@@ -1040,7 +1040,7 @@ System information
    :returns: A dataclass containing system memory statistics
    :rtype: VirtualMemoryInfo
 
-   Availability: Linux, FreeBSD, OpenBSD, NetBSD
+   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 .. py:function:: swap_memory()
 
@@ -1058,7 +1058,7 @@ System information
    :returns: A dataclass containing system swap memory statistics
    :rtype: SwapInfo
 
-   Availability: Linux, FreeBSD
+   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 .. py:function:: disk_usage(path)
 
@@ -1091,7 +1091,8 @@ System information
    Returns an instance of a dataclass with ``current``, ``min``, and ``max`` attributes, representing
    the current, minimum, and maximum CPU frequencies.
 
-   If the frequencies cannot be determined, returns ``None``.
+   If the frequencies cannot be determined, returns ``None``. If only the current frequency can be
+   determined, ``min`` and ``max`` will be returned as ``0.0``.
 
    :return: An instance of a dataclass containing the current, minimum, and maximum CPU frequencies.
    :rtype: CPUFrequencies or None
@@ -1135,7 +1136,7 @@ System information
    :returns: A dataclass containing information about system CPU times.
    :rtype: CPUTimes
 
-   Availability: Linux, FreeBSD, OpenBSD, NetBSD
+   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
 .. py:function:: percpu_times()
@@ -1145,7 +1146,7 @@ System information
    :return: A list of the times of each CPU.
    :rtype: CPUTimes
 
-   Availability: Linux, FreeBSD, OpenBSD, NetBSD
+   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
 .. py:function:: cpu_stats()
@@ -1160,7 +1161,7 @@ System information
    :returns: A dataclass containing some CPU statistics.
    :rtype: CPUStats
 
-   Availablity: Linux, FreeBSD, OpenBSD
+   Availablity: Linux, FreeBSD, OpenBSD, NetBSD
 
 
 Sensor information
