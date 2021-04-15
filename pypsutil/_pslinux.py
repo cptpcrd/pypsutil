@@ -708,9 +708,9 @@ def proc_memory_maps(proc: "Process") -> List[ProcessMemoryMap]:
                 line = line.rstrip("\n")
 
                 if line[0] in "0123456789abcdef":
-                    addr, perms, offset, dev, ino, *path = line.split(maxsplit=5)
+                    addr, perms, offset, dev, ino, *maybe_path = line.split(maxsplit=5)
 
-                    path = path[0] if path else "[anon]"
+                    path = maybe_path[0] if maybe_path else "[anon]"
 
                     addr_start, addr_end = (int(addr_part, 16) for addr_part in addr.split("-"))
 

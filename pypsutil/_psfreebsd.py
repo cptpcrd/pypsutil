@@ -677,7 +677,10 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
         [CTL_KERN, KERN_PROC, KERN_PROC_FILEDESC, proc.pid], None
     )
 
-    return _util.iter_packed_structures(kinfo_file_data, KinfoFile, "kf_structsize")
+    return cast(
+        Iterator[KinfoFile],
+        _util.iter_packed_structures(kinfo_file_data, KinfoFile, "kf_structsize"),
+    )
 
 
 def iter_pid_raw_create_time(

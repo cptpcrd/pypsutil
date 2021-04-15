@@ -380,7 +380,7 @@ def iter_packed_structures(
     i = 0
     while i < len(data):
         struct_data = data[i: i + struct_size].ljust(struct_size, b"\0")
-        item = struct_type.from_buffer_copy(struct_data)
+        item = struct_type.from_buffer_copy(struct_data)  # type: ignore
 
         length = getattr(item, len_attr)
         if length == 0:

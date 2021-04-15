@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-lines
 import ctypes
 import dataclasses
 import errno
@@ -831,7 +831,9 @@ def proc_memory_maps(proc: "Process") -> Iterator[ProcessMemoryMap]:
     while True:
         old_len = _bsd.sysctl([CTL_KERN, KERN_PROC_VMMAP, proc.pid], None, None)
 
-        buf = (KinfoVmentry * (old_len // ctypes.sizeof(KinfoVmentry)))()  # pytype: disable=not-callable
+        buf = (
+            KinfoVmentry * (old_len // ctypes.sizeof(KinfoVmentry))
+        )()  # pytype: disable=not-callable
 
         try:
             old_len = _bsd.sysctl([CTL_KERN, KERN_PROC_VMMAP, proc.pid], None, buf)
@@ -839,7 +841,7 @@ def proc_memory_maps(proc: "Process") -> Iterator[ProcessMemoryMap]:
             if ex.errno != errno.ENOMEM:
                 raise
         else:
-            kentries = buf[:old_len // ctypes.sizeof(KinfoVmentry)]
+            kentries = buf[: old_len // ctypes.sizeof(KinfoVmentry)]
             break
 
     for kentry in kentries:
