@@ -1,10 +1,12 @@
 # pylint: disable=too-many-lines
 import ctypes
 import dataclasses
+import ipaddress
 import os
 import re
 import resource
 import signal
+import socket
 import stat
 import sys
 import time
@@ -25,7 +27,14 @@ from typing import (
 
 from . import _cache, _ffi, _psposix, _util
 from ._errors import AccessDenied, ZombieProcess
-from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessStatus
+from ._util import (
+    Connection,
+    ConnectionStatus,
+    ProcessCPUTimes,
+    ProcessFd,
+    ProcessFdType,
+    ProcessStatus,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -434,6 +443,241 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
+
+
+_SOCK_TYPES = {1: socket.SOCK_STREAM, 2: socket.SOCK_DGRAM, 5: socket.SOCK_SEQPACKET}
+
+
+def _decode_net_addr4(fulladdr: str) -> Tuple[str, int]:
+    addr, port = (int(item, 16) for item in fulladdr.split(":"))
+
+    parts = [
+        (addr & 0xFF000000) >> 24,
+        (addr & 0xFF0000) >> 16,
+        (addr & 0xFF00) >> 8,
+        (addr & 0xFF),
+    ]
+
+    if port == 0 and parts == [0, 0, 0, 0]:
+        return ("", 0)
+
+    if sys.byteorder == "little":
+        parts = parts[::-1]
+
+    return (".".join(map(str, parts)), port)
+
+
+def _decode_net_addr6(fulladdr: str) -> Tuple[str, int]:
+    addr, sport = fulladdr.split(":")
+    port = int(sport, 16)
+
+    chunks = [int(addr[i: i + 8], 16) for i in range(0, 32, 8)]
+
+    if port == 0 and all(chunk == 0 for chunk in chunks):
+        return ("", 0)
+
+    if sys.byteorder == "little":
+        chunks = [
+            (chunk & 0xFF000000) >> 24
+            | (chunk & 0xFF0000) >> 8
+            | (chunk & 0xFF00) << 8
+            | (chunk & 0xFF) << 24
+            for chunk in chunks
+        ]
+
+    return (
+        str(
+            ipaddress.IPv6Address(
+                sum(chunk << (i * 32) for i, chunk in enumerate(reversed(chunks)))
+            )
+        ),
+        port,
+    )
+
+
+_TCP_STATES = {
+    1: ConnectionStatus.ESTABLISHED,
+    2: ConnectionStatus.SYN_SENT,
+    3: ConnectionStatus.SYN_RECV,
+    4: ConnectionStatus.FIN_WAIT1,
+    5: ConnectionStatus.FIN_WAIT2,
+    6: ConnectionStatus.TIME_WAIT,
+    7: ConnectionStatus.CONN_CLOSE,
+    8: ConnectionStatus.CONN_CLOSE_WAIT,
+    9: ConnectionStatus.CONN_LAST_ACK,
+    10: ConnectionStatus.CONN_LISTEN,
+    11: ConnectionStatus.CONN_CLOSING,
+    12: ConnectionStatus.SYN_RECV,
+}
+
+
+def _iter_connections(
+    kind: str,
+) -> Iterator[
+    Tuple[
+        int,
+        int,
+        Union[Tuple[str, int], str],
+        Union[Tuple[str, int], str],
+        Optional[ConnectionStatus],
+        int,
+    ]
+]:
+    if kind in ("tcp4", "tcp", "inet4", "inet", "all"):
+        with open("/proc/net/tcp") as file:
+            file.readline()
+
+            for line in file:
+                _, laddr, raddr, state, _, _, _, _, _, inode, *_ = line.rstrip("\n").split()
+                yield (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    _decode_net_addr4(laddr),
+                    _decode_net_addr4(raddr),
+                    _TCP_STATES[int(state, 16)],
+                    int(inode),
+                )
+
+    if kind in ("tcp6", "tcp", "inet6", "inet", "all"):
+        with open("/proc/net/tcp6") as file:
+            file.readline()
+
+            for line in file:
+                _, laddr, raddr, state, _, _, _, _, _, inode, *_ = line.rstrip("\n").split()
+                yield (
+                    socket.AF_INET6,
+                    socket.SOCK_STREAM,
+                    _decode_net_addr6(laddr),
+                    _decode_net_addr6(raddr),
+                    _TCP_STATES[int(state, 16)],
+                    int(inode),
+                )
+
+    if kind in ("udp4", "udp", "inet4", "inet", "all"):
+        with open("/proc/net/udp") as file:
+            file.readline()
+
+            for line in file:
+                _, laddr, raddr, _, _, _, _, _, _, inode, *_ = line.rstrip("\n").split()
+                yield (
+                    socket.AF_INET,
+                    socket.SOCK_DGRAM,
+                    _decode_net_addr4(laddr),
+                    _decode_net_addr4(raddr),
+                    None,
+                    int(inode),
+                )
+
+    if kind in ("udp6", "udp", "inet6", "inet", "all"):
+        with open("/proc/net/udp6") as file:
+            file.readline()
+
+            for line in file:
+                _, laddr, raddr, _, _, _, _, _, _, inode, *_ = line.rstrip("\n").split()
+                yield (
+                    socket.AF_INET6,
+                    socket.SOCK_DGRAM,
+                    _decode_net_addr6(laddr),
+                    _decode_net_addr6(raddr),
+                    None,
+                    int(inode),
+                )
+
+    if kind in ("unix", "all"):
+        with open("/proc/net/unix") as file:
+            file.readline()
+
+            for line in file:
+                _, _, _, _, stype, _, inode, *path = line.rstrip("\n").split(maxsplit=7)
+                yield (
+                    socket.AF_UNIX,
+                    _SOCK_TYPES[int(stype)],
+                    (path[0] if path else ""),
+                    "",
+                    None,
+                    int(inode),
+                )
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    # Read all the file descriptor information into memory
+    info_by_inode = {}
+
+    try:
+        with os.scandir(os.path.join(_util.get_procfs_path(), str(proc.pid), "fd")) as dir_it:
+            for entry in dir_it:
+                try:
+                    fd_stat = entry.stat(follow_symlinks=True)
+                except FileNotFoundError:
+                    continue
+
+                if stat.S_ISSOCK(fd_stat.st_mode):
+                    info_by_inode[fd_stat.st_ino] = (int(entry.name), proc.pid)
+
+    except FileNotFoundError as ex:
+        raise ProcessLookupError from ex
+
+    # Now try to connect it to open connections
+    for family, stype, laddr, raddr, status, inode in _iter_connections(kind):
+        try:
+            fd, pid = info_by_inode.pop(inode)
+        except KeyError:
+            pass
+        else:
+            yield Connection(
+                fd=fd,
+                pid=pid,
+                family=family,
+                type=stype,
+                laddr=laddr,
+                raddr=raddr,
+                status=status,
+            )
+
+
+def net_connections(kind: str) -> Iterator[Connection]:
+    # Read all the socket information into memory
+    infos = {}
+    for family, stype, laddr, raddr, status, inode in _iter_connections(kind):
+        infos[inode] = {
+            "family": family,
+            "type": stype,
+            "laddr": laddr,
+            "raddr": raddr,
+            "status": status,
+        }
+
+    # Now go through and try to connect it to PIDs
+    for pid in iter_pids():
+        try:
+            with os.scandir(os.path.join(_util.get_procfs_path(), str(pid), "fd")) as dir_it:
+                for entry in dir_it:
+                    try:
+                        fd_stat = entry.stat(follow_symlinks=True)
+                    except FileNotFoundError:
+                        continue
+
+                    if stat.S_ISSOCK(fd_stat.st_mode):
+                        try:
+                            info = infos.pop(fd_stat.st_ino)
+                        except KeyError:
+                            pass
+                        else:
+                            yield Connection(
+                                fd=int(entry.name),
+                                pid=pid,
+                                **info,  # type: ignore[arg-type]
+                            )
+
+        except (FileNotFoundError, PermissionError):
+            pass
+
+    for info in infos.values():
+        yield Connection(
+            fd=-1,
+            pid=None,
+            **info,  # type: ignore[arg-type]
+        )
 
 
 def proc_num_threads(proc: "Process") -> int:

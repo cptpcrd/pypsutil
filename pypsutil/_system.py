@@ -98,6 +98,12 @@ if hasattr(_psimpl, "percpu_times"):
     percpu_times = _psimpl.percpu_times
 
 
+if hasattr(_psimpl, "net_connections"):
+
+    def net_connections(kind: str = "inet") -> List[_util.Connection]:
+        return list(_psimpl.net_connections(kind))
+
+
 VirtualMemoryInfo = _psimpl.VirtualMemoryInfo
 virtual_memory = _psimpl.virtual_memory
 swap_memory = _psimpl.swap_memory

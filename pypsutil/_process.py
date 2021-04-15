@@ -31,6 +31,8 @@ ProcessMemoryInfo = _psimpl.ProcessMemoryInfo
 ProcessOpenFile = _psimpl.ProcessOpenFile
 ProcessFd = _psimpl.ProcessFd
 ProcessFdType = _psimpl.ProcessFdType
+Connection = _util.Connection
+ConnectionStatus = _util.ConnectionStatus
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
@@ -329,6 +331,12 @@ class Process:  # pylint: disable=too-many-instance-attributes
             raise NoSuchProcess(pid=self.pid) from ex
         except PermissionError as ex:
             raise AccessDenied(pid=self.pid) from ex
+
+    if hasattr(_psimpl, "proc_connections"):
+
+        @translate_proc_errors
+        def connections(self, kind: str = "inet") -> List[Connection]:
+            return list(_psimpl.proc_connections(self, kind))
 
     @translate_proc_errors
     def num_fds(self) -> int:

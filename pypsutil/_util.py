@@ -15,6 +15,7 @@ from typing import (
     List,
     Optional,
     Set,
+    Tuple,
     TypeVar,
     Union,
     cast,
@@ -95,6 +96,31 @@ class ProcessFd:  # pylint: disable=too-many-instance-attributes
     @property
     def open_mode(self) -> Optional[str]:
         return flags_to_mode(self.flags)
+
+
+class ConnectionStatus(enum.Enum):
+    ESTABLISHED = "ESTABLISHED"
+    SYN_SENT = "SYN_SENT"
+    SYN_RECV = "SYN_RECV"
+    FIN_WAIT1 = "FIN_WAIT1"
+    FIN_WAIT2 = "FIN_WAIT2"
+    TIME_WAIT = "TIME_WAIT"
+    CONN_CLOSE = "CONN_CLOSE"
+    CONN_CLOSE_WAIT = "CONN_CLOSE_WAIT"
+    CONN_LAST_ACK = "CONN_LAST_ACK"
+    CONN_LISTEN = "CONN_LISTEN"
+    CONN_CLOSING = "CONN_CLOSING"
+
+
+@dataclasses.dataclass
+class Connection:
+    fd: int
+    family: int
+    type: int
+    laddr: Union[Tuple[str, int], str]
+    raddr: Union[Tuple[str, int], str]
+    status: Optional[ConnectionStatus]
+    pid: Optional[int]
 
 
 @dataclasses.dataclass

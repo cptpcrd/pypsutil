@@ -2,6 +2,8 @@ from . import _process, _system
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
+    Connection,
+    ConnectionStatus,
     Gids,
     Popen,
     Process,
@@ -52,6 +54,7 @@ _OPTIONAL_SYSTEM = [
     "sensors_is_on_ac_power",
     "TempSensorInfo",
     "sensors_temperatures",
+    "net_connections",
 ]
 
 _OPTIONAL_PROCESS = ["ProcessMemoryMap", "ProcessMemoryMapGrouped"]
@@ -76,6 +79,8 @@ __all__ = [
     "ProcessOpenFile",
     "ProcessFd",
     "ProcessFdType",
+    "Connection",
+    "ConnectionStatus",
     "ProcessSignalMasks",
     "ProcessStatus",
     "Popen",
