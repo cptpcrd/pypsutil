@@ -617,6 +617,10 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
 
+    if not info_by_inode:
+        # Nothing to do
+        return
+
     # Now try to connect it to open connections
     for family, stype, laddr, raddr, status, inode in _iter_connections(kind):
         try:
@@ -650,6 +654,10 @@ def net_connections(kind: str) -> Iterator[Connection]:
             "raddr": raddr,
             "status": status,
         }
+
+    if not infos:
+        # Nothing to do
+        return
 
     # Now go through and try to connect it to PIDs
     for pid in iter_pids():
