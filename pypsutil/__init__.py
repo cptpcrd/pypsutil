@@ -1,4 +1,4 @@
-from . import _system
+from . import _process, _system
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._process import (
@@ -38,7 +38,7 @@ from ._system import (
     virtual_memory,
 )
 
-_OPTIONAL_FUNCS = [
+_OPTIONAL_SYSTEM = [
     "uptime",
     "cpu_freq",
     "percpu_freq",
@@ -53,6 +53,8 @@ _OPTIONAL_FUNCS = [
     "TempSensorInfo",
     "sensors_temperatures",
 ]
+
+_OPTIONAL_PROCESS = ["ProcessMemoryMap", "ProcessMemoryMapGrouped"]
 
 __version__ = "0.1.0"
 
@@ -104,9 +106,14 @@ __all__ = [
     "TimeoutExpired",
 ]
 
-for name in _OPTIONAL_FUNCS:
+for name in _OPTIONAL_SYSTEM:
     if hasattr(_system, name):
         globals()[name] = getattr(_system, name)
+        __all__.append(name)
+
+for name in _OPTIONAL_PROCESS:
+    if hasattr(_process, name):
+        globals()[name] = getattr(_process, name)
         __all__.append(name)
 
 DEVFS_PATH = "/dev"

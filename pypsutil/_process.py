@@ -34,6 +34,11 @@ ProcessFdType = _psimpl.ProcessFdType
 Uids = collections.namedtuple("Uids", ["real", "effective", "saved"])
 Gids = collections.namedtuple("Gids", ["real", "effective", "saved"])
 
+if hasattr(_psimpl, "ProcessMemoryMap"):
+    ProcessMemoryMap = _psimpl.ProcessMemoryMap
+if hasattr(_psimpl, "ProcessMemoryMapGrouped"):
+    ProcessMemoryMapGrouped = _psimpl.ProcessMemoryMapGrouped
+
 
 if getattr(_psimpl.pid_raw_create_time, "works_on_zombies", True):
 
