@@ -119,7 +119,6 @@ def sysctl_bytes_retry(mib: Collection[int], new: Optional[bytes], trim_nul: boo
         buf = (ctypes.c_char * old_len)()  # pytype: disable=not-callable
 
         try:
-            print(old_len)
             old_len = sysctl(mib, new, buf)
         except OSError as ex:
             if ex.errno != errno.ENOMEM:
