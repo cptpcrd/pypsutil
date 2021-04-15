@@ -1053,7 +1053,7 @@ Process information
 
    .. py:attribute:: status
 
-        :type: ConnectionStatus
+        :type: ConnectionStatus or None
 
         The TCP connection status (for inet TCP sockets only).
 
@@ -1434,7 +1434,7 @@ Sensor information
 
    Internally, this just calls :py:func:`sensors_power()`, extracts the first battery's information,
    and then sets ``battery.power_plugged`` based on the ``is_on_ac_power`` attribute of the
-   dataclass returned by `:py:func:`sensors_power()`. If that fails, it may fall back on methods
+   dataclass returned by :py:func:`sensors_power()`. If that fails, it may fall back on methods
    that will return the same results as for :py:func:`sensors_battery_total()`.
 
    Essentially, this function says "let's assume the system has at most one battery, and return
