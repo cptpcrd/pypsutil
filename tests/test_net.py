@@ -83,26 +83,36 @@ def verify_connections(
 if hasattr(pypsutil.Process, "connections"):
 
     def test_proc_connections(tmp_path: pathlib.Path) -> None:
+        existing_conn_fds = {conn.fd for conn in pypsutil.Process().connections("all")}
+
         with open_testing_sockets(tmp_path) as test_socks:
             conns = pypsutil.Process().connections("all")
-            verify_connections(test_socks, conns)
+            verify_connections(
+                test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
+            )
 
         with open_testing_sockets(tmp_path, families=[socket.AF_INET]) as test_socks:
             conns = pypsutil.Process().connections("inet")
-            verify_connections(test_socks, conns)
+            verify_connections(
+                test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
+            )
 
         with open_testing_sockets(
             tmp_path, families=[socket.AF_INET, socket.AF_INET6], types=[socket.SOCK_DGRAM]
         ) as test_socks:
             conns = pypsutil.Process().connections("udp")
-            verify_connections(test_socks, conns)
+            verify_connections(
+                test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
+            )
 
         with open_testing_sockets(tmp_path, families=[socket.AF_UNIX]) as test_socks:
             conns = pypsutil.Process().connections("unix")
-            verify_connections(test_socks, conns)
+            verify_connections(
+                test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
+            )
 
         conns = pypsutil.Process().connections("unix")
-        verify_connections({}, conns)
+        verify_connections(test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds])
 
     def test_proc_connections_no_proc() -> None:
         proc = get_dead_process()
