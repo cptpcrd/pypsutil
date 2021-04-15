@@ -748,7 +748,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
         if kfile.kf_type == KF_TYPE_VNODE:
             fdtype = ProcessFdType.FILE
-            dev = kfile.kf_un.kf_file.kf_file_fsid
+            dev = kfile.kf_un.kf_file.kf_file_fsid or kfile.kf_un.kf_file.kf_file_fsid_freebsd11
             rdev = kfile.kf_un.kf_file.kf_file_rdev
             ino = kfile.kf_un.kf_file.kf_file_fileid
             size = kfile.kf_un.kf_file.kf_file_size
@@ -764,7 +764,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
         elif kfile.kf_type == KF_TYPE_PTS:
             fdtype = ProcessFdType.FILE
-            rdev = kfile.kf_un.kf_pts.kf_pts_dev
+            rdev = kfile.kf_un.kf_pts.kf_pts_dev or kfile.kf_un.kf_pts.kf_pts_dev_freebsd11
 
         elif kfile.kf_type == KF_TYPE_PIPE:
             fdtype = ProcessFdType.PIPE
