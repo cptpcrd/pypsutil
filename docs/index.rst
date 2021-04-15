@@ -648,6 +648,29 @@ Process information
             An iterator yielding :py:class:`ProcessFd` s
       :rtype: iter[ProcessFd]
 
+   .. py:method:: connections(kind="inet")
+
+      Return a list of :py:class:`Connection` s representing sockets opened by this process.
+
+      ``kind`` specifies which sockets should be returned:
+
+      - ``"inet"``: All inet sockets (TCP/UDP, IPv4/IPv6)
+      - ``"inet4"``: All IPv4 sockets (TCP/UDP)
+      - ``"inet6"``: All IPv6 sockets (TCP/UDP)
+      - ``"tcp"``: All TCP sockets (IPv4/IPv6)
+      - ``"tcp4"``: All TCP, IPv4 sockets
+      - ``"tcp6"``: All TCP, IPv6 sockets
+      - ``"udp"``: All UDP sockets (IPv4/IPv6)
+      - ``"udp4"``: All UDP, IPv4 sockets
+      - ``"udp6"``: All UDP, IPv6 sockets
+      - ``"unix"``: All Unix sockets
+      - ``"all"``: All of the above
+
+      :returns: A list of :py:class:`Connection` s
+      :rtype: list[Connection]
+
+      Availability: Linux
+
    .. py:method:: is_running()
 
       Checks if the process is still running. Unlike ``pid_exists(proc.pid)``, this also checks for PID
@@ -991,6 +1014,84 @@ Process information
         An unknown file type.
 
 
+.. py:class:: Connection
+
+   A dataclass representing a network connection.
+
+   .. py:attribute:: family
+
+        :type: int
+
+        The address family; one of :py:data:`socket.AF_INET`, :py:data:`socket.AF_INET6`, or
+        :py:data:`socket.AF_UNIX`.
+
+   .. py:attribute:: type
+
+        :type: int
+
+        The address type; one of :py:data:`socket.SOCK_STREAM`, :py:data:`socket.SOCK_DGRAM`, or
+        :py:data:`socket.SOCK_SEQPACKET`.
+
+   .. py:attribute:: laddr
+
+        :type: tuple[str, int] or str
+
+        The local address. For inet sockets this is in the format ``(ip, port)`` (it's ``("", 0)``
+        if the socket is not connected or the address cannot be determined). For Unix sockets this
+        is a string path, or ``""`` if the socket is not connected or the address cannot be
+        determined.
+
+   .. py:attribute:: raddr
+
+        :type: tuple[str, int] or str
+
+        The remote address, in the same format as ``laddr``.
+
+        .. note::
+
+            On Linux, this is always ``""`` for Unix sockets.
+
+   .. py:attribute:: status
+
+        :type: ConnectionStatus
+
+        The TCP connection status (for inet TCP sockets only).
+
+   .. py:attribute:: fd
+
+        :type: int
+
+        The socket file descriptor number. This is -1 if N/A or it cannot be determined.
+
+   .. py:attribute:: pid
+
+        :type: int or None
+
+        The PID of the process that created the socket. This is ``None`` if it cannot be determined.
+
+
+   .. note::
+        On Linux, ``pid`` and ``fd`` can only be determined for this user's processes (unless
+        running as root).
+
+
+.. py:class:: ConnectionStatus
+
+   An enum representing a TCP connection status.
+
+   .. py:data:: ESTABLISHED
+   .. py:data:: SYN_SENT
+   .. py:data:: SYN_RECV
+   .. py:data:: FIN_WAIT1
+   .. py:data:: FIN_WAIT2
+   .. py:data:: TIME_WAIT
+   .. py:data:: CLOSE
+   .. py:data:: CLOSE_WAIT
+   .. py:data:: LAST_ACK
+   .. py:data:: LISTEN
+   .. py:data:: CLOSING
+
+
 .. py:function:: pids()
 
    Get a list of the PIDs of running processes.
@@ -1236,6 +1337,18 @@ System information
    :rtype: CPUStats
 
    Availablity: Linux, FreeBSD, OpenBSD, NetBSD
+
+
+.. py:function:: net_connections(kind="inet")
+
+   Return a list of :py:class:`Connection` s representing all sockets opened system-wide.
+
+   See :py:meth:`Process.connections()` for information on the possible values of ``kind``.
+
+   :returns: A list of :py:class:`Connection` s
+   :rtype: list[Connection]
+
+   Availability: Linux
 
 
 Sensor information
