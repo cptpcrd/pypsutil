@@ -63,8 +63,6 @@ class ProcessFdType(enum.Enum):
     FILE = "file"
     SOCKET = "socket"
     PIPE = "pipe"
-    # Note: Not all OSes allow differentiating pipes from FIFOs; on those OSes FIFOs will be given
-    # type PIPE.
     FIFO = "fifo"
 
     KQUEUE = "kqueue"
