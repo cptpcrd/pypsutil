@@ -604,8 +604,6 @@ Process information
       :returns: The number of threads in this process
       :rtype: int
 
-      Availability: Linux, macOS, FreeBSD, OpenBSD
-
    .. py:method:: threads()
 
       Returns a list of :py:class:`ThreadInfo` structures with information on the threads in this
@@ -613,8 +611,6 @@ Process information
 
       :returns: A list of :py:class:`ThreadInfo` structures with information on this process's threads
       :rtype: list[ThreadInfo]
-
-      Availability: Linux, macOS, FreeBSD, OpenBSD
 
    .. py:method:: num_fds()
 
@@ -1215,8 +1211,6 @@ System information
    :returns: A dataclass containing system memory statistics
    :rtype: VirtualMemoryInfo
 
-   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
-
 .. py:function:: swap_memory()
 
    Return a dataclass containing system swap memory statistics. Currently, the following fields are
@@ -1232,8 +1226,6 @@ System information
 
    :returns: A dataclass containing system swap memory statistics
    :rtype: SwapInfo
-
-   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 .. py:function:: disk_usage(path)
 
@@ -1311,8 +1303,6 @@ System information
    :returns: A dataclass containing information about system CPU times.
    :rtype: CPUTimes
 
-   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
-
 
 .. py:function:: percpu_times()
 
@@ -1320,8 +1310,6 @@ System information
 
    :return: A list of the times of each CPU.
    :rtype: CPUTimes
-
-   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
 .. py:function:: cpu_stats()
