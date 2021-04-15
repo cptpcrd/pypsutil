@@ -634,6 +634,10 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
                 status=status,
             )
 
+            if not info_by_inode:
+                # Exhausted
+                return
+
 
 def net_connections(kind: str) -> Iterator[Connection]:
     # Read all the socket information into memory
@@ -668,6 +672,10 @@ def net_connections(kind: str) -> Iterator[Connection]:
                                 pid=pid,
                                 **info,  # type: ignore[arg-type]
                             )
+
+                            if not infos:
+                                # Exhausted
+                                return
 
         except (FileNotFoundError, PermissionError):
             pass
