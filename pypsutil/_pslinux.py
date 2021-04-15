@@ -502,11 +502,11 @@ _TCP_STATES = {
     4: ConnectionStatus.FIN_WAIT1,
     5: ConnectionStatus.FIN_WAIT2,
     6: ConnectionStatus.TIME_WAIT,
-    7: ConnectionStatus.CONN_CLOSE,
-    8: ConnectionStatus.CONN_CLOSE_WAIT,
-    9: ConnectionStatus.CONN_LAST_ACK,
-    10: ConnectionStatus.CONN_LISTEN,
-    11: ConnectionStatus.CONN_CLOSING,
+    7: ConnectionStatus.CLOSE,
+    8: ConnectionStatus.CLOSE_WAIT,
+    9: ConnectionStatus.LAST_ACK,
+    10: ConnectionStatus.LISTEN,
+    11: ConnectionStatus.CLOSING,
     12: ConnectionStatus.SYN_RECV,
 }
 

@@ -103,11 +103,11 @@ class ConnectionStatus(enum.Enum):
     FIN_WAIT1 = "FIN_WAIT1"
     FIN_WAIT2 = "FIN_WAIT2"
     TIME_WAIT = "TIME_WAIT"
-    CONN_CLOSE = "CONN_CLOSE"
-    CONN_CLOSE_WAIT = "CONN_CLOSE_WAIT"
-    CONN_LAST_ACK = "CONN_LAST_ACK"
-    CONN_LISTEN = "CONN_LISTEN"
-    CONN_CLOSING = "CONN_CLOSING"
+    CLOSE = "CLOSE"
+    CLOSE_WAIT = "CLOSE_WAIT"
+    LAST_ACK = "LAST_ACK"
+    LISTEN = "LISTEN"
+    CLOSING = "CLOSING"
 
 
 @dataclasses.dataclass
