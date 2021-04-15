@@ -4,7 +4,11 @@ import pathlib
 import socket
 from typing import Dict, Iterable, Iterator, Tuple, Union, cast
 
+import pytest
+
 import pypsutil
+
+from .util import get_dead_process
 
 
 @contextlib.contextmanager
@@ -97,6 +101,15 @@ if hasattr(pypsutil.Process, "connections"):
             conns = pypsutil.Process().connections("unix")
             verify_connections(test_socks, conns)
 
+        conns = pypsutil.Process().connections("unix")
+        verify_connections({}, conns)
+
+    def test_proc_connections_no_proc() -> None:
+        proc = get_dead_process()
+
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.connections()
+
 
 if hasattr(pypsutil, "net_connections"):
 
@@ -144,3 +157,10 @@ if hasattr(pypsutil, "net_connections"):
             ]
 
             verify_connections(test_socks, conns)
+
+        conns = [
+            conn
+            for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
+            if conn.pid == cur_pid
+        ]
+        verify_connections({}, conns)
