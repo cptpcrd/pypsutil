@@ -565,13 +565,16 @@ def _list_kinfo_threads(pid: int) -> List[KinfoProc]:
             return proc_arr[:nprocs]
 
 
-def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+def _list_kinfo_files(pid: int) -> List[KinfoFile]:
+    if pid == 0:
+        return []
+
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
     while True:
         nfiles = (
             _bsd.sysctl(
-                [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000],
+                [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, pid, kinfo_file_size, 1000000],
                 None,
                 None,
             )
@@ -583,7 +586,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
         try:
             nfiles = (
                 _bsd.sysctl(
-                    [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, proc.pid, kinfo_file_size, nfiles],
+                    [CTL_KERN, KERN_FILE, KERN_FILE_BYPID, pid, kinfo_file_size, nfiles],
                     None,
                     files,
                 )
@@ -611,19 +614,19 @@ def iter_pids() -> Iterator[int]:
 
 
 def proc_num_fds(proc: "Process") -> int:
-    return sum(kfile.fd_fd >= 0 for kfile in _list_kinfo_files(proc))
+    return sum(kfile.fd_fd >= 0 for kfile in _list_kinfo_files(proc.pid))
 
 
 def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     return [
         ProcessOpenFile(fd=kfile.fd_fd, path="")
-        for kfile in _list_kinfo_files(proc)
+        for kfile in _list_kinfo_files(proc.pid)
         if kfile.fd_fd >= 0 and kfile.f_type == DTYPE_VNODE and kfile.v_type == VREG
     ]
 
 
 def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
-    for kfile in _list_kinfo_files(proc):
+    for kfile in _list_kinfo_files(proc.pid):
         if kfile.fd_fd < 0:
             continue
 
