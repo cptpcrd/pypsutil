@@ -1,7 +1,7 @@
 import contextlib
 import os
-import pathlib
 import socket
+import tempfile
 from typing import Dict, Iterable, Iterator, Tuple, Union, cast
 
 import pytest
@@ -13,7 +13,6 @@ from .util import get_dead_process
 
 @contextlib.contextmanager
 def open_testing_sockets(
-    tmp_path: pathlib.Path,
     *,
     families: Iterable[int] = (socket.AF_INET, socket.AF_INET6, socket.AF_UNIX),
     types: Iterable[int] = (socket.SOCK_STREAM, socket.SOCK_DGRAM, socket.SOCK_SEQPACKET),
@@ -21,53 +20,55 @@ def open_testing_sockets(
     socks = []
     info: Dict[int, Tuple[int, int, Union[Tuple[str, int], str], Union[Tuple[str, int], str]]] = {}
 
-    for family in families:
-        for stype in types:
-            if stype == socket.SOCK_SEQPACKET and family != socket.AF_UNIX:
-                continue
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for family in families:
+            for stype in types:
+                if stype == socket.SOCK_SEQPACKET and family != socket.AF_UNIX:
+                    continue
 
-            if family == socket.AF_UNIX:
+                if family == socket.AF_UNIX:
+                    sock = socket.socket(family, stype)
+                    socks.append(sock)
+                    info[sock.fileno()] = (
+                        family,
+                        stype,
+                        ("" if family == socket.AF_UNIX else ("", 0)),
+                        ("" if family == socket.AF_UNIX else ("", 0)),
+                    )
+
                 sock = socket.socket(family, stype)
+                laddr: Union[Tuple[str, int], str]
+                if family == socket.AF_UNIX:
+                    sock_path = os.path.join(tmpdir, "sock")
+                    try:
+                        os.remove(sock_path)
+                    except FileNotFoundError:
+                        pass
+                    sock.bind(sock_path)
+                    laddr = sock_path
+                elif family == socket.AF_INET6:
+                    sock.bind(("::1", 0))
+                    laddr = cast(Tuple[str, int], tuple(sock.getsockname()[:2]))
+                else:
+                    sock.bind(("127.0.0.1", 0))
+                    laddr = cast(Tuple[str, int], tuple(sock.getsockname()))
+
+                if stype != socket.SOCK_DGRAM:
+                    sock.listen(1)
+
                 socks.append(sock)
                 info[sock.fileno()] = (
                     family,
                     stype,
-                    ("" if family == socket.AF_UNIX else ("", 0)),
+                    laddr,
                     ("" if family == socket.AF_UNIX else ("", 0)),
                 )
 
-            sock = socket.socket(family, stype)
-            laddr: Union[Tuple[str, int], str]
-            if family == socket.AF_UNIX:
-                try:
-                    os.remove(tmp_path / "sock")
-                except FileNotFoundError:
-                    pass
-                sock.bind(str(tmp_path / "sock"))
-                laddr = str(tmp_path / "sock")
-            elif family == socket.AF_INET6:
-                sock.bind(("::1", 0))
-                laddr = cast(Tuple[str, int], tuple(sock.getsockname()[:2]))
-            else:
-                sock.bind(("127.0.0.1", 0))
-                laddr = cast(Tuple[str, int], tuple(sock.getsockname()))
-
-            if stype != socket.SOCK_DGRAM:
-                sock.listen(1)
-
-            socks.append(sock)
-            info[sock.fileno()] = (
-                family,
-                stype,
-                laddr,
-                ("" if family == socket.AF_UNIX else ("", 0)),
-            )
-
-    try:
-        yield info
-    finally:
-        for sock in socks:
-            sock.close()
+        try:
+            yield info
+        finally:
+            for sock in socks:
+                sock.close()
 
 
 def verify_connections(
@@ -95,30 +96,30 @@ def verify_connections(
 
 if hasattr(pypsutil.Process, "connections"):
 
-    def test_proc_connections(tmp_path: pathlib.Path) -> None:
+    def test_proc_connections() -> None:
         existing_conn_fds = {conn.fd for conn in pypsutil.Process().connections("all")}
 
-        with open_testing_sockets(tmp_path) as test_socks:
+        with open_testing_sockets() as test_socks:
             conns = pypsutil.Process().connections("all")
             verify_connections(
                 test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
             )
 
-        with open_testing_sockets(tmp_path, families=[socket.AF_INET]) as test_socks:
+        with open_testing_sockets(families=[socket.AF_INET]) as test_socks:
             conns = pypsutil.Process().connections("inet")
             verify_connections(
                 test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
             )
 
         with open_testing_sockets(
-            tmp_path, families=[socket.AF_INET, socket.AF_INET6], types=[socket.SOCK_DGRAM]
+            families=[socket.AF_INET, socket.AF_INET6], types=[socket.SOCK_DGRAM]
         ) as test_socks:
             conns = pypsutil.Process().connections("udp")
             verify_connections(
                 test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
             )
 
-        with open_testing_sockets(tmp_path, families=[socket.AF_UNIX]) as test_socks:
+        with open_testing_sockets(families=[socket.AF_UNIX]) as test_socks:
             conns = pypsutil.Process().connections("unix")
             verify_connections(
                 test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds]
@@ -136,7 +137,7 @@ if hasattr(pypsutil.Process, "connections"):
 
 if hasattr(pypsutil, "net_connections"):
 
-    def test_net_connections_all(tmp_path: pathlib.Path) -> None:
+    def test_net_connections_all() -> None:
         # pylint: disable=no-member
 
         cur_pid = os.getpid()
@@ -147,9 +148,7 @@ if hasattr(pypsutil, "net_connections"):
             if conn.pid == cur_pid
         }
 
-        with open_testing_sockets(
-            tmp_path,
-        ) as test_socks:
+        with open_testing_sockets() as test_socks:
             conns = [
                 conn
                 for conn in pypsutil.net_connections("all")  # type: ignore[attr-defined]
@@ -158,7 +157,7 @@ if hasattr(pypsutil, "net_connections"):
 
             verify_connections(test_socks, conns)
 
-        with open_testing_sockets(tmp_path, families=[socket.AF_INET]) as test_socks:
+        with open_testing_sockets(families=[socket.AF_INET]) as test_socks:
             conns = [
                 conn
                 for conn in pypsutil.net_connections("inet")  # type: ignore[attr-defined]
@@ -168,7 +167,7 @@ if hasattr(pypsutil, "net_connections"):
             verify_connections(test_socks, conns)
 
         with open_testing_sockets(
-            tmp_path, families=[socket.AF_INET, socket.AF_INET6], types=[socket.SOCK_DGRAM]
+            families=[socket.AF_INET, socket.AF_INET6], types=[socket.SOCK_DGRAM]
         ) as test_socks:
             conns = [
                 conn
@@ -178,7 +177,7 @@ if hasattr(pypsutil, "net_connections"):
 
             verify_connections(test_socks, conns)
 
-        with open_testing_sockets(tmp_path, families=[socket.AF_UNIX]) as test_socks:
+        with open_testing_sockets(families=[socket.AF_UNIX]) as test_socks:
             conns = [
                 conn
                 for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
