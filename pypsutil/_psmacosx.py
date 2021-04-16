@@ -12,7 +12,14 @@ from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Un
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._ffi import gid_t, pid_t, uid_t
-from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessStatus
+from ._util import (
+    Connection,
+    ConnectionStatus,
+    ProcessCPUTimes,
+    ProcessFd,
+    ProcessFdType,
+    ProcessStatus,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -114,6 +121,8 @@ KERN_RIGHT_EXISTS = 21
 KERN_INVALID_HOST = 22
 KERN_TERMINATED = 37
 KERN_DENIED = 53
+
+TSI_T_NTIMERS = 4
 
 SOCK_MAXADDRLEN = 255
 
@@ -262,6 +271,28 @@ class SockaddrUn(ctypes.Structure):
         ("sun_len", ctypes.c_uint8),
         ("sun_family", sa_family_t),
         ("sun_path", (ctypes.c_char * 104)),
+    ]
+
+
+class InAddr(ctypes.Structure):
+    _fields_ = [
+        ("s_addr", ctypes.c_uint32),
+    ]
+
+
+class In6Addr(ctypes.Structure):
+    _fields_ = [
+        ("s6_addr", (ctypes.c_uint8 * 16)),
+    ]
+
+    def pack(self) -> int:
+        return sum(val << (120 - i * 8) for i, val in enumerate(self.s6_addr))
+
+
+class In4In6Addr(ctypes.Structure):
+    _fields_ = [
+        ("ia46_pad32", (ctypes.c_uint32 * 3)),
+        ("ia46_addr4", InAddr),
     ]
 
 
@@ -462,11 +493,69 @@ class KqueueInfo(ctypes.Structure):
     ]
 
 
+class InSockinfoAddr(ctypes.Union):
+    _fields_ = [
+        ("ina_46", In4In6Addr),
+        ("ina_6", In6Addr),
+    ]
+
+    def to_tuple(self, family: int, port: int) -> Tuple[str, int]:
+        if family == socket.AF_INET:
+            return _util.decode_inet4_full(
+                self.ina_46.ia46_addr4.s_addr,
+                _util.cvt_endian_ntoh(port, 2),
+            )
+        elif family == socket.AF_INET6:
+            return _util.decode_inet6_full(
+                self.ina_6.pack(),
+                _util.cvt_endian_ntoh(port, 2),
+                native=False,
+            )
+        else:
+            raise ValueError
+
+
+class InSockinfoInsiV4(ctypes.Structure):
+    _fields_ = [
+        ("in4_tos", ctypes.c_uint8),
+    ]
+
+
+class InSockinfoInsiV6(ctypes.Structure):
+    _fields_ = [
+        ("in6_hlim", ctypes.c_uint8),
+        ("in6_cksum", ctypes.c_int),
+        ("in6_ifindex", ctypes.c_ushort),
+        ("in6_hops", ctypes.c_short),
+    ]
+
+
 class InSockinfo(ctypes.Structure):
     _fields_ = [
         ("insi_fport", ctypes.c_int),
         ("insi_lport", ctypes.c_int),
-        # TODO: Add missing fields
+        ("insi_gencnt", ctypes.c_uint64),
+        ("insi_flags", ctypes.c_uint32),
+        ("insi_flow", ctypes.c_uint32),
+        ("insi_vflag", ctypes.c_uint8),
+        ("insi_ip_ttl", ctypes.c_uint8),
+        ("rfu_1", ctypes.c_uint32),
+        ("insi_faddr", InSockinfoAddr),
+        ("insi_laddr", InSockinfoAddr),
+        ("insi_v4", InSockinfoInsiV4),
+        ("insi_v6", InSockinfoInsiV6),
+    ]
+
+
+class TcpSockinfo(ctypes.Structure):
+    _fields_ = [
+        ("tcpsi_ini", InSockinfo),
+        ("tcpsi_state", ctypes.c_int),
+        ("tcpsi_timer", (ctypes.c_int * TSI_T_NTIMERS)),
+        ("tcpsi_mss", ctypes.c_int),
+        ("tcpsi_flags", ctypes.c_uint32),
+        ("rfu_1", ctypes.c_uint32),
+        ("tcpsi_tp", ctypes.c_uint64),
     ]
 
 
@@ -491,12 +580,24 @@ class SockInfoProto(ctypes.Union):
         # TODO: Fill out missing structures
         # (UnSockinfo is the largest field, so this should still be long enough)
         ("pri_in", InSockinfo),
-        # ("pri_tcp", TcpSockinfo),
+        ("pri_tcp", TcpSockinfo),
         ("pri_un", UnSockinfo),
         # ("pri_ndrv", NdrvInfo),
         # ("pri_kern_event", KernEventInfo),
         # ("pri_kern_ctl", KernCtlInfo),
         # ("pri_vsock", VsockSockinfo),
+    ]
+
+
+class SockbufInfo(ctypes.Structure):
+    _fields_ = [
+        ("sbi_cc", ctypes.c_uint32),
+        ("sbi_hiwat", ctypes.c_uint32),
+        ("sbi_mbcnt", ctypes.c_uint32),
+        ("sbi_mbmax", ctypes.c_uint32),
+        ("sbi_lowat", ctypes.c_uint32),
+        ("sbi_flags", ctypes.c_short),
+        ("sbi_timeo", ctypes.c_short),
     ]
 
 
@@ -517,6 +618,8 @@ class SocketInfo(ctypes.Structure):
         ("soi_timeo", ctypes.c_short),
         ("soi_error", ctypes.c_ushort),
         ("soi_oobmark", ctypes.c_uint32),
+        ("soi_rcv", SockbufInfo),
+        ("soi_snd", SockbufInfo),
         ("rfu_1", ctypes.c_uint32),
         ("soi_proto", SockInfoProto),
     ]
@@ -996,10 +1099,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                 extra_info["type"] = sinfo.psi.soi_type
 
                 if sinfo.psi.soi_family == socket.AF_UNIX:
-                    path = os.fsdecode(
-                        sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path
-                        or sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path
-                    )
+                    path = os.fsdecode(sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path)
 
                 elif sinfo.psi.soi_family in (socket.AF_INET, socket.AF_INET6):
                     extra_info["local_port"] = sinfo.psi.soi_proto.pri_in.insi_lport
@@ -1068,6 +1168,75 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             size=size,
             mode=mode,
             extra_info=extra_info,
+        )
+
+
+_TCP_STATES = {
+    0: ConnectionStatus.CLOSE,
+    1: ConnectionStatus.LISTEN,
+    2: ConnectionStatus.SYN_SENT,
+    3: ConnectionStatus.SYN_RECV,
+    4: ConnectionStatus.ESTABLISHED,
+    5: ConnectionStatus.CLOSE_WAIT,
+    6: ConnectionStatus.FIN_WAIT1,
+    7: ConnectionStatus.CLOSING,
+    8: ConnectionStatus.LAST_ACK,
+    9: ConnectionStatus.FIN_WAIT2,
+    10: ConnectionStatus.TIME_WAIT,
+}
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    allowed_combos = _util.conn_kind_to_combos(kind)
+    if not allowed_combos:
+        return
+
+    for fdinfo in _list_proc_fds(proc):
+        if fdinfo.proc_fdtype != PROX_FDTYPE_SOCKET:
+            continue
+
+        try:
+            sinfo = SocketFdInfo()
+            _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
+        except OSError as ex:
+            if ex.errno in (errno.ENOENT, errno.EBADF):
+                continue
+            else:
+                raise
+
+        family = socket.AddressFamily(sinfo.psi.soi_family)  # pylint: disable=no-member
+        stype = socket.SocketKind(sinfo.psi.soi_type)  # pylint: disable=no-member
+
+        laddr: Union[Tuple[str, int], str]
+        raddr: Union[Tuple[str, int], str]
+        status = None
+
+        if family == socket.AF_UNIX:
+            laddr = os.fsdecode(sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path)
+            raddr = os.fsdecode(sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path)
+
+        elif family in (socket.AF_INET, socket.AF_INET6):
+            laddr = sinfo.psi.soi_proto.pri_in.insi_laddr.to_tuple(
+                family, sinfo.psi.soi_proto.pri_in.insi_lport
+            )
+            raddr = sinfo.psi.soi_proto.pri_in.insi_faddr.to_tuple(
+                family, sinfo.psi.soi_proto.pri_in.insi_fport
+            )
+
+            if stype == socket.SOCK_STREAM:
+                status = _TCP_STATES[sinfo.psi.soi_proto.pri_tcp.tcpsi_state]
+
+        else:
+            continue
+
+        yield Connection(
+            family=family,
+            type=stype,
+            laddr=laddr,
+            raddr=raddr,
+            status=status,
+            fd=fdinfo.proc_fd,
+            pid=proc.pid,
         )
 
 
