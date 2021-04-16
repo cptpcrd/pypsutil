@@ -649,7 +649,7 @@ class InAddr4in6(ctypes.Structure):
     ]
 
 
-class InDependaddr(ctypes.Structure):
+class InDependaddr(ctypes.Union):
     _fields_ = [
         ("id46_addr", InAddr4in6),
         ("id6_addr", In6Addr),
@@ -745,7 +745,7 @@ class XInpCb(ctypes.Structure):
 class XTcpCb(ctypes.Structure):
     _fields_ = [
         ("xt_len", ctypes.c_uint64),
-        ("xt_in", XInpCb),
+        ("xt_inp", XInpCb),
         ("xt_stack", (ctypes.c_char * TCP_FUNCTION_NAME_LEN_MAX)),
         ("xt_logid", (ctypes.c_char * TCP_LOG_ID_LEN)),
         ("xt_cc", (ctypes.c_char * TCP_CA_NAME_MAX)),
@@ -1032,6 +1032,12 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         )
 
 
+def _iter_tcp_pcblist() -> Iterator[XTcpCb]:
+    pcblist_data = _bsd.sysctlbyname_bytes_retry("net.inet.tcp.pcblist", None)
+
+    return cast(Iterator[XTcpCb], _util.iter_packed_structures(pcblist_data, XTcpCb, "xt_len"))
+
+
 _TCP_STATES = {
     0: ConnectionStatus.CLOSE,
     1: ConnectionStatus.LISTEN,
@@ -1056,8 +1062,6 @@ _ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
 
 
 def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
-    # _bsd.sysctl_bytes_retry("net.inet.tcp.pcblist")
-
     allowed_families = _ALL_FAMILIES
     allowed_types = _ALL_STYPES
     if kind == "all":
@@ -1097,6 +1101,8 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
 
     if kind in ("all", "unix"):
         allowed_combos.add((socket.AF_UNIX, socket.SOCK_SEQPACKET))
+
+    socket_states = None
 
     for kfile in _iter_kinfo_files(proc):
         if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
@@ -1152,6 +1158,16 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
         else:
             # We shouldn't get here
             continue
+
+        if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
+            if socket_states is None:
+                socket_states = {
+                    xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()
+                }
+
+            if socket_states is not None:
+                if kfile.kf_un.kf_sock.kf_sock_pcb in socket_states:
+                    status = _TCP_STATES[socket_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
 
         yield Connection(
             family=family,
