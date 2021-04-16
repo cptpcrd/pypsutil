@@ -665,7 +665,7 @@ Process information
       :returns: A list of :py:class:`Connection` s
       :rtype: list[Connection]
 
-      Availability: Linux, FreeBSD
+      Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
    .. py:method:: is_running()
 
@@ -1333,10 +1333,12 @@ System information
 
    See :py:meth:`Process.connections()` for information on the possible values of ``kind``.
 
+   Note that on macOS this function currently only works if the process is running as root.
+
    :returns: A list of :py:class:`Connection` s
    :rtype: list[Connection]
 
-   Availability: Linux
+   Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
 Sensor information
