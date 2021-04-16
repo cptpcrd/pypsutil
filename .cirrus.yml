@@ -53,7 +53,7 @@ task:
     - pipenv install --dev --deploy
 
   test_script:
-    - pipenv run pytest --cov-report=xml --verbose tests/
+    - pipenv run pytest --cov-report=xml --verbose --showlocals tests/
 
   codecov_upload_script:
     - OS="$FREEBSD_IMAGE" bash <(curl -s https://codecov.io/bash) -e OS,PYTHON_VERSION -n "$FREEBSD_IMAGE-$PYTHON_VERSION" -Z
