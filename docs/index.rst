@@ -665,7 +665,7 @@ Process information
       :returns: A list of :py:class:`Connection` s
       :rtype: list[Connection]
 
-      Availability: Linux
+      Availability: Linux, FreeBSD
 
    .. py:method:: is_running()
 
@@ -1052,6 +1052,10 @@ Process information
         :type: ConnectionStatus or None
 
         The TCP connection status (for inet TCP sockets only).
+
+        .. note::
+
+            On FreeBSD, this is currently always ``None``.
 
    .. py:attribute:: fd
 

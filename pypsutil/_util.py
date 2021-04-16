@@ -457,7 +457,7 @@ def decode_inet6_full(addr: int, port: int, *, native: bool = True) -> Tuple[str
 
 if sys.byteorder == "big":
 
-    def cvt_endian_hton(hostval: int, widthbytes: int) -> int:
+    def cvt_endian_hton(hostval: int, widthbytes: int) -> int:  # pylint: disable=unused-argument
         return hostval
 
 

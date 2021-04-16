@@ -5,13 +5,22 @@ import errno
 import fcntl
 import os
 import resource
+import socket
 import sys
 import time
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
+from ._util import (
+    Connection,
+    ConnectionStatus,
+    ProcessCPUTimes,
+    ProcessFd,
+    ProcessFdType,
+    ProcessSignalMasks,
+    ProcessStatus,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -117,6 +126,10 @@ suseconds_t = ctypes.c_long
 
 sa_family_t = ctypes.c_uint8
 
+in_port_t = ctypes.c_uint16
+
+SUNPATHLEN = 104
+
 _SS_MAXSIZE = 128
 _SS_ALIGNSIZE = ctypes.sizeof(ctypes.c_int64)
 _SS_PAD1SIZE = _SS_ALIGNSIZE - ctypes.sizeof(ctypes.c_ubyte) - ctypes.sizeof(sa_family_t)
@@ -131,6 +144,10 @@ _SS_PAD2SIZE = (
 CAP_RIGHTS_VERSION = 0
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
+
+TCP_FUNCTION_NAME_LEN_MAX = 32
+TCP_LOG_ID_LEN = 64
+TCP_CA_NAME_MAX = 16
 
 # https://github.com/freebsd/freebsd/blob/master/sys/sys/ioccom.h#L43
 IOCPARM_SHIFT = 13
@@ -572,6 +589,215 @@ class KinfoVmentry(ctypes.Structure):
     ]
 
 
+class InAddr(ctypes.Structure):
+    _fields_ = [
+        ("s_addr", ctypes.c_uint32),
+    ]
+
+
+class In6Addr(ctypes.Structure):
+    _fields_ = [
+        ("s6_addr", (ctypes.c_uint8 * 16)),
+    ]
+
+
+class SockaddrIn(ctypes.Structure):
+    _fields_ = [
+        ("sin_len", ctypes.c_uint8),
+        ("sin_family", sa_family_t),
+        ("sin_port", in_port_t),
+        ("sin_addr", InAddr),
+        ("sin_zero", (ctypes.c_int8 * 8)),
+    ]
+
+    def to_tuple(self) -> Tuple[str, int]:
+        return _util.decode_inet4_full(
+            self.sin_addr.s_addr, _util.cvt_endian_ntoh(self.sin_port, ctypes.sizeof(in_port_t))
+        )
+
+
+class SockaddrIn6(ctypes.Structure):
+    _fields_ = [
+        ("sin6_len", ctypes.c_uint8),
+        ("sin6_family", sa_family_t),
+        ("sin6_port", in_port_t),
+        ("sin6_flowinfo", ctypes.c_uint32),
+        ("sin6_addr", In6Addr),
+        ("sin6_scope_id", ctypes.c_uint32),
+    ]
+
+    def to_tuple(self) -> Tuple[str, int]:
+        return _util.decode_inet6_full(
+            sum(val << (120 - i * 8) for i, val in enumerate(self.sin6_addr.s6_addr)),
+            _util.cvt_endian_ntoh(self.sin6_port, ctypes.sizeof(in_port_t)),
+            native=False,
+        )
+
+
+class SockaddrUn(ctypes.Structure):
+    _fields_ = [
+        ("sun_len", ctypes.c_uint8),
+        ("sun_family", sa_family_t),
+        ("sun_path", (ctypes.c_char * SUNPATHLEN)),
+    ]
+
+
+class InAddr4in6(ctypes.Structure):
+    _fields_ = [
+        ("ia46_pad32", (ctypes.c_uint32 * 3)),
+        ("ia46_addr4", InAddr),
+    ]
+
+
+class InDependaddr(ctypes.Structure):
+    _fields_ = [
+        ("id46_addr", InAddr4in6),
+        ("id6_addr", In6Addr),
+    ]
+
+
+class InEndpoints(ctypes.Structure):
+    _fields_ = [
+        ("ie_fport", ctypes.c_uint16),
+        ("ie_lport", ctypes.c_uint16),
+        ("ie_dependfaddr", InDependaddr),
+        ("ie_dependladdr", InDependaddr),
+        ("ie6_zoneid", ctypes.c_uint32),
+    ]
+
+
+class InConninfo(ctypes.Structure):
+    _fields_ = [
+        ("inc_flags", ctypes.c_uint8),
+        ("inc_len", ctypes.c_uint8),
+        ("inc_fibnum", ctypes.c_uint16),
+        ("inc_ie", InEndpoints),
+    ]
+
+
+class XSockBuf(ctypes.Structure):
+    _fields_ = [
+        ("sb_cc", ctypes.c_uint32),
+        ("sb_hiwat", ctypes.c_uint32),
+        ("sb_mbcnt", ctypes.c_uint32),
+        ("sb_mcnt", ctypes.c_uint32),
+        ("sb_ccnt", ctypes.c_uint32),
+        ("sb_mbmax", ctypes.c_uint32),
+        ("sb_lowat", ctypes.c_int32),
+        ("sb_timeo", ctypes.c_int32),
+        ("sb_flags", ctypes.c_int16),
+    ]
+
+
+class XSocket(ctypes.Structure):
+    _fields_ = [
+        ("xso_len", ctypes.c_uint64),
+        ("xso_so", ctypes.c_uint64),
+        ("so_pcb", ctypes.c_uint64),
+        ("so_oobmark", ctypes.c_uint64),
+        ("so_spare64", (ctypes.c_int64 * 8)),
+        ("xso_protocol", ctypes.c_int32),
+        ("xso_family", ctypes.c_int32),
+        ("so_qlen", ctypes.c_uint32),
+        ("so_incqlen", ctypes.c_uint32),
+        ("so_qlimit", ctypes.c_uint32),
+        ("so_pgid", _ffi.pid_t),
+        ("so_uid", _ffi.uid_t),
+        ("so_spare", (ctypes.c_int32 * 8)),
+        ("so_type", ctypes.c_int16),
+        ("so_options", ctypes.c_int16),
+        ("so_linger", ctypes.c_int16),
+        ("so_state", ctypes.c_int16),
+        ("so_timeo", ctypes.c_int16),
+        ("so_error", ctypes.c_uint16),
+        ("so_rcv", XSockBuf),
+        ("so_send", XSockBuf),
+    ]
+
+
+class XInpCb(ctypes.Structure):
+    _fields_ = [
+        ("xi_len", ctypes.c_uint64),
+        ("xi_socket", XSocket),
+        ("inp_inc", InConninfo),
+        ("inp_gencnt", ctypes.c_uint64),
+        ("inp_ppcb", ctypes.c_uint64),
+        ("inp_spare64", (ctypes.c_int64 * 4)),
+        ("inp_flow", ctypes.c_uint32),
+        ("inp_flowid", ctypes.c_uint32),
+        ("inp_flowtype", ctypes.c_uint32),
+        ("inp_flags", ctypes.c_int32),
+        ("inp_flags2", ctypes.c_int32),
+        ("inp_rss_listen_bucket", ctypes.c_int32),
+        ("in6p_cksum", ctypes.c_int32),
+        ("inp_spare32", (ctypes.c_int32 * 4)),
+        ("in6p_hops", ctypes.c_uint16),
+        ("inp_ip_tos", ctypes.c_uint8),
+        ("pad8", ctypes.c_int8),
+        ("inp_vflag", ctypes.c_uint8),
+        ("inp_ip_ttl", ctypes.c_uint8),
+        ("inp_ip_p", ctypes.c_uint8),
+        ("inp_ip_minttl", ctypes.c_uint8),
+        ("inp_spare8", (ctypes.c_int8 * 4)),
+    ]
+
+
+class XTcpCb(ctypes.Structure):
+    _fields_ = [
+        ("xt_len", ctypes.c_uint64),
+        ("xt_in", XInpCb),
+        ("xt_stack", (ctypes.c_char * TCP_FUNCTION_NAME_LEN_MAX)),
+        ("xt_logid", (ctypes.c_char * TCP_LOG_ID_LEN)),
+        ("xt_cc", (ctypes.c_char * TCP_CA_NAME_MAX)),
+        ("spare64", (ctypes.c_int64 * 6)),
+        ("t_state", ctypes.c_int32),
+        ("t_flags", ctypes.c_uint32),
+        ("t_sndzerowin", ctypes.c_int32),
+        ("t_sndrexmitpack", ctypes.c_int32),
+        ("t_rcvoopack", ctypes.c_int32),
+        ("t_rcvtime", ctypes.c_int32),
+        ("tt_rexmt", ctypes.c_int32),
+        ("tt_persist", ctypes.c_int32),
+        ("tt_keep", ctypes.c_int32),
+        ("tt_2msl", ctypes.c_int32),
+        ("tt_delack", ctypes.c_int32),
+        ("t_logstate", ctypes.c_int32),
+        ("t_snd_cwnd", ctypes.c_uint32),
+        ("t_snd_ssthresh", ctypes.c_uint32),
+        ("t_maxseg", ctypes.c_uint32),
+        ("t_rcv_wnd", ctypes.c_uint32),
+        ("t_snd_wnd", ctypes.c_uint32),
+        ("xt_ecn", ctypes.c_uint32),
+        ("spare32", (ctypes.c_int32 * 26)),
+    ]
+
+
+class XUnpCbAddr(ctypes.Structure):
+    _fields_ = [
+        ("xu_addr", SockaddrUn),
+        ("xu_dummy", (ctypes.c_char * 256)),
+    ]
+
+
+class XUnpCb(ctypes.Structure):
+    _pack_ = max(ctypes.sizeof(ctypes.c_void_p), 8)
+
+    _fields_ = [
+        ("xu_len", ctypes.c_uint64),
+        ("xu_unpp", ctypes.c_uint64),
+        ("unp_vnode", ctypes.c_uint64),
+        ("unp_conn", ctypes.c_uint64),
+        ("xu_firstref", ctypes.c_uint64),
+        ("xu_nextref", ctypes.c_uint64),
+        ("unp_gencnt", ctypes.c_uint64),
+        ("xu_spare64", (ctypes.c_int64 * 8)),
+        ("xu_spare32", (ctypes.c_int32 * 8)),
+        ("xu_addr", XUnpCbAddr),
+        ("xu_caddr", XUnpCbAddr),
+        ("xu_socket", XSocket),
+    ]
+
+
 class XswDev(ctypes.Structure):
     _fields_ = [
         ("xsw_version", ctypes.c_uint),
@@ -803,6 +1029,138 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             size=size,
             mode=mode,
             extra_info=extra_info,
+        )
+
+
+_TCP_STATES = {
+    0: ConnectionStatus.CLOSE,
+    1: ConnectionStatus.LISTEN,
+    2: ConnectionStatus.SYN_SENT,
+    3: ConnectionStatus.SYN_RECV,
+    4: ConnectionStatus.ESTABLISHED,
+    5: ConnectionStatus.CLOSE_WAIT,
+    6: ConnectionStatus.FIN_WAIT1,
+    7: ConnectionStatus.CLOSING,
+    8: ConnectionStatus.LAST_ACK,
+    9: ConnectionStatus.FIN_WAIT2,
+    10: ConnectionStatus.TIME_WAIT,
+}
+
+
+_ALL_FAMILIES = [
+    socket.AF_INET,
+    socket.AF_INET6,
+    socket.AF_UNIX,
+]
+_ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    # _bsd.sysctl_bytes_retry("net.inet.tcp.pcblist")
+
+    allowed_families = _ALL_FAMILIES
+    allowed_types = _ALL_STYPES
+    if kind == "all":
+        pass
+
+    elif kind == "inet":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
+    elif kind == "inet4":
+        allowed_families = [socket.AF_INET]
+    elif kind == "inet6":
+        allowed_families = [socket.AF_INET6]
+
+    elif kind == "tcp":
+        allowed_types = [socket.SOCK_STREAM]
+    elif kind == "tcp4":
+        allowed_families = [socket.AF_INET]
+        allowed_types = [socket.SOCK_STREAM]
+    elif kind == "tcp6":
+        allowed_families = [socket.AF_INET6]
+        allowed_types = [socket.SOCK_STREAM]
+
+    elif kind == "udp":
+        allowed_types = [socket.SOCK_DGRAM]
+    elif kind == "udp4":
+        allowed_families = [socket.AF_INET]
+        allowed_types = [socket.SOCK_DGRAM]
+    elif kind == "udp6":
+        allowed_families = [socket.AF_INET6]
+        allowed_types = [socket.SOCK_DGRAM]
+
+    elif kind == "unix":
+        allowed_families = [socket.AF_UNIX]
+    else:
+        return
+
+    allowed_combos = {(family, stype) for family in allowed_families for stype in allowed_types}
+
+    if kind in ("all", "unix"):
+        allowed_combos.add((socket.AF_UNIX, socket.SOCK_SEQPACKET))
+
+    for kfile in _iter_kinfo_files(proc):
+        if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
+            continue
+
+        family = kfile.kf_un.kf_sock.kf_sock_domain0
+        stype = kfile.kf_un.kf_sock.kf_sock_type0
+
+        if (family, stype) not in allowed_combos:
+            continue
+
+        status = None
+
+        laddr: Union[Tuple[str, int], str]
+        raddr: Union[Tuple[str, int], str]
+
+        if family == socket.AF_INET:
+            laddr = (
+                SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_INET
+                else ("", 0)
+            )
+            raddr = (
+                SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
+                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_INET
+                else ("", 0)
+            )
+
+        if family == socket.AF_INET6:
+            laddr = (
+                SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_INET6
+                else ("", 0)
+            )
+            raddr = (
+                SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
+                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_INET6
+                else ("", 0)
+            )
+
+        elif family == socket.AF_UNIX:
+            laddr = (
+                os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path)
+                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_UNIX
+                else ""
+            )
+            raddr = (
+                os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path)
+                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_UNIX
+                else ""
+            )
+
+        else:
+            # We shouldn't get here
+            continue
+
+        yield Connection(
+            family=family,
+            type=stype,
+            laddr=laddr,
+            raddr=raddr,
+            status=status,
+            fd=kfile.kf_fd,
+            pid=proc.pid,
         )
 
 
