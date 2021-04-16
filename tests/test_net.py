@@ -142,7 +142,9 @@ if hasattr(pypsutil, "net_connections"):
         cur_pid = os.getpid()
 
         existing_conn_fds = {
-            conn.fd for conn in pypsutil.net_connections("all") if conn.pid == cur_pid
+            conn.fd
+            for conn in pypsutil.net_connections("all")  # type: ignore[attr-defined]
+            if conn.pid == cur_pid
         }
 
         with open_testing_sockets(
