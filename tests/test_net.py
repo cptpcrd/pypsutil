@@ -79,6 +79,11 @@ def verify_connections(
         assert conn.laddr == laddr or conn.laddr == ("" if family == socket.AF_UNIX else ("", 0))
         assert conn.raddr == raddr or conn.raddr == ("" if family == socket.AF_UNIX else ("", 0))
 
+        if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
+            assert conn.status is not None
+        else:
+            assert conn.status is None
+
 
 if hasattr(pypsutil.Process, "connections"):
 
