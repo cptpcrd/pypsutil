@@ -4,6 +4,7 @@ import dataclasses
 import errno
 import functools
 import os
+import socket
 import stat
 import time
 from typing import (
@@ -16,11 +17,20 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
+    Union,
     cast,
 )
 
 from . import _bsd, _cache, _ffi, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
+from ._util import (
+    Connection,
+    ConnectionStatus,
+    ProcessCPUTimes,
+    ProcessFd,
+    ProcessFdType,
+    ProcessSignalMasks,
+    ProcessStatus,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -50,6 +60,8 @@ KERN_FILE2 = 77
 KERN_FILE_BYPID = 2
 
 HW_PHYSMEM64 = 13
+
+PCB_ALL = 0
 
 VM_METER = 1
 VM_UVMEXP2 = 5
@@ -88,6 +100,9 @@ KI_NOCPU = 2 ** 64 - 1
 rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
+
+sa_family_t = ctypes.c_uint8  # pylint: disable=invalid-name
+in_port_t = ctypes.c_uint16  # pylint: disable=invalid-name
 
 rlimit_max_value = _ffi.ctypes_int_max(rlim_t)
 
@@ -367,6 +382,116 @@ class KinfoFile(ctypes.Structure):
         ("ki_fd", ctypes.c_int32),
         ("ki_ofileflags", ctypes.c_uint32),
         ("_ki_padto64bits", ctypes.c_uint32),
+    ]
+
+
+class Sockaddr(ctypes.Structure):
+    _fields_ = [
+        ("sa_len", ctypes.c_uint8),
+        ("sa_family", sa_family_t),
+        ("sa_data", (ctypes.c_char * 14)),
+    ]
+
+
+class InAddr(ctypes.Structure):
+    _fields_ = [
+        ("s_addr", ctypes.c_uint32),
+    ]
+
+
+class In6Addr(ctypes.Structure):
+    _fields_ = [
+        ("s6_addr", (ctypes.c_uint8 * 16)),
+    ]
+
+    def pack(self) -> int:
+        return sum(val << (120 - i * 8) for i, val in enumerate(self.s6_addr))
+
+
+class SockaddrIn(ctypes.Structure):
+    _fields_ = [
+        ("sin_len", ctypes.c_uint8),
+        ("sin_family", sa_family_t),
+        ("sin_port", in_port_t),
+        ("sin_addr", InAddr),
+        ("sin_zero", (ctypes.c_int8 * 8)),
+    ]
+
+    def to_tuple(self) -> Tuple[str, int]:
+        return _util.decode_inet4_full(
+            self.sin_addr.s_addr, _util.cvt_endian_ntoh(self.sin_port, ctypes.sizeof(in_port_t))
+        )
+
+
+class SockaddrIn6(ctypes.Structure):
+    _fields_ = [
+        ("sin6_len", ctypes.c_uint8),
+        ("sin6_family", sa_family_t),
+        ("sin6_port", in_port_t),
+        ("sin6_flowinfo", ctypes.c_uint32),
+        ("sin6_addr", In6Addr),
+        ("sin6_scope_id", ctypes.c_uint32),
+    ]
+
+    def to_tuple(self) -> Tuple[str, int]:
+        return _util.decode_inet6_full(
+            self.sin6_addr.pack(),
+            _util.cvt_endian_ntoh(self.sin6_port, ctypes.sizeof(in_port_t)),
+            native=False,
+        )
+
+
+class SockaddrUn(ctypes.Structure):
+    _fields_ = [
+        ("sun_len", ctypes.c_uint8),
+        ("sun_family", sa_family_t),
+        ("sun_path", (ctypes.c_char * 104)),
+    ]
+
+
+class KinfoPcbAddr(ctypes.Union):
+    _fields_ = [
+        ("addr", Sockaddr),
+        ("_ki_pad", (ctypes.c_char * (256 + 8))),
+    ]
+
+    def to_addr(self, family: int) -> Union[Tuple[str, int], str]:
+        if self.addr.sa_family == 0:
+            return "" if family == socket.AF_UNIX else ("", 0)
+
+        assert self.addr.sa_family == family
+        if family == socket.AF_INET:
+            return SockaddrIn.from_buffer(self).to_tuple()
+        elif family == socket.AF_INET6:
+            return SockaddrIn6.from_buffer(self).to_tuple()
+        elif family == socket.AF_UNIX:
+            return os.fsdecode(SockaddrUn.from_buffer(self).sun_path)
+        else:
+            raise ValueError
+
+
+class KinfoPcb(ctypes.Structure):
+    _fields_ = [
+        ("ki_pcbaddr", ctypes.c_uint64),
+        ("ki_ppcbaddr", ctypes.c_uint64),
+        ("ki_sockaddr", ctypes.c_uint64),
+        ("ki_family", ctypes.c_uint32),
+        ("ki_type", ctypes.c_uint32),
+        ("ki_protocol", ctypes.c_uint32),
+        ("ki_pflags", ctypes.c_uint32),
+        ("ki_sostate", ctypes.c_uint32),
+        ("ki_prstate", ctypes.c_uint32),
+        ("ki_tstate", ctypes.c_int32),
+        ("ki_tflags", ctypes.c_uint32),
+        ("ki_rcvq", ctypes.c_uint64),
+        ("ki_sndq", ctypes.c_uint64),
+        ("ki_s", KinfoPcbAddr),
+        ("ki_d", KinfoPcbAddr),
+        ("ki_inode", ctypes.c_uint64),
+        ("ki_vnode", ctypes.c_uint64),
+        ("ki_conn", ctypes.c_uint64),
+        ("ki_refs", ctypes.c_uint64),
+        ("ki_nextref", ctypes.c_uint64),
     ]
 
 
@@ -701,6 +826,108 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             mode=mode,
             extra_info=extra_info,
         )
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    return pid_connections(proc.pid, kind)
+
+
+def net_connections(kind: str) -> Iterator[Connection]:
+    return pid_connections(-1, kind)
+
+
+_TCP_STATES = {
+    0: ConnectionStatus.CLOSE,
+    1: ConnectionStatus.LISTEN,
+    2: ConnectionStatus.SYN_SENT,
+    3: ConnectionStatus.SYN_RECV,
+    4: ConnectionStatus.ESTABLISHED,
+    5: ConnectionStatus.CLOSE_WAIT,
+    6: ConnectionStatus.FIN_WAIT1,
+    7: ConnectionStatus.CLOSING,
+    8: ConnectionStatus.LAST_ACK,
+    9: ConnectionStatus.FIN_WAIT2,
+    10: ConnectionStatus.TIME_WAIT,
+}
+
+_SOCK_FAMILY_NAMES = {
+    socket.AF_INET: "inet",
+    socket.AF_INET6: "inet6",
+    socket.AF_UNIX: "local",
+}
+
+_SOCK_TYPES = {
+    socket.AF_INET: {
+        socket.SOCK_STREAM: "tcp",
+        socket.SOCK_DGRAM: "udp",
+    },
+    socket.AF_INET6: {
+        socket.SOCK_STREAM: "tcp6",
+        socket.SOCK_DGRAM: "udp6",
+    },
+    socket.AF_UNIX: {
+        socket.SOCK_STREAM: "stream",
+        socket.SOCK_DGRAM: "dgram",
+        socket.SOCK_SEQPACKET: "seqpacket",
+    },
+}
+
+
+def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
+    allowed_combos = _util.conn_kind_to_combos(kind)
+    if not allowed_combos:
+        return
+
+    kfiles = {
+        kfile.ki_fdata: (kfile.ki_pid, kfile.ki_fd)
+        for kfile in _list_kinfo_files(pid)
+        if kfile.ki_fd >= 0 and kfile.ki_ftype == DTYPE_SOCKET
+    }
+    if not kfiles:
+        return
+
+    for (family, stype) in allowed_combos:
+        base_mib = _bsd.sysctlnametomib(
+            "net.{}.{}.pcblist".format(
+                _SOCK_FAMILY_NAMES[family],
+                _SOCK_TYPES[family][stype],
+            ),
+            maxlen=4,
+        )
+
+        mib = [
+            *base_mib,
+            PCB_ALL,
+            0,
+            ctypes.sizeof(KinfoPcb),
+            1000000,
+        ]
+
+        kinfo_pcb_data = _bsd.sysctl_bytes_retry(mib, None)
+        for kpcb in (KinfoPcb * (len(kinfo_pcb_data) // ctypes.sizeof(KinfoPcb))).from_buffer_copy(
+            kinfo_pcb_data
+        ):
+            try:
+                pid, fd = kfiles.pop(kpcb.ki_sockaddr)
+            except KeyError:
+                continue
+
+            yield Connection(
+                family=kpcb.ki_family,
+                type=kpcb.ki_type,
+                laddr=kpcb.ki_s.to_addr(kpcb.ki_family),
+                raddr=kpcb.ki_d.to_addr(kpcb.ki_family),
+                status=(
+                    _TCP_STATES[kpcb.ki_tstate]
+                    if kpcb.ki_type == socket.SOCK_STREAM and kpcb.ki_family != socket.AF_UNIX
+                    else None
+                ),
+                fd=fd,
+                pid=pid,
+            )
+
+            if not kfiles:
+                return
 
 
 def pid_raw_create_time(pid: int) -> float:
