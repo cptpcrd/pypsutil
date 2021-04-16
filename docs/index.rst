@@ -1053,10 +1053,6 @@ Process information
 
         The TCP connection status (for inet TCP sockets only).
 
-        .. note::
-
-            On FreeBSD, this is currently always ``None``.
-
    .. py:attribute:: fd
 
         :type: int
