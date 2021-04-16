@@ -23,6 +23,10 @@ def open_testing_sockets(
     with tempfile.TemporaryDirectory() as tmpdir:
         for family in families:
             for stype in types:
+                if pypsutil.MACOS and stype == socket.SOCK_SEQPACKET:
+                    # macOS doesn't support SOCK_SEQPACKET
+                    continue
+
                 if stype == socket.SOCK_SEQPACKET and family != socket.AF_UNIX:
                     continue
 
