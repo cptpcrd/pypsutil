@@ -766,8 +766,6 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
             )
 
         elif family == socket.AF_INET6:
-            laddr = ("", 0)
-            raddr = ("", 0)
             laddr = _util.decode_inet6_full(
                 _pack_addr6(kfile.inp_laddru),
                 _util.cvt_endian_ntoh(kfile.inp_lport, ctypes.sizeof(ctypes.c_uint16)),
