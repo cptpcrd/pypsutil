@@ -1017,14 +1017,14 @@ def proc_threads(proc: "Process") -> List[ThreadInfo]:
     return threads
 
 
-def _list_proc_fds(proc: "Process") -> List[ProcFdInfo]:
+def _list_proc_fds(pid: int) -> List[ProcFdInfo]:
     while True:
-        maxfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, None) // ctypes.sizeof(ProcFdInfo)
+        maxfds = _proc_pidinfo(pid, PROC_PIDLISTFDS, 0, None) // ctypes.sizeof(ProcFdInfo)
 
         # We add an extra 1 just in case
         buf = (ProcFdInfo * (maxfds + 1))()  # pytype: disable=not-callable
 
-        nfds = _proc_pidinfo(proc.pid, PROC_PIDLISTFDS, 0, buf) // ctypes.sizeof(ProcFdInfo)
+        nfds = _proc_pidinfo(pid, PROC_PIDLISTFDS, 0, buf) // ctypes.sizeof(ProcFdInfo)
 
         # Because we added 1 when creating the buffer above, we may run into nfds == maxfds + 1.
         # That may mean truncation, and we want to try again.
@@ -1033,13 +1033,13 @@ def _list_proc_fds(proc: "Process") -> List[ProcFdInfo]:
 
 
 def proc_num_fds(proc: "Process") -> int:
-    return len(_list_proc_fds(proc))
+    return len(_list_proc_fds(proc.pid))
 
 
 def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     results = []
 
-    for fdinfo in _list_proc_fds(proc):
+    for fdinfo in _list_proc_fds(proc.pid):
         if fdinfo.proc_fdtype != PROX_FDTYPE_VNODE:
             continue
 
@@ -1059,7 +1059,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 
 
 def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
-    for fdinfo in _list_proc_fds(proc):
+    for fdinfo in _list_proc_fds(proc.pid):
         path = ""
         dev = None
         ino = None
@@ -1189,15 +1189,33 @@ _TCP_STATES = {
 def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     allowed_combos = _util.conn_kind_to_combos(kind)
     if not allowed_combos:
+        return iter([])
+
+    return _pid_connections(proc.pid, allowed_combos)
+
+
+def net_connections(kind: str) -> Iterator[Connection]:
+    allowed_combos = _util.conn_kind_to_combos(kind)
+    if not allowed_combos:
         return
 
-    for fdinfo in _list_proc_fds(proc):
+    for pid in iter_pids():
+        yield from _pid_connections(pid, allowed_combos)
+
+
+def _pid_connections(
+    pid: int,
+    allowed_combos: Set[
+        Tuple[socket.AddressFamily, socket.SocketKind]  # pylint: disable=no-member
+    ],
+) -> Iterator[Connection]:
+    for fdinfo in _list_proc_fds(pid):
         if fdinfo.proc_fdtype != PROX_FDTYPE_SOCKET:
             continue
 
         try:
             sinfo = SocketFdInfo()
-            _proc_pidfdinfo(proc.pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
+            _proc_pidfdinfo(pid, fdinfo.proc_fd, PROC_PIDFDSOCKETINFO, sinfo)
         except OSError as ex:
             if ex.errno in (errno.ENOENT, errno.EBADF):
                 continue
@@ -1206,6 +1224,8 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
 
         family = socket.AddressFamily(sinfo.psi.soi_family)  # pylint: disable=no-member
         stype = socket.SocketKind(sinfo.psi.soi_type)  # pylint: disable=no-member
+        if (family, stype) not in allowed_combos:
+            continue
 
         laddr: Union[Tuple[str, int], str]
         raddr: Union[Tuple[str, int], str]
@@ -1236,7 +1256,7 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
             raddr=raddr,
             status=status,
             fd=fdinfo.proc_fd,
-            pid=proc.pid,
+            pid=pid,
         )
 
 

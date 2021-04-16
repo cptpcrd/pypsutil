@@ -144,6 +144,9 @@ if hasattr(pypsutil, "net_connections"):
     def test_net_connections_all() -> None:
         # pylint: disable=no-member
 
+        if pypsutil.MACOS and os.getuid() != 0:
+            pytest.skip("net_connections() requires root on macOS")
+
         cur_pid = os.getpid()
 
         existing_conn_fds = {
