@@ -9,7 +9,7 @@ import socket
 import sys
 import time
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import (
@@ -1061,9 +1061,10 @@ _ALL_FAMILIES = [
 _ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
 
 
-def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+def _conn_kind_to_combos(kind: str) -> Set[Tuple[int, int]]:
     allowed_families = _ALL_FAMILIES
     allowed_types = _ALL_STYPES
+
     if kind == "all":
         pass
 
@@ -1095,14 +1096,22 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     elif kind == "unix":
         allowed_families = [socket.AF_UNIX]
     else:
-        return
+        return set()
 
     allowed_combos = {(family, stype) for family in allowed_families for stype in allowed_types}
 
     if kind in ("all", "unix"):
         allowed_combos.add((socket.AF_UNIX, socket.SOCK_SEQPACKET))
 
-    socket_states = None
+    return allowed_combos
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    allowed_combos = _conn_kind_to_combos(kind)
+    if not allowed_combos:
+        return iter([])
+
+    tcp_states = None
 
     for kfile in _iter_kinfo_files(proc):
         if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
@@ -1110,64 +1119,32 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
 
         family = kfile.kf_un.kf_sock.kf_sock_domain0
         stype = kfile.kf_un.kf_sock.kf_sock_type0
-
         if (family, stype) not in allowed_combos:
             continue
 
-        status = None
-
         laddr: Union[Tuple[str, int], str]
         raddr: Union[Tuple[str, int], str]
-
         if family == socket.AF_INET:
-            laddr = (
-                SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
-                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_INET
-                else ("", 0)
-            )
-            raddr = (
-                SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
-                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_INET
-                else ("", 0)
-            )
-
-        if family == socket.AF_INET6:
-            laddr = (
-                SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
-                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_INET6
-                else ("", 0)
-            )
-            raddr = (
-                SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
-                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_INET6
-                else ("", 0)
-            )
-
+            laddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+            raddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
+        elif family == socket.AF_INET6:
+            laddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+            raddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
         elif family == socket.AF_UNIX:
-            laddr = (
-                os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path)
-                if kfile.kf_un.kf_sock.kf_sa_local.ss_family == socket.AF_UNIX
-                else ""
-            )
-            raddr = (
-                os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path)
-                if kfile.kf_un.kf_sock.kf_sa_peer.ss_family == socket.AF_UNIX
-                else ""
-            )
-
+            laddr = os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path)
+            raddr = os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path)
         else:
             # We shouldn't get here
             continue
 
+        status = None
         if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
-            if socket_states is None:
-                socket_states = {
-                    xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()
-                }
+            if tcp_states is None:
+                tcp_states = {xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()}
 
-            if socket_states is not None:
-                if kfile.kf_un.kf_sock.kf_sock_pcb in socket_states:
-                    status = _TCP_STATES[socket_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
+            if tcp_states is not None:
+                if kfile.kf_un.kf_sock.kf_sock_pcb in tcp_states:
+                    status = _TCP_STATES[tcp_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
 
         yield Connection(
             family=family,
