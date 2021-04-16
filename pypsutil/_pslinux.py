@@ -563,7 +563,7 @@ def _iter_connections(
 
 def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     # Read all the file descriptor information into memory
-    info_by_inode = {}
+    fds_by_inode = {}
 
     try:
         with os.scandir(os.path.join(_util.get_procfs_path(), str(proc.pid), "fd")) as dir_it:
@@ -574,25 +574,25 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
                     continue
 
                 if stat.S_ISSOCK(fd_stat.st_mode):
-                    info_by_inode[fd_stat.st_ino] = (int(entry.name), proc.pid)
+                    fds_by_inode[fd_stat.st_ino] = int(entry.name)
 
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
 
-    if not info_by_inode:
+    if not fds_by_inode:
         # Nothing to do
         return
 
     # Now try to connect it to open connections
     for family, stype, laddr, raddr, status, inode in _iter_connections(kind):
         try:
-            fd, pid = info_by_inode.pop(inode)
+            fd = fds_by_inode.pop(inode)
         except KeyError:
             pass
         else:
             yield Connection(
                 fd=fd,
-                pid=pid,
+                pid=proc.pid,
                 family=family,
                 type=stype,
                 laddr=laddr,
@@ -600,7 +600,7 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
                 status=status,
             )
 
-            if not info_by_inode:
+            if not fds_by_inode:
                 # Exhausted
                 return
 
