@@ -141,13 +141,17 @@ if hasattr(pypsutil, "net_connections"):
 
         cur_pid = os.getpid()
 
+        existing_conn_fds = {
+            conn.fd for conn in pypsutil.net_connections("all") if conn.pid == cur_pid
+        }
+
         with open_testing_sockets(
             tmp_path,
         ) as test_socks:
             conns = [
                 conn
                 for conn in pypsutil.net_connections("all")  # type: ignore[attr-defined]
-                if conn.pid == cur_pid
+                if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
             verify_connections(test_socks, conns)
@@ -156,7 +160,7 @@ if hasattr(pypsutil, "net_connections"):
             conns = [
                 conn
                 for conn in pypsutil.net_connections("inet")  # type: ignore[attr-defined]
-                if conn.pid == cur_pid
+                if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
             verify_connections(test_socks, conns)
@@ -167,7 +171,7 @@ if hasattr(pypsutil, "net_connections"):
             conns = [
                 conn
                 for conn in pypsutil.net_connections("udp")  # type: ignore[attr-defined]
-                if conn.pid == cur_pid
+                if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
             verify_connections(test_socks, conns)
@@ -176,7 +180,7 @@ if hasattr(pypsutil, "net_connections"):
             conns = [
                 conn
                 for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
-                if conn.pid == cur_pid
+                if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
             verify_connections(test_socks, conns)
@@ -184,6 +188,6 @@ if hasattr(pypsutil, "net_connections"):
         conns = [
             conn
             for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
-            if conn.pid == cur_pid
+            if conn.pid == cur_pid and conn.fd not in existing_conn_fds
         ]
         verify_connections({}, conns)
