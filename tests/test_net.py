@@ -26,14 +26,15 @@ def open_testing_sockets(
             if stype == socket.SOCK_SEQPACKET and family != socket.AF_UNIX:
                 continue
 
-            sock = socket.socket(family, stype)
-            socks.append(sock)
-            info[sock.fileno()] = (
-                family,
-                stype,
-                ("" if family == socket.AF_UNIX else ("", 0)),
-                ("" if family == socket.AF_UNIX else ("", 0)),
-            )
+            if family == socket.AF_UNIX:
+                sock = socket.socket(family, stype)
+                socks.append(sock)
+                info[sock.fileno()] = (
+                    family,
+                    stype,
+                    ("" if family == socket.AF_UNIX else ("", 0)),
+                    ("" if family == socket.AF_UNIX else ("", 0)),
+                )
 
             sock = socket.socket(family, stype)
             laddr: Union[Tuple[str, int], str]
@@ -50,6 +51,9 @@ def open_testing_sockets(
             else:
                 sock.bind(("127.0.0.1", 0))
                 laddr = cast(Tuple[str, int], tuple(sock.getsockname()))
+
+            if stype != socket.SOCK_DGRAM:
+                sock.listen(1)
 
             socks.append(sock)
             info[sock.fileno()] = (
@@ -72,8 +76,10 @@ def verify_connections(
     ],
     conns: Iterable[pypsutil.Connection],
 ) -> None:
+    test_socks = test_socks.copy()
+
     for conn in conns:
-        family, stype, laddr, raddr = test_socks[conn.fd]
+        family, stype, laddr, raddr = test_socks.pop(conn.fd)
         assert conn.family == family
         assert conn.type == stype
         assert conn.laddr == laddr or conn.laddr == ("" if family == socket.AF_UNIX else ("", 0))
@@ -83,6 +89,8 @@ def verify_connections(
             assert conn.status is not None
         else:
             assert conn.status is None
+
+    assert not test_socks
 
 
 if hasattr(pypsutil.Process, "connections"):
@@ -117,7 +125,7 @@ if hasattr(pypsutil.Process, "connections"):
             )
 
         conns = pypsutil.Process().connections("unix")
-        verify_connections(test_socks, [conn for conn in conns if conn.fd not in existing_conn_fds])
+        verify_connections({}, [conn for conn in conns if conn.fd not in existing_conn_fds])
 
     def test_proc_connections_no_proc() -> None:
         proc = get_dead_process()
