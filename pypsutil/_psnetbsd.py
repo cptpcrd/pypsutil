@@ -550,13 +550,16 @@ def _list_kinfo_lwps(pid: int) -> List[KinfoLwp]:
             return proc_arr[:nprocs]
 
 
-def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
+def _list_kinfo_files(pid: int) -> List[KinfoFile]:
+    if pid == 0:
+        return []
+
     kinfo_file_size = ctypes.sizeof(KinfoFile)
 
     while True:
         nfiles = (
             _bsd.sysctl(
-                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, 1000000],
+                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, pid, kinfo_file_size, 1000000],
                 None,
                 None,
             )
@@ -565,14 +568,14 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
 
         if nfiles == 0:
             # Check that the process is alive
-            _get_kinfo_proc2_pid(proc.pid)
+            _get_kinfo_proc2_pid(pid)
             return []
 
         files = (KinfoFile * nfiles)()  # pytype: disable=not-callable
 
         nfiles = (
             _bsd.sysctl(
-                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, proc.pid, kinfo_file_size, nfiles],
+                [CTL_KERN, KERN_FILE2, KERN_FILE_BYPID, pid, kinfo_file_size, nfiles],
                 None,
                 files,
             )
@@ -581,7 +584,7 @@ def _list_kinfo_files(proc: "Process") -> List[KinfoFile]:
 
         if nfiles == 0:
             # Check that the process is alive
-            _get_kinfo_proc2_pid(proc.pid)
+            _get_kinfo_proc2_pid(pid)
             return []
         elif nfiles <= len(files):
             return files[:nfiles]
@@ -618,14 +621,14 @@ def _einval_to_esrch(func: F) -> F:
 
 
 def proc_num_fds(proc: "Process") -> int:
-    return len(_list_kinfo_files(proc))
+    return len(_list_kinfo_files(proc.pid))
 
 
 @_einval_to_esrch
 def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     return [
         ProcessOpenFile(fd=kfile.ki_fd, path="")
-        for kfile in _list_kinfo_files(proc)
+        for kfile in _list_kinfo_files(proc.pid)
         if kfile.ki_ftype == DTYPE_VNODE and kfile.ki_vtype == VREG
     ]
 
@@ -641,7 +644,7 @@ _VTYPE_TO_ST_MODE = {
 
 
 def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
-    kfiles = _list_kinfo_files(proc)
+    kfiles = _list_kinfo_files(proc.pid)
 
     for kfile in kfiles:
         path = ""
