@@ -9,7 +9,7 @@ import socket
 import sys
 import time
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import (
@@ -1109,65 +1109,8 @@ _TCP_STATES = {
 }
 
 
-_ALL_FAMILIES = [
-    socket.AF_INET,
-    socket.AF_INET6,
-    socket.AF_UNIX,
-]
-_ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
-
-
-def _conn_kind_to_combos(
-    kind: str,
-) -> Set[Tuple[socket.AddressFamily, socket.SocketKind]]:  # pylint: disable=no-member
-    allowed_families = _ALL_FAMILIES
-    allowed_types = _ALL_STYPES
-
-    if kind == "all":
-        pass
-
-    elif kind == "inet":
-        allowed_families = [socket.AF_INET, socket.AF_INET6]
-    elif kind == "inet4":
-        allowed_families = [socket.AF_INET]
-    elif kind == "inet6":
-        allowed_families = [socket.AF_INET6]
-
-    elif kind == "tcp":
-        allowed_families = [socket.AF_INET, socket.AF_INET6]
-        allowed_types = [socket.SOCK_STREAM]
-    elif kind == "tcp4":
-        allowed_families = [socket.AF_INET]
-        allowed_types = [socket.SOCK_STREAM]
-    elif kind == "tcp6":
-        allowed_families = [socket.AF_INET6]
-        allowed_types = [socket.SOCK_STREAM]
-
-    elif kind == "udp":
-        allowed_families = [socket.AF_INET, socket.AF_INET6]
-        allowed_types = [socket.SOCK_DGRAM]
-    elif kind == "udp4":
-        allowed_families = [socket.AF_INET]
-        allowed_types = [socket.SOCK_DGRAM]
-    elif kind == "udp6":
-        allowed_families = [socket.AF_INET6]
-        allowed_types = [socket.SOCK_DGRAM]
-
-    elif kind == "unix":
-        allowed_families = [socket.AF_UNIX]
-    else:
-        return set()
-
-    allowed_combos = {(family, stype) for family in allowed_families for stype in allowed_types}
-
-    if kind in ("all", "unix"):
-        allowed_combos.add((socket.AF_UNIX, socket.SOCK_SEQPACKET))
-
-    return allowed_combos
-
-
 def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
-    allowed_combos = _conn_kind_to_combos(kind)
+    allowed_combos = _util.conn_kind_to_combos(kind)
     if not allowed_combos:
         return
 
@@ -1218,7 +1161,7 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
 
 
 def net_connections(kind: str) -> Iterator[Connection]:
-    allowed_combos = _conn_kind_to_combos(kind)
+    allowed_combos = _util.conn_kind_to_combos(kind)
     if not allowed_combos:
         return
 

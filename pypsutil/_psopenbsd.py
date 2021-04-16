@@ -5,10 +5,18 @@ import errno
 import os
 import socket
 import time
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 
 from . import _bsd, _cache, _psposix, _util
-from ._util import ProcessCPUTimes, ProcessFd, ProcessFdType, ProcessSignalMasks, ProcessStatus
+from ._util import (
+    Connection,
+    ConnectionStatus,
+    ProcessCPUTimes,
+    ProcessFd,
+    ProcessFdType,
+    ProcessSignalMasks,
+    ProcessStatus,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
@@ -701,6 +709,93 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             size=size,
             mode=mode,
             extra_info=extra_info,
+        )
+
+
+_TCP_STATES = {
+    0: ConnectionStatus.CLOSE,
+    1: ConnectionStatus.LISTEN,
+    2: ConnectionStatus.SYN_SENT,
+    3: ConnectionStatus.SYN_RECV,
+    4: ConnectionStatus.ESTABLISHED,
+    5: ConnectionStatus.CLOSE_WAIT,
+    6: ConnectionStatus.FIN_WAIT1,
+    7: ConnectionStatus.CLOSING,
+    8: ConnectionStatus.LAST_ACK,
+    9: ConnectionStatus.FIN_WAIT2,
+    10: ConnectionStatus.TIME_WAIT,
+}
+
+
+def _pack_addr6(addr: Iterable[int]) -> int:
+    return sum(val << (96 - i * 32) for i, val in enumerate(addr))
+
+
+def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
+    return pid_connections(proc.pid, kind)
+
+
+def net_connections(kind: str) -> Iterator[Connection]:
+    return pid_connections(-1, kind)
+
+
+def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
+    allowed_combos = _util.conn_kind_to_combos(kind)
+    if not allowed_combos:
+        return
+
+    for kfile in _list_kinfo_files(pid):
+        if kfile.fd_fd < 0 or kfile.f_type != DTYPE_SOCKET:
+            continue
+
+        family = kfile.so_family
+        stype = kfile.so_type
+        if (family, stype) not in allowed_combos:
+            continue
+
+        laddr: Union[Tuple[str, int], str]
+        raddr: Union[Tuple[str, int], str]
+        if family == socket.AF_INET:
+            laddr = _util.decode_inet4_full(
+                kfile.inp_laddru[0],
+                _util.cvt_endian_ntoh(kfile.inp_lport, ctypes.sizeof(ctypes.c_uint16)),
+            )
+            raddr = _util.decode_inet4_full(
+                kfile.inp_faddru[0],
+                _util.cvt_endian_ntoh(kfile.inp_fport, ctypes.sizeof(ctypes.c_uint16)),
+            )
+
+        elif family == socket.AF_INET6:
+            laddr = ("", 0)
+            raddr = ("", 0)
+            laddr = _util.decode_inet6_full(
+                _pack_addr6(kfile.inp_laddru),
+                _util.cvt_endian_ntoh(kfile.inp_lport, ctypes.sizeof(ctypes.c_uint16)),
+            )
+            raddr = _util.decode_inet6_full(
+                _pack_addr6(kfile.inp_faddru),
+                _util.cvt_endian_ntoh(kfile.inp_fport, ctypes.sizeof(ctypes.c_uint16)),
+            )
+
+        elif family == socket.AF_UNIX:
+            laddr = os.fsdecode(kfile.unp_path)
+            raddr = ""
+        else:
+            # We shouldn't get here
+            continue
+
+        status = None
+        if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
+            status = _TCP_STATES[kfile.t_state]
+
+        yield Connection(
+            family=family,
+            type=stype,
+            laddr=laddr,
+            raddr=raddr,
+            status=status,
+            fd=kfile.fd_fd,
+            pid=kfile.p_pid,
         )
 
 

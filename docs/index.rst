@@ -1045,7 +1045,7 @@ Process information
 
         .. note::
 
-            On Linux, this is always ``""`` for Unix sockets.
+            On Linux and OpenBSD, this is always ``""`` for Unix sockets.
 
    .. py:attribute:: status
 

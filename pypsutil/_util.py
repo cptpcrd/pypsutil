@@ -6,6 +6,7 @@ import ipaddress
 import os
 import resource
 import signal
+import socket
 import sys
 from typing import (
     TYPE_CHECKING,
@@ -468,3 +469,60 @@ else:
 
 
 cvt_endian_ntoh = cvt_endian_hton
+
+
+_ALL_FAMILIES = [
+    socket.AF_INET,
+    socket.AF_INET6,
+    socket.AF_UNIX,
+]
+_ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
+
+
+def conn_kind_to_combos(
+    kind: str,
+) -> Set[Tuple[socket.AddressFamily, socket.SocketKind]]:  # pylint: disable=no-member
+    allowed_families = _ALL_FAMILIES
+    allowed_types = _ALL_STYPES
+
+    if kind == "all":
+        pass
+
+    elif kind == "inet":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
+    elif kind == "inet4":
+        allowed_families = [socket.AF_INET]
+    elif kind == "inet6":
+        allowed_families = [socket.AF_INET6]
+
+    elif kind == "tcp":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
+        allowed_types = [socket.SOCK_STREAM]
+    elif kind == "tcp4":
+        allowed_families = [socket.AF_INET]
+        allowed_types = [socket.SOCK_STREAM]
+    elif kind == "tcp6":
+        allowed_families = [socket.AF_INET6]
+        allowed_types = [socket.SOCK_STREAM]
+
+    elif kind == "udp":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
+        allowed_types = [socket.SOCK_DGRAM]
+    elif kind == "udp4":
+        allowed_families = [socket.AF_INET]
+        allowed_types = [socket.SOCK_DGRAM]
+    elif kind == "udp6":
+        allowed_families = [socket.AF_INET6]
+        allowed_types = [socket.SOCK_DGRAM]
+
+    elif kind == "unix":
+        allowed_families = [socket.AF_UNIX]
+    else:
+        return set()
+
+    allowed_combos = {(family, stype) for family in allowed_families for stype in allowed_types}
+
+    if kind in ("all", "unix"):
+        allowed_combos.add((socket.AF_UNIX, socket.SOCK_SEQPACKET))
+
+    return allowed_combos
