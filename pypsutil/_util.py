@@ -2,6 +2,7 @@ import ctypes
 import dataclasses
 import enum
 import functools
+import ipaddress
 import os
 import resource
 import signal
@@ -413,3 +414,57 @@ def iter_packed_structures(
 
         yield item
         i += length
+
+
+def decode_inet4(addr: int, *, native: bool = True) -> str:
+    parts = [
+        (addr & 0xFF000000) >> 24,
+        (addr & 0xFF0000) >> 16,
+        (addr & 0xFF00) >> 8,
+        (addr & 0xFF),
+    ]
+
+    if native and sys.byteorder == "little":
+        parts = parts[::-1]
+
+    return ".".join(map(str, parts))
+
+
+def decode_inet4_full(addr: int, port: int, *, native: bool = True) -> Tuple[str, int]:
+    return ("", 0) if addr == 0 and port == 0 else (decode_inet4(addr, native=native), port)
+
+
+def decode_inet6(addr: int, *, native: bool = True) -> str:
+    parts = [(addr >> (96 - i * 32)) & 0xFFFFFFFF for i in range(4)]
+
+    if native and sys.byteorder == "little":
+        parts = [
+            (part & 0xFF000000) >> 24
+            | (part & 0xFF0000) >> 8
+            | (part & 0xFF00) << 8
+            | (part & 0xFF) << 24
+            for part in parts
+        ]
+
+    return str(
+        ipaddress.IPv6Address(sum(part << (i * 32) for i, part in enumerate(reversed(parts))))
+    )
+
+
+def decode_inet6_full(addr: int, port: int, *, native: bool = True) -> Tuple[str, int]:
+    return ("", 0) if addr == 0 and port == 0 else (decode_inet6(addr, native=native), port)
+
+
+if sys.byteorder == "big":
+
+    def cvt_endian_hton(hostval: int, widthbytes: int) -> int:
+        return hostval
+
+
+else:
+
+    def cvt_endian_hton(hostval: int, widthbytes: int) -> int:
+        return int.from_bytes(hostval.to_bytes(widthbytes, "little"), "big")
+
+
+cvt_endian_ntoh = cvt_endian_hton

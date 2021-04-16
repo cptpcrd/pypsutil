@@ -1,7 +1,6 @@
 # pylint: disable=too-many-lines
 import ctypes
 import dataclasses
-import ipaddress
 import os
 import re
 import resource
@@ -450,49 +449,12 @@ _SOCK_TYPES = {1: socket.SOCK_STREAM, 2: socket.SOCK_DGRAM, 5: socket.SOCK_SEQPA
 
 def _decode_net_addr4(fulladdr: str) -> Tuple[str, int]:
     addr, port = (int(item, 16) for item in fulladdr.split(":"))
-
-    parts = [
-        (addr & 0xFF000000) >> 24,
-        (addr & 0xFF0000) >> 16,
-        (addr & 0xFF00) >> 8,
-        (addr & 0xFF),
-    ]
-
-    if port == 0 and parts == [0, 0, 0, 0]:
-        return ("", 0)
-
-    if sys.byteorder == "little":
-        parts = parts[::-1]
-
-    return (".".join(map(str, parts)), port)
+    return _util.decode_inet4_full(addr, port)
 
 
 def _decode_net_addr6(fulladdr: str) -> Tuple[str, int]:
-    addr, sport = fulladdr.split(":")
-    port = int(sport, 16)
-
-    chunks = [int(addr[i: i + 8], 16) for i in range(0, 32, 8)]
-
-    if port == 0 and all(chunk == 0 for chunk in chunks):
-        return ("", 0)
-
-    if sys.byteorder == "little":
-        chunks = [
-            (chunk & 0xFF000000) >> 24
-            | (chunk & 0xFF0000) >> 8
-            | (chunk & 0xFF00) << 8
-            | (chunk & 0xFF) << 24
-            for chunk in chunks
-        ]
-
-    return (
-        str(
-            ipaddress.IPv6Address(
-                sum(chunk << (i * 32) for i, chunk in enumerate(reversed(chunks)))
-            )
-        ),
-        port,
-    )
+    addr, port = (int(item, 16) for item in fulladdr.split(":"))
+    return _util.decode_inet6_full(addr, port)
 
 
 _TCP_STATES = {
