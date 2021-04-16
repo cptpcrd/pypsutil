@@ -26,6 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
 CTL_KERN = 1
+KERN_FILE = 15
 KERN_BOOTTIME = 21
 KERN_PROC = 14
 KERN_PROC_ALL = 0
@@ -82,6 +83,8 @@ KF_TYPE_EVENTFD = 13
 KF_VTYPE_VREG = 1
 KF_FD_TYPE_ROOT = -2
 
+DTYPE_SOCKET = 2
+
 KVME_TYPE_NONE = 0
 KVME_TYPE_DEFAULT = 1
 KVME_TYPE_VNODE = 2
@@ -115,6 +118,8 @@ fixpt_t = ctypes.c_uint32
 lwpid_t = ctypes.c_int32
 
 dev_t = ctypes.c_uint64
+
+off_t = ctypes.c_int64
 
 if os.uname().machine.startswith("x86") and sys.maxsize <= 2 ** 32:
     # x86, 32-bit
@@ -600,6 +605,9 @@ class In6Addr(ctypes.Structure):
         ("s6_addr", (ctypes.c_uint8 * 16)),
     ]
 
+    def pack(self) -> int:
+        return sum(val << (120 - i * 8) for i, val in enumerate(self.s6_addr))
+
 
 class SockaddrIn(ctypes.Structure):
     _fields_ = [
@@ -628,7 +636,7 @@ class SockaddrIn6(ctypes.Structure):
 
     def to_tuple(self) -> Tuple[str, int]:
         return _util.decode_inet6_full(
-            sum(val << (120 - i * 8) for i, val in enumerate(self.sin6_addr.s6_addr)),
+            self.sin6_addr.pack(),
             _util.cvt_endian_ntoh(self.sin6_port, ctypes.sizeof(in_port_t)),
             native=False,
         )
@@ -772,7 +780,7 @@ class XTcpCb(ctypes.Structure):
     ]
 
 
-class XUnpCbAddr(ctypes.Structure):
+class XUnpCbAddr(ctypes.Union):
     _fields_ = [
         ("xu_addr", SockaddrUn),
         ("xu_dummy", (ctypes.c_char * 256)),
@@ -795,6 +803,28 @@ class XUnpCb(ctypes.Structure):
         ("xu_addr", XUnpCbAddr),
         ("xu_caddr", XUnpCbAddr),
         ("xu_socket", XSocket),
+    ]
+
+
+class XFile(ctypes.Structure):
+    _fields_ = [
+        ("xf_size", ctypes.c_uint64),
+        ("xf_pid", _ffi.pid_t),
+        ("xf_uid", _ffi.uid_t),
+        ("xf_fd", ctypes.c_int),
+        ("_xf_int_pad1", ctypes.c_int),
+        ("xf_file", ctypes.c_uint64),
+        ("xf_type", ctypes.c_short),
+        ("_xf_short_pad1", ctypes.c_short),
+        ("xf_count", ctypes.c_int),
+        ("xf_msgcount", ctypes.c_int),
+        ("_xf_int_pad2", ctypes.c_int),
+        ("xf_offset", off_t),
+        ("xf_data", ctypes.c_uint64),
+        ("xf_vnode", ctypes.c_uint64),
+        ("xf_flag", ctypes.c_uint),
+        ("_xf_int_pad3", ctypes.c_int),
+        ("_xf_int64_pad", (ctypes.c_int64 * 6)),
     ]
 
 
@@ -906,6 +936,16 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
     return cast(
         Iterator[KinfoFile],
         _util.iter_packed_structures(kinfo_file_data, KinfoFile, "kf_structsize"),
+    )
+
+
+def _iter_xfiles() -> Iterator[XFile]:
+
+    xfile_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_FILE], None)
+
+    return cast(
+        Iterator[XFile],
+        _util.iter_packed_structures(xfile_data, XFile, "xf_size"),
     )
 
 
@@ -1034,8 +1074,24 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
 def _iter_tcp_pcblist() -> Iterator[XTcpCb]:
     pcblist_data = _bsd.sysctlbyname_bytes_retry("net.inet.tcp.pcblist", None)
-
     return cast(Iterator[XTcpCb], _util.iter_packed_structures(pcblist_data, XTcpCb, "xt_len"))
+
+
+def _iter_udp_pcblist() -> Iterator[XInpCb]:
+    pcblist_data = _bsd.sysctlbyname_bytes_retry("net.inet.udp.pcblist", None)
+    return cast(Iterator[XInpCb], _util.iter_packed_structures(pcblist_data, XInpCb, "xi_len"))
+
+
+def _iter_unix_pcblist() -> Iterator[XUnpCb]:
+    for mib in (
+        "net.local.stream.pcblist",
+        "net.local.dgram.pcblist",
+        "net.local.seqpacket.pcblist",
+    ):
+        pcblist_data = _bsd.sysctlbyname_bytes_retry(mib, None)
+        yield from cast(
+            Iterator[XUnpCb], _util.iter_packed_structures(pcblist_data, XUnpCb, "xu_len")
+        )
 
 
 _TCP_STATES = {
@@ -1061,7 +1117,9 @@ _ALL_FAMILIES = [
 _ALL_STYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM]
 
 
-def _conn_kind_to_combos(kind: str) -> Set[Tuple[int, int]]:
+def _conn_kind_to_combos(
+    kind: str,
+) -> Set[Tuple[socket.AddressFamily, socket.SocketKind]]:  # pylint: disable=no-member
     allowed_families = _ALL_FAMILIES
     allowed_types = _ALL_STYPES
 
@@ -1076,6 +1134,7 @@ def _conn_kind_to_combos(kind: str) -> Set[Tuple[int, int]]:
         allowed_families = [socket.AF_INET6]
 
     elif kind == "tcp":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
         allowed_types = [socket.SOCK_STREAM]
     elif kind == "tcp4":
         allowed_families = [socket.AF_INET]
@@ -1085,6 +1144,7 @@ def _conn_kind_to_combos(kind: str) -> Set[Tuple[int, int]]:
         allowed_types = [socket.SOCK_STREAM]
 
     elif kind == "udp":
+        allowed_families = [socket.AF_INET, socket.AF_INET6]
         allowed_types = [socket.SOCK_DGRAM]
     elif kind == "udp4":
         allowed_families = [socket.AF_INET]
@@ -1109,7 +1169,7 @@ def _conn_kind_to_combos(kind: str) -> Set[Tuple[int, int]]:
 def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     allowed_combos = _conn_kind_to_combos(kind)
     if not allowed_combos:
-        return iter([])
+        return
 
     tcp_states = None
 
@@ -1154,6 +1214,95 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
             status=status,
             fd=kfile.kf_fd,
             pid=proc.pid,
+        )
+
+
+def net_connections(kind: str) -> Iterator[Connection]:
+    allowed_combos = _conn_kind_to_combos(kind)
+    if not allowed_combos:
+        return
+
+    tcp_infos = (
+        {xt.xt_inp.xi_socket.xso_so: xt for xt in _iter_tcp_pcblist()}
+        if kind in ("tcp4", "tcp6", "tcp", "inet4", "inet6", "inet", "all")
+        else {}
+    )
+
+    udp_infos = (
+        {xi.xi_socket.xso_so: xi for xi in _iter_udp_pcblist()}
+        if kind in ("udp4", "udp6", "udp", "inet4", "inet6", "inet", "all")
+        else {}
+    )
+
+    unix_infos = (
+        {xu.xu_socket.xso_so: xu for xu in _iter_unix_pcblist()} if kind in ("unix", "all") else {}
+    )
+
+    for xfile in _iter_xfiles():
+        if xfile.xf_type != DTYPE_SOCKET:
+            continue
+
+        family: int
+        stype: int
+        laddr: Union[Tuple[str, int], str]
+        raddr: Union[Tuple[str, int], str]
+
+        status = None
+
+        if xfile.xf_data in unix_infos:
+            xu = unix_infos.pop(xfile.xf_data)
+
+            family = socket.AF_UNIX
+            stype = socket.SocketKind(xu.xu_socket.so_type)  # pylint: disable=no-member
+            laddr = os.fsdecode(xu.xu_addr.xu_addr.sun_path)
+            raddr = os.fsdecode(xu.xu_caddr.xu_addr.sun_path)
+
+        else:
+            if xfile.xf_data in tcp_infos:
+                xt = tcp_infos.pop(xfile.xf_data)
+                xi = xt.xt_inp
+                stype = socket.SOCK_STREAM
+                status = _TCP_STATES[xt.t_state]
+            elif xfile.xf_data in udp_infos:
+                xi = udp_infos.pop(xfile.xf_data)
+                stype = socket.SOCK_DGRAM
+            else:
+                continue
+
+            family = socket.AddressFamily(xi.xi_socket.xso_family)  # pylint: disable=no-member
+
+            inc = xi.inp_inc
+            ie = inc.inc_ie
+            if family == socket.AF_INET:
+                laddr = _util.decode_inet4_full(
+                    ie.ie_dependladdr.id46_addr.ia46_addr4.s_addr,
+                    _util.cvt_endian_ntoh(ie.ie_lport, ctypes.sizeof(ctypes.c_uint16)),
+                )
+                raddr = _util.decode_inet4_full(
+                    ie.ie_dependfaddr.id46_addr.ia46_addr4.s_addr,
+                    _util.cvt_endian_ntoh(ie.ie_fport, ctypes.sizeof(ctypes.c_uint16)),
+                )
+
+            else:
+                laddr = _util.decode_inet6_full(
+                    ie.ie_dependladdr.id6_addr.pack(),
+                    _util.cvt_endian_ntoh(ie.ie_lport, ctypes.sizeof(ctypes.c_uint16)),
+                    native=False,
+                )
+                raddr = _util.decode_inet6_full(
+                    ie.ie_dependfaddr.id6_addr.pack(),
+                    _util.cvt_endian_ntoh(ie.ie_fport, ctypes.sizeof(ctypes.c_uint16)),
+                    native=False,
+                )
+
+        yield Connection(
+            family=family,
+            type=stype,
+            laddr=laddr,
+            raddr=raddr,
+            status=status,
+            fd=xfile.xf_fd,
+            pid=xfile.xf_pid,
         )
 
 
