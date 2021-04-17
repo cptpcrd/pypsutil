@@ -932,28 +932,6 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
 
 def pid_raw_create_time(pid: int) -> float:
     kinfo = _get_kinfo_proc2_pid(pid)
-
-    if not kinfo.p_uvalid:
-        # Zombie process; try looking in /proc to get the start time
-        try:
-            line = _util.read_file_first_line(
-                os.path.join(_util.get_procfs_path(), str(pid), "status")
-            )
-        except OSError:
-            pass
-        else:
-            # The process name might have spaces, so we can't split it and get the field. Instead,
-            # we skip the name entirely (and part of the next field), then find the first field that
-            # doesn't start with a digit. That's the "flags" field.
-            line_it = iter(line[MAXCOMLEN:].split())
-            for item in line_it:
-                if item[0] not in "0123456789":
-                    break
-
-            # And the next field is the start time
-            sec, usec = map(int, next(line_it).split(","))
-            return sec + usec / 1000000.0
-
     return cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
 
 
