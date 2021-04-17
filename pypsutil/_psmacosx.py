@@ -1435,7 +1435,9 @@ def net_connections(kind: str) -> Iterator[Connection]:
                 # Not filled out
                 continue
 
-            family = xt.xt_inpcb.xi_socket.xso_family
+            family = socket.AddressFamily(  # pylint: disable=no-member
+                xt.xt_inpcb.xi_socket.xso_family
+            )
             assert xt.xt_inpcb.xi_socket.so_type == socket.SOCK_STREAM
 
             yield Connection(
@@ -1457,7 +1459,7 @@ def net_connections(kind: str) -> Iterator[Connection]:
                 # Not filled out
                 continue
 
-            family = xi.xi_socket.xso_family
+            family = socket.AddressFamily(xi.xi_socket.xso_family)  # pylint: disable=no-member
             assert xi.xi_socket.so_type == socket.SOCK_DGRAM
 
             yield Connection(
@@ -1480,7 +1482,7 @@ def net_connections(kind: str) -> Iterator[Connection]:
                 continue
 
             assert xu.xu_socket.xso_family == socket.AF_UNIX
-            stype = xu.xu_socket.so_type
+            stype = socket.SocketKind(xu.xu_socket.so_type)  # pylint: disable=no-member
 
             yield Connection(
                 family=socket.AF_UNIX,

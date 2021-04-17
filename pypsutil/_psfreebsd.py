@@ -1124,8 +1124,12 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
             if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
                 continue
 
-            family = kfile.kf_un.kf_sock.kf_sock_domain0
-            stype = kfile.kf_un.kf_sock.kf_sock_type0
+            family = socket.AddressFamily(  # pylint: disable=no-member
+                kfile.kf_un.kf_sock.kf_sock_domain0
+            )
+            stype = socket.SocketKind(  # pylint: disable=no-member
+                kfile.kf_un.kf_sock.kf_sock_type0
+            )
             if (family, stype) not in allowed_combos:
                 continue
 

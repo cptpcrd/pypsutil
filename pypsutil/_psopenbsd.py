@@ -748,8 +748,8 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
         if kfile.fd_fd < 0 or kfile.f_type != DTYPE_SOCKET:
             continue
 
-        family = kfile.so_family
-        stype = kfile.so_type
+        family = socket.AddressFamily(kfile.so_family)  # pylint: disable=no-member
+        stype = socket.SocketKind(kfile.so_type)  # pylint: disable=no-member
         if (family, stype) not in allowed_combos:
             continue
 

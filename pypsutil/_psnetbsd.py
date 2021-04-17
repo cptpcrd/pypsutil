@@ -913,8 +913,8 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
                 continue
 
             yield Connection(
-                family=kpcb.ki_family,
-                type=kpcb.ki_type,
+                family=socket.AddressFamily(kpcb.ki_family),  # pylint: disable=no-member
+                type=socket.SocketKind(kpcb.ki_type),  # pylint: disable=no-member
                 laddr=kpcb.ki_s.to_addr(kpcb.ki_family),
                 raddr=kpcb.ki_d.to_addr(kpcb.ki_family),
                 status=(
