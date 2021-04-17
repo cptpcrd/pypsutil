@@ -1426,68 +1426,71 @@ def net_connections(kind: str) -> Iterator[Connection]:
     if not any_pid_errors:
         return
 
-    for xt in _iter_tcp_pcblist():
-        if xt.xt_inpcb.xi_socket.xso_so in seen_socket_addrs:
-            continue
+    if kind in ("tcp4", "tcp6", "tcp", "inet4", "inet6", "inet", "all"):
+        for xt in _iter_tcp_pcblist():
+            if xt.xt_inpcb.xi_socket.xso_so in seen_socket_addrs:
+                continue
 
-        if xt.xt_inpcb.xi_socket.xso_len == 0:
-            # Not filled out
-            continue
+            if xt.xt_inpcb.xi_socket.xso_len == 0:
+                # Not filled out
+                continue
 
-        family = xt.xt_inpcb.xi_socket.xso_family
-        assert xt.xt_inpcb.xi_socket.so_type == socket.SOCK_STREAM
+            family = xt.xt_inpcb.xi_socket.xso_family
+            assert xt.xt_inpcb.xi_socket.so_type == socket.SOCK_STREAM
 
-        yield Connection(
-            family=family,
-            type=socket.SOCK_STREAM,
-            laddr=xt.xt_inpcb.get_laddr(family),
-            raddr=xt.xt_inpcb.get_raddr(family),
-            status=_TCP_STATES[xt.t_state],
-            fd=-1,
-            pid=None,
-        )
+            yield Connection(
+                family=family,
+                type=socket.SOCK_STREAM,
+                laddr=xt.xt_inpcb.get_laddr(family),
+                raddr=xt.xt_inpcb.get_raddr(family),
+                status=_TCP_STATES[xt.t_state],
+                fd=-1,
+                pid=None,
+            )
 
-    for xi in _iter_udp_pcblist():
-        if xi.xi_socket.xso_so in seen_socket_addrs:
-            continue
+    if kind in ("udp4", "udp6", "udp", "inet4", "inet6", "inet", "all"):
+        for xi in _iter_udp_pcblist():
+            if xi.xi_socket.xso_so in seen_socket_addrs:
+                continue
 
-        if xi.xi_socket.xso_len == 0:
-            # Not filled out
-            continue
+            if xi.xi_socket.xso_len == 0:
+                # Not filled out
+                continue
 
-        family = xi.xi_socket.xso_family
-        assert xi.xi_socket.so_type == socket.SOCK_DGRAM
+            family = xi.xi_socket.xso_family
+            assert xi.xi_socket.so_type == socket.SOCK_DGRAM
 
-        yield Connection(
-            family=family,
-            type=socket.SOCK_DGRAM,
-            laddr=xi.get_laddr(family),
-            raddr=xi.get_raddr(family),
-            status=None,
-            fd=-1,
-            pid=None,
-        )
+            yield Connection(
+                family=family,
+                type=socket.SOCK_DGRAM,
+                laddr=xi.get_laddr(family),
+                raddr=xi.get_raddr(family),
+                status=None,
+                fd=-1,
+                pid=None,
+            )
 
-    for xu in _iter_unix_pcblist():
-        if xu.xu_socket.xso_so in seen_socket_addrs:
-            continue
+    if kind in ("unix", "all"):
+        for xu in _iter_unix_pcblist():
+            if xu.xu_socket.xso_so in seen_socket_addrs:
+                continue
 
-        if xu.xu_socket.xso_len == 0:
-            # Not filled out
-            continue
+            if xu.xu_socket.xso_len == 0:
+                # Not filled out
+                continue
 
-        assert xu.xu_socket.xso_family == socket.AF_UNIX
-        stype = xu.xu_socket.so_type
+            assert xu.xu_socket.xso_family == socket.AF_UNIX
+            stype = xu.xu_socket.so_type
 
-        yield Connection(
-            family=socket.AF_UNIX,
-            type=stype,
-            laddr=os.fsdecode(xu.xu_au.xuu_addr.sun_path),
-            raddr=os.fsdecode(xu.xu_cau.xuu_addr.sun_path),
-            status=None,
-            fd=-1,
-            pid=None,
-        )
+            yield Connection(
+                family=socket.AF_UNIX,
+                type=stype,
+                laddr=os.fsdecode(xu.xu_au.xuu_addr.sun_path),
+                raddr=os.fsdecode(xu.xu_cau.xuu_addr.sun_path),
+                status=None,
+                fd=-1,
+                pid=None,
+            )
 
 
 def _iter_tcp_pcblist() -> Iterator[XTcpCb64]:
