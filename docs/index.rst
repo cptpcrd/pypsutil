@@ -662,6 +662,17 @@ Process information
       - ``"unix"``: All Unix sockets
       - ``"all"``: All of the above
 
+      On some OSes, root privileges may be required to list connection information for processes
+      created by other users:
+
+      - On Linux and macOS, root privileges are required to list connection information for these
+        processes.
+      - On FreeBSD, root privileges are not required to list connection information for these
+        processes, but having root privileges allows this method to use a much more efficient
+        implementation (~5x faster).
+      - On OpenBSD and NetBSD, root privileges are not required to list connection information for these
+        processes.
+
       :returns: A list of :py:class:`Connection` s
       :rtype: list[Connection]
 
@@ -1066,11 +1077,6 @@ Process information
         The PID of the process that created the socket. This is ``None`` if it cannot be determined.
 
 
-   .. note::
-        On Linux, ``pid`` and ``fd`` can only be determined for this user's processes (unless
-        running as root).
-
-
 .. py:class:: ConnectionStatus
 
    An enum representing a TCP connection status.
@@ -1333,7 +1339,10 @@ System information
 
    See :py:meth:`Process.connections()` for information on the possible values of ``kind``.
 
-   Note that on macOS this function currently only works if the process is running as root.
+   Note that on macOS this function currently only works if the process is running as root. On
+   Linux, this function will succeed if not running as root, but ``pid`` and ``fd`` cannot be
+   determined for :py:class:`Connection` s opened by other users (they will be ``None`` and ``-1``,
+   respectively.)
 
    :returns: A list of :py:class:`Connection` s
    :rtype: list[Connection]
