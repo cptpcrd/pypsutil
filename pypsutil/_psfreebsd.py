@@ -1153,9 +1153,9 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
                         xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()
                     }
 
-                if tcp_states is not None:
-                    if kfile.kf_un.kf_sock.kf_sock_pcb in tcp_states:
-                        status = _TCP_STATES[tcp_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
+                if kfile.kf_un.kf_sock.kf_sock_pcb not in tcp_states:
+                    continue
+                status = _TCP_STATES[tcp_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
 
             yield Connection(
                 family=family,
