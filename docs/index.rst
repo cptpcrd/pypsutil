@@ -1339,10 +1339,9 @@ System information
 
    See :py:meth:`Process.connections()` for information on the possible values of ``kind``.
 
-   Note that on macOS this function currently only works if the process is running as root. On
-   Linux, this function will succeed if not running as root, but ``pid`` and ``fd`` cannot be
-   determined for :py:class:`Connection` s opened by other users (they will be ``None`` and ``-1``,
-   respectively.)
+   On Linux and macOS, this function will succeed if not running as root, but ``pid`` and ``fd``
+   cannot be determined for :py:class:`Connection` s opened by other users (they will be ``None``
+   and ``-1``, respectively.)
 
    :returns: A list of :py:class:`Connection` s
    :rtype: list[Connection]

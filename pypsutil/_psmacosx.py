@@ -60,6 +60,8 @@ MAXPATHLEN = 1024
 
 MAXTHREADNAMESIZE = 64
 
+TCPT_NTIMERS_EXT = 4
+
 CTL_KERN = 1
 KERN_ARGMAX = 8
 KERN_PROCARGS2 = 49
@@ -142,6 +144,10 @@ sigset_t = ctypes.c_uint32
 fsid_t = ctypes.c_int32 * 2
 off_t = ctypes.c_int64
 sa_family_t = ctypes.c_uint8
+inp_gen_t = u_quad_t
+unp_gen_t = u_quad_t
+tcp_seq = ctypes.c_uint32
+tcp_cc = ctypes.c_uint32
 
 natural_t = ctypes.c_uint
 kern_return_t = ctypes.c_int
@@ -716,6 +722,214 @@ class SocketFdInfo(ctypes.Structure):
     ]
 
 
+class ListEntry64(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("le_next", ctypes.c_uint64),
+        ("le_prev", ctypes.c_uint64),
+    ]
+
+
+class XSockBuf(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("sb_cc", ctypes.c_uint32),
+        ("sb_hiwat", ctypes.c_uint32),
+        ("sb_mbcnt", ctypes.c_uint32),
+        ("sb_mbmax", ctypes.c_uint32),
+        ("sb_lowat", ctypes.c_int32),
+        ("sb_flags", ctypes.c_short),
+        ("sb_timeo", ctypes.c_short),
+    ]
+
+
+class XSocket64(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("xso_len", ctypes.c_uint32),
+        ("xso_so", ctypes.c_uint64),
+        ("so_type", ctypes.c_short),
+        ("so_options", ctypes.c_short),
+        ("so_linger", ctypes.c_short),
+        ("so_state", ctypes.c_short),
+        ("so_pcb", ctypes.c_uint64),
+        ("xso_protocol", ctypes.c_int),
+        ("xso_family", ctypes.c_int),
+        ("so_qlen", ctypes.c_short),
+        ("so_incqlen", ctypes.c_short),
+        ("so_qlimit", ctypes.c_short),
+        ("so_timeo", ctypes.c_short),
+        ("so_error", ctypes.c_ushort),
+        ("so_pgid", _ffi.pid_t),
+        ("so_oobmark", ctypes.c_uint32),
+        ("so_rcv", XSockBuf),
+        ("so_send", XSockBuf),
+        ("so_uid", _ffi.uid_t),
+    ]
+
+
+class XInpCb64Dependaddr(ctypes.Union):
+    _pack_ = 4
+    _fields_ = [
+        ("inp46", In4In6Addr),
+        ("inp6", In6Addr),
+    ]
+
+    def to_tuple(self, family: int, port: int) -> Tuple[str, int]:
+        if family == socket.AF_INET:
+            return _util.decode_inet4_full(
+                self.inp46.ia46_addr4.s_addr,
+                _util.cvt_endian_ntoh(port, 2),
+            )
+        elif family == socket.AF_INET6:
+            return _util.decode_inet6_full(
+                self.inp6.pack(),
+                _util.cvt_endian_ntoh(port, 2),
+                native=False,
+            )
+        else:
+            raise ValueError
+
+
+class XInpCb64InpDepend4(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("in4_tos", ctypes.c_uint8),
+    ]
+
+
+class XInpCb64InpDepend6(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("in6_hlim", ctypes.c_uint8),
+        ("in6_cksum", ctypes.c_int),
+        ("in6_ifindex", ctypes.c_ushort),
+        ("in6_hops", ctypes.c_short),
+    ]
+
+
+class XInpCb64(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("xi_len", ctypes.c_uint64),
+        ("xi_inpp", ctypes.c_uint64),
+        ("inp_fport", ctypes.c_ushort),
+        ("inp_lport", ctypes.c_ushort),
+        ("inp_list", ListEntry64),
+        ("inp_ppcb", ctypes.c_uint64),
+        ("inp_pcbinfo", ctypes.c_uint64),
+        ("inp_portlist", ListEntry64),
+        ("inp_phd", ctypes.c_uint64),
+        ("inp_gencnt", inp_gen_t),
+        ("inp_flags", ctypes.c_int),
+        ("inp_flow", ctypes.c_uint32),
+        ("inp_vflag", ctypes.c_uint8),
+        ("inp_ip_ttl", ctypes.c_uint8),
+        ("inp_ip_p", ctypes.c_uint8),
+        ("inp_dependfaddr", XInpCb64Dependaddr),
+        ("inp_dependladdr", XInpCb64Dependaddr),
+        ("inp_depend4", XInpCb64InpDepend4),
+        ("inp_depend6", XInpCb64InpDepend6),
+        ("xi_socket", XSocket64),
+        ("xi_alignment_hack", u_quad_t),
+    ]
+
+    def get_laddr(self, family: int) -> Tuple[str, int]:
+        return cast(Tuple[str, int], self.inp_dependladdr.to_tuple(family, self.inp_lport))
+
+    def get_raddr(self, family: int) -> Tuple[str, int]:
+        return cast(Tuple[str, int], self.inp_dependfaddr.to_tuple(family, self.inp_fport))
+
+
+class XTcpCb64(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("xt_len", ctypes.c_uint32),
+        ("xt_inpcb", XInpCb64),
+        ("t_segq", ctypes.c_uint64),
+        ("t_dupacks", ctypes.c_int),
+        ("t_timer", (ctypes.c_int * TCPT_NTIMERS_EXT)),
+        ("t_state", ctypes.c_int),
+        ("t_flags", ctypes.c_uint),
+        ("t_force", ctypes.c_int),
+        ("snd_una", tcp_seq),
+        ("snd_max", tcp_seq),
+        ("snd_nxt", tcp_seq),
+        ("snd_up", tcp_seq),
+        ("snd_wl1", tcp_seq),
+        ("snd_wl2", tcp_seq),
+        ("iss", tcp_seq),
+        ("irs", tcp_seq),
+        ("rcv_nxt", tcp_seq),
+        ("rcv_adv", tcp_seq),
+        ("rcv_wnd", ctypes.c_uint32),
+        ("rcv_up", tcp_seq),
+        ("snd_wnd", ctypes.c_uint32),
+        ("snd_cwnd", ctypes.c_uint32),
+        ("snd_ssthresh", ctypes.c_uint32),
+        ("t_maxopd", ctypes.c_uint),
+        ("t_rcvtime", ctypes.c_uint32),
+        ("t_starttime", ctypes.c_uint32),
+        ("t_rtttime", ctypes.c_int),
+        ("t_rtseq", tcp_seq),
+        ("t_rxtcur", ctypes.c_int),
+        ("t_maxseg", ctypes.c_uint),
+        ("t_srtt", ctypes.c_int),
+        ("t_rttvar", ctypes.c_int),
+        ("t_rxtshift", ctypes.c_int),
+        ("t_rttmin", ctypes.c_uint),
+        ("t_rttupdated", ctypes.c_uint32),
+        ("max_sndwnd", ctypes.c_uint32),
+        ("t_softerror", ctypes.c_int),
+        ("t_oobflags", ctypes.c_char),
+        ("t_iobc", ctypes.c_char),
+        ("snd_scale", ctypes.c_uint8),
+        ("rcv_scale", ctypes.c_uint8),
+        ("request_r_scale", ctypes.c_uint8),
+        ("requested_s_scale", ctypes.c_uint8),
+        ("ts_recent", ctypes.c_uint32),
+        ("ts_recent_age", ctypes.c_uint32),
+        ("last_ack_sent", tcp_seq),
+        ("cc_send", tcp_cc),
+        ("cc_recv", tcp_cc),
+        ("snd_recover", tcp_seq),
+        ("snd_cwnd_prev", ctypes.c_uint32),
+        ("snd_ssthresh_prev", ctypes.c_uint32),
+        ("t_badrxtwin", ctypes.c_uint32),
+        ("xt_alignment_hack", u_quad_t),
+    ]
+
+
+class XUnpCb64SockaddrUn(ctypes.Union):
+    _pack_ = 4
+    _fields_ = [
+        ("xuu_addr", SockaddrUn),
+        ("xu_dummy", (ctypes.c_char * 256)),
+    ]
+
+
+class XUnpCb64(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ("xu_len", ctypes.c_uint32),
+        ("xu_unpp", ctypes.c_uint64),
+        ("xunp_link", ListEntry64),
+        ("xunp_socket", ctypes.c_uint64),
+        ("xunp_vnode", ctypes.c_uint64),
+        ("xunp_ino", ctypes.c_uint64),
+        ("xunp_conn", ctypes.c_uint64),
+        ("xunp_refs", ctypes.c_uint64),
+        ("xunp_reflink", ListEntry64),
+        ("xunp_cc", ctypes.c_int),
+        ("xunp_mbcnt", ctypes.c_int),
+        ("xunp_gencnt", unp_gen_t),
+        ("xunp_flags", ctypes.c_int),
+        ("xu_au", XUnpCb64SockaddrUn),
+        ("xu_cau", XUnpCb64SockaddrUn),
+        ("xu_socket", XSocket64),
+    ]
+
+
 class XswUsage(ctypes.Structure):
     _fields_ = [
         ("xsu_total", ctypes.c_uint64),
@@ -1191,7 +1405,7 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
     if not allowed_combos:
         return iter([])
 
-    return _pid_connections(proc.pid, allowed_combos)
+    return _pid_connections(proc.pid, allowed_combos, None)
 
 
 def net_connections(kind: str) -> Iterator[Connection]:
@@ -1199,8 +1413,102 @@ def net_connections(kind: str) -> Iterator[Connection]:
     if not allowed_combos:
         return
 
+    seen_socket_addrs: Set[int] = set()
+    any_pid_errors = False
     for pid in iter_pids():
-        yield from _pid_connections(pid, allowed_combos)
+        try:
+            yield from _pid_connections(pid, allowed_combos, seen_socket_addrs)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            any_pid_errors = True
+
+    if not any_pid_errors:
+        return
+
+    for xt in _iter_tcp_pcblist():
+        if xt.xt_inpcb.xi_socket.xso_so in seen_socket_addrs:
+            continue
+
+        if xt.xt_inpcb.xi_socket.xso_len == 0:
+            # Not filled out
+            continue
+
+        family = xt.xt_inpcb.xi_socket.xso_family
+        assert xt.xt_inpcb.xi_socket.so_type == socket.SOCK_STREAM
+
+        yield Connection(
+            family=family,
+            type=socket.SOCK_STREAM,
+            laddr=xt.xt_inpcb.get_laddr(family),
+            raddr=xt.xt_inpcb.get_raddr(family),
+            status=_TCP_STATES[xt.t_state],
+            fd=-1,
+            pid=None,
+        )
+
+    for xi in _iter_udp_pcblist():
+        if xi.xi_socket.xso_so in seen_socket_addrs:
+            continue
+
+        if xi.xi_socket.xso_len == 0:
+            # Not filled out
+            continue
+
+        family = xi.xi_socket.xso_family
+        assert xi.xi_socket.so_type == socket.SOCK_DGRAM
+
+        yield Connection(
+            family=family,
+            type=socket.SOCK_DGRAM,
+            laddr=xi.get_laddr(family),
+            raddr=xi.get_raddr(family),
+            status=None,
+            fd=-1,
+            pid=None,
+        )
+
+    for xu in _iter_unix_pcblist():
+        if xu.xu_socket.xso_so in seen_socket_addrs:
+            continue
+
+        if xu.xu_socket.xso_len == 0:
+            # Not filled out
+            continue
+
+        assert xu.xu_socket.xso_family == socket.AF_UNIX
+        stype = xu.xu_socket.so_type
+
+        yield Connection(
+            family=socket.AF_UNIX,
+            type=stype,
+            laddr=os.fsdecode(xu.xu_au.xuu_addr.sun_path),
+            raddr=os.fsdecode(xu.xu_cau.xuu_addr.sun_path),
+            status=None,
+            fd=-1,
+            pid=None,
+        )
+
+
+def _iter_tcp_pcblist() -> Iterator[XTcpCb64]:
+    pcblist_data = _bsd.sysctlbyname_bytes_retry("net.inet.tcp.pcblist64", None)
+    return cast(Iterator[XTcpCb64], _util.iter_packed_structures(pcblist_data, XTcpCb64, "xt_len"))
+
+
+def _iter_udp_pcblist() -> Iterator[XInpCb64]:
+    pcblist_data = _bsd.sysctlbyname_bytes_retry("net.inet.udp.pcblist64", None)
+    return cast(Iterator[XInpCb64], _util.iter_packed_structures(pcblist_data, XInpCb64, "xi_len"))
+
+
+def _iter_unix_pcblist() -> Iterator[XUnpCb64]:
+    for mib in (
+        "net.local.stream.pcblist64",
+        "net.local.dgram.pcblist64",
+    ):
+        pcblist_data = _bsd.sysctlbyname_bytes_retry(mib, None)
+        yield from cast(
+            Iterator[XUnpCb64], _util.iter_packed_structures(pcblist_data, XUnpCb64, "xu_len")
+        )
 
 
 def _pid_connections(
@@ -1208,6 +1516,7 @@ def _pid_connections(
     allowed_combos: Set[
         Tuple[socket.AddressFamily, socket.SocketKind]  # pylint: disable=no-member
     ],
+    socket_addrs: Optional[Set[int]],
 ) -> Iterator[Connection]:
     for fdinfo in _list_proc_fds(pid):
         if fdinfo.proc_fdtype != PROX_FDTYPE_SOCKET:
@@ -1221,6 +1530,9 @@ def _pid_connections(
                 continue
             else:
                 raise
+
+        if socket_addrs is not None:
+            socket_addrs.add(sinfo.psi.soi_so)
 
         family = socket.AddressFamily(sinfo.psi.soi_family)  # pylint: disable=no-member
         stype = socket.SocketKind(sinfo.psi.soi_type)  # pylint: disable=no-member
