@@ -138,6 +138,9 @@ if hasattr(pypsutil.Process, "connections"):
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.connections()
 
+    def test_proc_connections_bad_kind() -> None:
+        assert pypsutil.Process().connections("") == []
+
 
 if hasattr(pypsutil, "net_connections"):
 
@@ -196,3 +199,7 @@ if hasattr(pypsutil, "net_connections"):
             if conn.pid == cur_pid and conn.fd not in existing_conn_fds
         ]
         verify_connections({}, conns)
+
+    def test_net_connections_bad_kind() -> None:
+        # pylint: disable=no-member
+        assert pypsutil.net_connections("") == []  # type: ignore[attr-defined]
