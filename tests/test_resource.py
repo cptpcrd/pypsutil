@@ -118,3 +118,14 @@ def test_proc_cpu_times_children() -> None:
     else:
         assert math.isclose(cpu_times.children_user, os_times.children_user, abs_tol=0.05)
         assert math.isclose(cpu_times.children_system, os_times.children_system, abs_tol=0.05)
+
+
+def test_proc_ctx_switches_self() -> None:
+    pre_ru = resource.getrusage(resource.RUSAGE_SELF)
+    ctx = pypsutil.Process().num_ctx_switches()
+    post_ru = resource.getrusage(resource.RUSAGE_SELF)
+
+    pre_rctx = pre_ru.ru_nvcsw + pre_ru.ru_nivcsw
+    post_rctx = post_ru.ru_nvcsw + post_ru.ru_nivcsw
+
+    assert pre_rctx <= ctx <= post_rctx

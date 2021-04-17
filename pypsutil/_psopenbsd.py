@@ -898,6 +898,11 @@ def proc_threads(proc: "Process") -> List[ThreadInfo]:
     return threads
 
 
+def proc_num_ctx_switches(proc: "Process") -> int:
+    kinfo = _get_kinfo_proc(proc)
+    return cast(int, kinfo.p_uru_nvcsw + kinfo.p_uru_nivcsw)
+
+
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
     kinfo = _get_kinfo_proc(proc)
 

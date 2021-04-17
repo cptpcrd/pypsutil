@@ -390,6 +390,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
         else:
             return None
 
+    @translate_proc_errors
+    def num_ctx_switches(self) -> int:
+        return _psimpl.proc_num_ctx_switches(self)
+
     if hasattr(_psimpl, "proc_cpu_num"):
 
         @translate_proc_errors

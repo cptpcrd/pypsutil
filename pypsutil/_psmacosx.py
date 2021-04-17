@@ -1598,6 +1598,10 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
     )
 
 
+def proc_num_ctx_switches(proc: "Process") -> int:
+    return cast(int, _get_proc_task_info(proc).pti_csw)
+
+
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
     task_info = _get_proc_task_info(proc)
 

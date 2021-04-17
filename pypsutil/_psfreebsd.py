@@ -1479,6 +1479,11 @@ def proc_sigmasks(proc: "Process", *, include_internal: bool = False) -> Process
     )
 
 
+def proc_num_ctx_switches(proc: "Process") -> int:
+    kinfo = _get_kinfo_proc(proc)
+    return cast(int, kinfo.ki_rusage.ru_nvcsw + kinfo.ki_rusage.ru_nivcsw)
+
+
 def proc_cpu_times(proc: "Process") -> ProcessCPUTimes:
     kinfo = _get_kinfo_proc(proc)
 

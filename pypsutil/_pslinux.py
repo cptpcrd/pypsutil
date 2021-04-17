@@ -741,6 +741,20 @@ def proc_ppid(proc: "Process") -> int:
     return int(_get_proc_stat_fields(proc)[3])
 
 
+def proc_num_ctx_switches(proc: "Process") -> int:
+    vctxt = None
+    nvctxt = None
+    for name, value in _iter_proc_status_entries(proc):
+        if name == "voluntary_ctxt_switches":
+            vctxt = int(value)
+        elif name == "nonvoluntary_ctxt_switches":
+            nvctxt = int(value)
+
+    assert vctxt is not None
+    assert nvctxt is not None
+    return vctxt + nvctxt
+
+
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
     ruid, euid, suid, _ = map(int, _get_proc_status_entry(proc, "Uid").split())
     return ruid, euid, suid
