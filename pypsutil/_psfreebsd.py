@@ -1611,7 +1611,7 @@ def percpu_times() -> List[CPUTimes]:
 
 def cpu_stats() -> Tuple[int, int, int, int]:
     return (
-        _bsd.sysctlbyname_into("vm.stats.sys.v_switch", ctypes.c_uint64()).value,
+        _bsd.sysctlbyname_into("vm.stats.sys.v_swtch", ctypes.c_uint64()).value,
         _bsd.sysctlbyname_into("vm.stats.sys.v_intr", ctypes.c_uint64()).value,
         _bsd.sysctlbyname_into("vm.stats.sys.v_soft", ctypes.c_uint64()).value,
         _bsd.sysctlbyname_into("vm.stats.sys.v_syscall", ctypes.c_uint64()).value,
