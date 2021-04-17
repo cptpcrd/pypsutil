@@ -1116,55 +1116,69 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
 
     tcp_states = None
 
-    for kfile in _iter_kinfo_files(proc):
-        if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
-            continue
+    try:
+        seen_any = False
+        for kfile in _iter_kinfo_files(proc):
+            seen_any = True
 
-        family = kfile.kf_un.kf_sock.kf_sock_domain0
-        stype = kfile.kf_un.kf_sock.kf_sock_type0
-        if (family, stype) not in allowed_combos:
-            continue
+            if kfile.kf_fd < 0 or kfile.kf_type != KF_TYPE_SOCKET:
+                continue
 
-        laddr: Union[Tuple[str, int], str]
-        raddr: Union[Tuple[str, int], str]
-        if family == socket.AF_INET:
-            laddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
-            raddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
-        elif family == socket.AF_INET6:
-            laddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
-            raddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
-        elif family == socket.AF_UNIX:
-            laddr = os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path)
-            raddr = os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path)
-        else:
-            # We shouldn't get here
-            continue
+            family = kfile.kf_un.kf_sock.kf_sock_domain0
+            stype = kfile.kf_un.kf_sock.kf_sock_type0
+            if (family, stype) not in allowed_combos:
+                continue
 
-        status = None
-        if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
-            if tcp_states is None:
-                tcp_states = {xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()}
+            laddr: Union[Tuple[str, int], str]
+            raddr: Union[Tuple[str, int], str]
+            if family == socket.AF_INET:
+                laddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+                raddr = SockaddrIn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
+            elif family == socket.AF_INET6:
+                laddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).to_tuple()
+                raddr = SockaddrIn6.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).to_tuple()
+            elif family == socket.AF_UNIX:
+                laddr = os.fsdecode(
+                    SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path
+                )
+                raddr = os.fsdecode(SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path)
+            else:
+                # We shouldn't get here
+                continue
 
-            if tcp_states is not None:
-                if kfile.kf_un.kf_sock.kf_sock_pcb in tcp_states:
-                    status = _TCP_STATES[tcp_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
+            status = None
+            if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
+                if tcp_states is None:
+                    tcp_states = {
+                        xt.xt_inp.xi_socket.so_pcb: xt.t_state for xt in _iter_tcp_pcblist()
+                    }
 
-        yield Connection(
-            family=family,
-            type=stype,
-            laddr=laddr,
-            raddr=raddr,
-            status=status,
-            fd=kfile.kf_fd,
-            pid=proc.pid,
-        )
+                if tcp_states is not None:
+                    if kfile.kf_un.kf_sock.kf_sock_pcb in tcp_states:
+                        status = _TCP_STATES[tcp_states[kfile.kf_un.kf_sock.kf_sock_pcb]]
+
+            yield Connection(
+                family=family,
+                type=stype,
+                laddr=laddr,
+                raddr=raddr,
+                status=status,
+                fd=kfile.kf_fd,
+                pid=proc.pid,
+            )
+
+    except PermissionError:
+        if seen_any:
+            # The error was raised *after* the sysctl() call to retrieve information.
+            # This is unexpected, and we may have already yielded one or more Connection objects.
+            # Abort.
+            raise
+
+        # It's slower, but we *can* actually get this information
+        yield from net_connections(kind, _pid=proc.pid)
 
 
-def net_connections(kind: str) -> Iterator[Connection]:
-    allowed_combos = _util.conn_kind_to_combos(kind)
-    if not allowed_combos:
-        return
-
+def net_connections(kind: str, *, _pid: Optional[int] = None) -> Iterator[Connection]:
     tcp_infos = (
         {xt.xt_inp.xi_socket.xso_so: xt for xt in _iter_tcp_pcblist()}
         if kind in ("tcp4", "tcp6", "tcp", "inet4", "inet6", "inet", "all")
@@ -1183,6 +1197,10 @@ def net_connections(kind: str) -> Iterator[Connection]:
 
     for xfile in _iter_xfiles():
         if xfile.xf_type != DTYPE_SOCKET:
+            continue
+
+        # If _pid is not None, filter for that PID.
+        if _pid not in (None, xfile.xf_pid):
             continue
 
         family: int
