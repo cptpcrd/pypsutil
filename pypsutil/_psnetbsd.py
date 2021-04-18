@@ -850,25 +850,19 @@ _TCP_STATES = {
     10: ConnectionStatus.TIME_WAIT,
 }
 
-_SOCK_FAMILY_NAMES = {
-    socket.AF_INET: "inet",
-    socket.AF_INET6: "inet6",
-    socket.AF_UNIX: "local",
-}
-
 _SOCK_TYPES = {
     socket.AF_INET: {
-        socket.SOCK_STREAM: "tcp",
-        socket.SOCK_DGRAM: "udp",
+        socket.SOCK_STREAM: "inet.tcp",
+        socket.SOCK_DGRAM: "inet.udp",
     },
     socket.AF_INET6: {
-        socket.SOCK_STREAM: "tcp6",
-        socket.SOCK_DGRAM: "udp6",
+        socket.SOCK_STREAM: "inet6.tcp6",
+        socket.SOCK_DGRAM: "inet6.udp6",
     },
     socket.AF_UNIX: {
-        socket.SOCK_STREAM: "stream",
-        socket.SOCK_DGRAM: "dgram",
-        socket.SOCK_SEQPACKET: "seqpacket",
+        socket.SOCK_STREAM: "local.stream",
+        socket.SOCK_DGRAM: "local.dgram",
+        socket.SOCK_SEQPACKET: "local.seqpacket",
     },
 }
 
@@ -888,10 +882,7 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
 
     for (family, stype) in allowed_combos:
         base_mib = _bsd.sysctlnametomib(
-            "net.{}.{}.pcblist".format(
-                _SOCK_FAMILY_NAMES[family],
-                _SOCK_TYPES[family][stype],
-            ),
+            "net.{}.pcblist".format(_SOCK_TYPES[family][stype]),
             maxlen=4,
         )
 
