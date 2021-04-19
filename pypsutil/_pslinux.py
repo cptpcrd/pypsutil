@@ -778,12 +778,15 @@ def proc_getgroups(proc: "Process") -> List[int]:
 
 
 def proc_umask(proc: "Process") -> Optional[int]:
+    zombie = False
     for name, value in _iter_proc_status_entries(proc):
         if name == "State":
-            if value.startswith("Z"):
-                raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
+            zombie = value.startswith("Z")
         elif name == "Umask":
             return int(value, 8)
+
+    if zombie:
+        raise ZombieProcess(proc.pid)  # pylint: disable=raise-missing-from
 
     return None
 
