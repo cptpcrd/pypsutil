@@ -947,10 +947,8 @@ def proc_memory_maps(proc: "Process") -> List[ProcessMemoryMap]:
                     addr, perms, offset, dev, ino, *maybe_path = line.split(maxsplit=5)
 
                     path = maybe_path[0] if maybe_path else "[anon]"
-
                     addr_start, addr_end = (int(addr_part, 16) for addr_part in addr.split("-"))
-
-                    dev_major, dev_minor = map(int, dev.split(":"))
+                    dev_major, dev_minor = (int(dev_part, 16) for dev_part in dev.split(":"))
 
                     maps.append(
                         ProcessMemoryMap(

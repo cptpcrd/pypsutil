@@ -1,5 +1,8 @@
 # mypy: ignore-errors
 # pylint: disable=no-member
+import os
+import sys
+
 import pytest
 
 import pypsutil
@@ -39,3 +42,16 @@ def test_memory_info_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.memory_info()
+
+
+if hasattr(pypsutil.Process, "memory_maps_grouped"):
+
+    def test_memory_maps_grouped() -> None:
+        mmaps = {
+            os.path.realpath(mmap.path): mmap for mmap in pypsutil.Process().memory_maps_grouped()
+        }
+
+        exe_mmap = mmaps[os.path.realpath(sys.executable)]
+        exe_stat = os.stat(sys.executable)
+        assert exe_stat.st_ino == exe_mmap.ino
+        assert exe_stat.st_dev == exe_mmap.dev
