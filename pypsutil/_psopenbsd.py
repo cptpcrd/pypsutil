@@ -848,9 +848,10 @@ def proc_cwd(proc: "Process") -> str:
 
 def _skip_ptrs(data: bytes) -> bytes:
     ptrsize = ctypes.sizeof(ctypes.c_void_p)
-    while ctypes.c_void_p.from_buffer_copy(data).value:
-        data = data[ptrsize:]
-    return data[ptrsize:]
+    i = 0
+    while ctypes.c_void_p.from_buffer_copy(data, i).value:
+        i += ptrsize
+    return data[i + ptrsize:]
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
