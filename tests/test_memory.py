@@ -44,6 +44,15 @@ def test_memory_info_no_proc() -> None:
         proc.memory_info()
 
 
+if hasattr(pypsutil.Process, "memory_maps"):
+
+    def test_memory_maps_no_proc() -> None:
+        proc = get_dead_process()
+
+        with pytest.raises(pypsutil.NoSuchProcess):
+            proc.memory_maps()
+
+
 if hasattr(pypsutil.Process, "memory_maps_grouped"):
 
     def test_memory_maps_grouped() -> None:
