@@ -56,9 +56,7 @@ if hasattr(pypsutil.Process, "memory_maps"):
 @linux_only
 def test_memory_maps_grouped() -> None:
     # pylint: disable=no-member
-    mmaps = {
-        os.path.realpath(mmap.path): mmap for mmap in pypsutil.Process().memory_maps_grouped()
-    }
+    mmaps = {os.path.realpath(mmap.path): mmap for mmap in pypsutil.Process().memory_maps_grouped()}
 
     exe_mmap = mmaps[os.path.realpath(sys.executable)]
     exe_stat = os.stat(sys.executable)
