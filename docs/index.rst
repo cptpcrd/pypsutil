@@ -1463,6 +1463,34 @@ Sensor information
    Availability: Linux, FreeBSD
 
 
+Path constants that modify behavior
+===================================
+
+These constants can be set to modify ``pypsutil``'s behavior; e.g. partially examine the state of a
+Docker container on Linux.
+
+.. py:data:: PROCFS_PATH
+
+   The path at which a procfs is mounted (if applicable). Defaults to ``/proc``.
+
+   This attribute is set and can be modified even on systems which do not have a procfs; on those
+   systems it is ignored.
+
+   Currently, it is only used on Linux and NetBSD.
+
+
+.. py:data:: DEVFS_PATH
+
+   The path at which a ``/dev``-like file layout (e.g. ``tty*``) can be found.
+
+
+.. py:data:: SYSFS_PATH
+
+   On Linux, the path at which a sysfs is mounted. Defaults to  ``/sys``.
+
+   Availability: Linux
+
+
 Exceptions
 ==========
 
