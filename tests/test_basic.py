@@ -177,7 +177,7 @@ if hasattr(pypsutil.Process, "umask"):
         with managed_zombie_process() as proc:
             try:
                 mask = proc.umask()
-            except pypsutil.ZombieProcess:
+            except pypsutil.NoSuchProcess:
                 pass
             else:
                 if mask is not None:
