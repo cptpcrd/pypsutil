@@ -136,6 +136,13 @@ if hasattr(_psimpl, "sensors_power"):
             else:
                 return None
 
+        elif len(psinfo.batteries) == 1:
+            # 1 battery
+            battery = psinfo.batteries[0]
+            if battery.power_plugged is None:
+                battery._power_plugged = psinfo.is_on_ac_power  # pylint: disable=protected-access
+            return battery
+
         total_energy_full = 0
         total_energy_now = 0
 

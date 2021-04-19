@@ -458,6 +458,12 @@ def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
                         "capacity": "100",
                         "energy_now": "10000",
                     },
+                    "BAT1": {
+                        "type": "Battery\n",
+                        "status": "full",
+                        "capacity": "100",
+                        "energy_now": "10000",
+                    },
                     "AC0": {
                         "type": "Mains\n",
                         "online": "1",
@@ -477,7 +483,15 @@ def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
                     energy_now=10000,
                     energy_full=None,
                     power_now=None,
-                )
+                ),
+                pypsutil.BatteryInfo(
+                    name="BAT1",
+                    status=pypsutil.BatteryStatus.FULL,
+                    percent=100,
+                    energy_now=10000,
+                    energy_full=None,
+                    power_now=None,
+                ),
             ],
             ac_supplies=[pypsutil.ACPowerInfo(name="AC0", is_online=True)],
         )
