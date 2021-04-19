@@ -7,7 +7,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process
+from .util import get_dead_process, linux_only
 
 if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
 
