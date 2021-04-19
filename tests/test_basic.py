@@ -8,7 +8,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, managed_child_process
+from .util import get_dead_process, managed_child_process, managed_zombie_process
 
 
 def test_basic_info() -> None:
@@ -172,6 +172,16 @@ if hasattr(pypsutil.Process, "umask"):
 
         with pytest.raises(pypsutil.NoSuchProcess):
             proc.umask()
+
+    def test_umask_zombie() -> None:
+        with managed_zombie_process() as proc:
+            try:
+                mask = proc.umask()
+            except pypsutil.ZombieProcess:
+                pass
+            else:
+                if mask is not None:
+                    assert os.umask(mask) == mask
 
 
 if hasattr(pypsutil.Process, "root"):
