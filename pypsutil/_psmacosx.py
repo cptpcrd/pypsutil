@@ -1179,11 +1179,11 @@ def _proc_cmdline_environ(proc: "Process") -> Tuple[List[str], Dict[str, str]]:
 
 
 def proc_cmdline(proc: "Process") -> List[str]:
-    return _proc_cmdline_environ(proc)[0]
+    return list(_proc_cmdline_environ(proc)[0])
 
 
 def proc_environ(proc: "Process") -> Dict[str, str]:
-    return _proc_cmdline_environ(proc)[1]
+    return dict(_proc_cmdline_environ(proc)[1])
 
 
 def proc_num_threads(proc: "Process") -> int:
