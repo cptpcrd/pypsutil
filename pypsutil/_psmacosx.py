@@ -971,7 +971,6 @@ class VmStatistics64(ctypes.Structure):
 
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
-
     length = _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid], None, proc_info)
 
     if length == 0:

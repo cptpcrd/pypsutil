@@ -480,7 +480,6 @@ class BCacheStats(ctypes.Structure):
 
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
-
     length = _bsd.sysctl(
         [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid, ctypes.sizeof(proc_info), 1], None, proc_info
     )
@@ -1014,9 +1013,7 @@ def proc_cpu_num(proc: "Process") -> int:
 
 def cpu_times() -> CPUTimes:
     cptimes = (ctypes.c_long * 6)()  # pytype: disable=not-callable
-
     _bsd.sysctl([CTL_KERN, KERN_CPTIME], None, cptimes)
-
     return CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes))
 
 

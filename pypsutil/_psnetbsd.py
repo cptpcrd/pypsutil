@@ -610,7 +610,6 @@ class VmTotal(ctypes.Structure):
 
 def _get_kinfo_proc2_pid(pid: int) -> KinfoProc2:
     proc_info = KinfoProc2()
-
     length = _bsd.sysctl(
         [CTL_KERN, KERN_PROC2, KERN_PROC_PID, pid, ctypes.sizeof(proc_info), 1], None, proc_info
     )
@@ -1045,7 +1044,6 @@ def proc_threads(proc: "Process") -> List[ThreadInfo]:
             continue
 
         rtime = kinfo.l_rtime_sec + kinfo.l_rtime_usec / 1000000
-
         threads.append(
             ThreadInfo(
                 id=kinfo.l_lid,
@@ -1130,9 +1128,7 @@ def proc_cpu_num(proc: "Process") -> int:
 
 def cpu_times() -> CPUTimes:
     cptimes = (ctypes.c_uint64 * 5)()  # pytype: disable=not-callable
-
     _bsd.sysctl([CTL_KERN, KERN_CP_TIME], None, cptimes)
-
     return CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes))
 
 

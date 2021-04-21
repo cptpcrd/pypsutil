@@ -899,9 +899,7 @@ ACPIIO_BATT_GET_BST = _IOC(IOC_INOUT, ord("B"), 0x11, ctypes.sizeof(ACPIBatteryI
 
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
     proc_info = KinfoProc()
-
     _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_PID, pid], None, proc_info)
-
     return proc_info
 
 
@@ -940,7 +938,6 @@ def _iter_kinfo_files(proc: "Process") -> Iterator[KinfoFile]:
 
 
 def _iter_xfiles() -> Iterator[XFile]:
-
     xfile_data = _bsd.sysctl_bytes_retry([CTL_KERN, KERN_FILE], None)
 
     return cast(
@@ -978,11 +975,9 @@ def proc_umask(proc: "Process") -> int:
         raise PermissionError
 
     umask = ctypes.c_ushort()
-
     _bsd.sysctl(  # pytype: disable=wrong-arg-types
         [CTL_KERN, KERN_PROC, KERN_PROC_UMASK, proc.pid], None, umask  # type: ignore
     )
-
     return umask.value
 
 
@@ -1445,13 +1440,10 @@ def proc_rlimit(
     proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
 ) -> Tuple[int, int]:
     _util.check_rlimit_resource(res)
-
     new_limits_raw = Rlimit.construct_opt(new_limits)
 
     old_limits = Rlimit(rlim_cur=resource.RLIM_INFINITY, rlim_max=resource.RLIM_INFINITY)
-
     _bsd.sysctl([CTL_KERN, KERN_PROC, KERN_PROC_RLIMIT, proc.pid, res], new_limits_raw, old_limits)
-
     return old_limits.rlim_cur, old_limits.rlim_max
 
 
@@ -1559,7 +1551,6 @@ def physical_cpu_count() -> Optional[int]:
     )
 
     root = ET.fromstring(topology_spec_dat)
-
     return len(root.findall("group/children/group")) or None
 
 
@@ -1595,17 +1586,13 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
 
 def cpu_times() -> CPUTimes:
     cptimes = (ctypes.c_long * 5)()  # pytype: disable=not-callable
-
     _bsd.sysctlbyname("kern.cp_time", None, cptimes)
-
     return CPUTimes(*(int(item) / _util.CLK_TCK for item in cptimes))
 
 
 def percpu_times() -> List[CPUTimes]:
     cptimes_len = _bsd.sysctlbyname("kern.cp_times", None, None) // ctypes.sizeof(ctypes.c_long)
-
     cptimes = (ctypes.c_long * cptimes_len)()  # pytype: disable=not-callable
-
     _bsd.sysctlbyname("kern.cp_times", None, cptimes)
 
     return [

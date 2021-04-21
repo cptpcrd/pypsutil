@@ -882,11 +882,9 @@ else:
         proc: "Process", res: int, new_limits: Optional[Tuple[int, int]] = None
     ) -> Tuple[int, int]:
         _util.check_rlimit_resource(res)
-
         new_limits_raw = Rlimit.construct_opt(new_limits)
 
         old_limits = Rlimit(rlim_cur=resource.RLIM_INFINITY, rlim_max=resource.RLIM_INFINITY)
-
         if libc.prlimit(proc.pid, res, new_limits_raw, old_limits) < 0:
             raise _ffi.build_oserror(ctypes.get_errno())
 
