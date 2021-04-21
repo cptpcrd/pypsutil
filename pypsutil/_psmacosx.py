@@ -1725,9 +1725,10 @@ def _managed_port(port: mach_port_t) -> Iterator[mach_port_t]:
     elif port == MACH_PORT_DEAD:
         raise _ffi.build_oserror(errno.EINVAL)
 
-    yield port
-
-    _check_kernerror(libc.mach_port_deallocate(_mach_task_self(), port))
+    try:
+        yield port
+    finally:
+        _check_kernerror(libc.mach_port_deallocate(_mach_task_self(), port))
 
 
 def _get_vmstats64() -> VmStatistics64:
