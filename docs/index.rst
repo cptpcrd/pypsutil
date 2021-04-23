@@ -665,13 +665,13 @@ Process information
       On some OSes, root privileges may be required to list connection information for processes
       created by other users:
 
-      - On Linux and macOS, root privileges are required to list connection information for these
-        processes.
-      - On FreeBSD, root privileges are not required to list connection information for these
+      - On Linux and macOS, root privileges **ARE** required to list connection information for
+        these processes.
+      - On FreeBSD, root privileges are **NOT** required to list connection information for these
         processes, but having root privileges allows this method to use a much more efficient
         implementation (~5x faster).
-      - On OpenBSD and NetBSD, root privileges are not required to list connection information for these
-        processes.
+      - On OpenBSD and NetBSD, root privileges are **NOT** required to list connection information
+        for these processes.
 
       :returns: A list of :py:class:`Connection` s
       :rtype: list[Connection]
