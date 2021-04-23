@@ -38,6 +38,7 @@ CLK_TCK = os.sysconf("SC_CLK_TCK")
 PAGESIZE = os.sysconf("SC_PAGESIZE")
 
 
+@enum.unique
 class ProcessStatus(enum.Enum):
     RUNNING = "running"
     SLEEPING = "sleeping"
@@ -61,6 +62,7 @@ class ProcessOpenFile:
     fd: int
 
 
+@enum.unique
 class ProcessFdType(enum.Enum):
     FILE = "file"
     SOCKET = "socket"
@@ -98,6 +100,7 @@ class ProcessFd:  # pylint: disable=too-many-instance-attributes
         return flags_to_mode(self.flags)
 
 
+@enum.unique
 class ConnectionStatus(enum.Enum):
     ESTABLISHED = "ESTABLISHED"
     SYN_SENT = "SYN_SENT"
@@ -162,6 +165,7 @@ class SwapInfo:
         return self.used * 100.0 / self.total if self.total else 0.0
 
 
+@enum.unique
 class BatteryStatus(enum.Enum):
     CHARGING = "charging"
     DISCHARGING = "discharging"
