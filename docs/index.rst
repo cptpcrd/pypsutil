@@ -1317,7 +1317,7 @@ System information
    Identical to :py:func:`cpu_times()`, but returns a list representing the times for each CPU.
 
    :return: A list of the times of each CPU.
-   :rtype: CPUTimes
+   :rtype: list[CPUTimes]
 
 
 .. py:function:: cpu_stats()
