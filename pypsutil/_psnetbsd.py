@@ -968,11 +968,13 @@ def proc_getgroups(proc: "Process") -> List[int]:
 def _procfs_readlink(proc: "Process", name: str) -> str:
     try:
         return os.readlink(os.path.join(_util.get_procfs_path(), str(proc.pid), name))
-    except FileNotFoundError as ex:
-        from ._process import pid_exists  # pylint: disable=import-outside-toplevel
-
-        if not pid_exists(proc.pid):
-            raise ProcessLookupError from ex
+    except FileNotFoundError:
+        try:
+            assert proc.pid >= 0
+            if proc.pid != 0:
+                os.kill(proc.pid, 0)
+        except PermissionError:
+            pass
 
         # It looks like procfs just isn't mounted
         return ""
