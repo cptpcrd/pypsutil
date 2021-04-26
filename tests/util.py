@@ -39,7 +39,7 @@ def _rewrite_kwargs(kwargs: Dict[str, Any]) -> None:
 def managed_child_process(args: List[str], **kwargs: Any) -> Iterator[pypsutil.Process]:
     _rewrite_kwargs(kwargs)
 
-    subproc = subprocess.Popen(args, **kwargs)
+    subproc = subprocess.Popen(args, **kwargs)  # pylint: disable=consider-using-with
 
     psproc = pypsutil.Process(subproc.pid)
 
@@ -67,7 +67,9 @@ def managed_child_process2(args: List[str], **kwargs: Any) -> Iterator[pypsutil.
 
 @contextlib.contextmanager
 def managed_zombie_process() -> Iterator[pypsutil.Process]:
-    subproc = subprocess.Popen([sys.executable, "-c", "exit()"])
+    subproc = subprocess.Popen(  # pylint: disable=consider-using-with
+        [sys.executable, "-c", "exit()"]
+    )
 
     psproc = pypsutil.Process(subproc.pid)
 
@@ -81,7 +83,9 @@ def managed_zombie_process() -> Iterator[pypsutil.Process]:
 
 
 def get_dead_process() -> pypsutil.Process:
-    subproc = subprocess.Popen([sys.executable, "-c", "exit()"])
+    subproc = subprocess.Popen(  # pylint: disable=consider-using-with
+        [sys.executable, "-c", "exit()"]
+    )
 
     try:
         proc = pypsutil.Process(subproc.pid)

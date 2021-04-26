@@ -660,7 +660,7 @@ class Popen(Process):
         args: Union[List[Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]], str, bytes],
         **kwargs: Any
     ) -> None:
-        proc = subprocess.Popen(args, **kwargs)
+        proc = subprocess.Popen(args, **kwargs)  # pylint: disable=consider-using-with
         super().__init__(proc.pid)
 
         self._proc = proc
