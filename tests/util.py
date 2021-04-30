@@ -100,8 +100,8 @@ def replace_info_directories(
     *, procfs: Optional[str] = None, sysfs: Optional[str] = None, devfs: Optional[str] = None
 ) -> Iterator[None]:
     old_procfs = pypsutil.PROCFS_PATH
-    old_sysfs = getattr("pypsutil", "SYSFS_PATH", None)
-    old_devfs = getattr("pypsutil", "DEVFS_PATH", None)
+    old_sysfs = getattr(pypsutil, "SYSFS_PATH", None)
+    old_devfs = getattr(pypsutil, "DEVFS_PATH", None)
 
     try:
         if procfs is not None:
