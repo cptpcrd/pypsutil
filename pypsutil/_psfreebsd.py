@@ -1610,9 +1610,11 @@ def cpu_stats() -> Tuple[int, int, int, int]:
     )
 
 
-def virtual_memory() -> VirtualMemoryInfo:
-    total = _bsd.sysctl_into([CTL_HW, HW_PHYSMEM], ctypes.c_ulong()).value
+def virtual_memory_total() -> int:
+    return _bsd.sysctl_into([CTL_HW, HW_PHYSMEM], ctypes.c_ulong()).value
 
+
+def virtual_memory() -> VirtualMemoryInfo:
     free_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_free_count", ctypes.c_uint()).value
     active_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_active_count", ctypes.c_uint32()).value
     inactive_pages = _bsd.sysctlbyname_into("vm.stats.vm.v_inactive_count", ctypes.c_uint32()).value
@@ -1623,7 +1625,7 @@ def virtual_memory() -> VirtualMemoryInfo:
     vmtotal = _bsd.sysctlbyname_into("vm.vmtotal", VmTotal())
 
     return VirtualMemoryInfo(
-        total=total,
+        total=virtual_memory_total(),
         available=(inactive_pages + free_pages) * _util.PAGESIZE,
         used=(active_pages + wired_pages) * _util.PAGESIZE,
         free=free_pages * _util.PAGESIZE,

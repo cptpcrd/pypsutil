@@ -1795,8 +1795,12 @@ def percpu_times() -> List[CPUTimes]:
     return times
 
 
+def virtual_memory_total() -> int:
+    return _bsd.sysctl_into([CTL_HW, HW_MEMSIZE], ctypes.c_int64()).value
+
+
 def virtual_memory() -> VirtualMemoryInfo:
-    total_mem = _bsd.sysctl_into([CTL_HW, HW_MEMSIZE], ctypes.c_int64()).value
+    total_mem = virtual_memory_total()
 
     vmstats = _get_vmstats64()
 

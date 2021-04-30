@@ -1161,15 +1161,18 @@ def cpu_stats() -> Tuple[int, int, int, int]:
     return uvmexp.swtch, uvmexp.intrs, uvmexp.softs, uvmexp.syscalls
 
 
+def virtual_memory_total() -> int:
+    return _bsd.sysctl_into([CTL_HW, HW_PHYSMEM64], ctypes.c_int64()).value
+
+
 def virtual_memory() -> VirtualMemoryInfo:
     uvmexp = _get_uvmexp()
     vmtotal = _bsd.sysctl_into([CTL_VM, VM_METER], VmTotal())
 
-    total_mem = _bsd.sysctl_into([CTL_HW, HW_PHYSMEM64], ctypes.c_int64()).value
     bufmem = _bsd.sysctlbyname_into("vm.bufmem", ctypes.c_long()).value
 
     return VirtualMemoryInfo(
-        total=total_mem,
+        total=virtual_memory_total(),
         available=(uvmexp.inactive + uvmexp.free) * uvmexp.pagesize,
         used=vmtotal.t_rm * uvmexp.pagesize,
         free=uvmexp.free * uvmexp.pagesize,

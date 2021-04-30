@@ -54,6 +54,14 @@ else:
         return time1 == time2 or time1 == 0 or time2 == 0
 
 
+if hasattr(_psimpl, "virtual_memory_total"):
+    virtual_memory_total = _psimpl.virtual_memory_total
+else:
+
+    def virtual_memory_total() -> int:
+        return _system.virtual_memory().total
+
+
 class Process:  # pylint: disable=too-many-instance-attributes
     _raw_create_time: Optional[float] = None
     _create_time: Optional[float] = None
@@ -410,7 +418,6 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
     def memory_percent(self, memtype: str = "rss") -> float:
         proc_meminfo = self.memory_info()
-        sys_meminfo = _system.virtual_memory()
 
         try:
             if memtype.startswith("_"):
@@ -423,7 +430,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 )
             ) from ex
         else:
-            return proc_val * 100.0 / sys_meminfo.total
+            return proc_val * 100.0 / virtual_memory_total()
 
     if hasattr(_psimpl, "proc_memory_maps"):
 

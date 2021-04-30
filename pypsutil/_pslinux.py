@@ -1173,6 +1173,10 @@ VMEM_NAME_MAPPINGS = {
 }
 
 
+def virtual_memory_total() -> int:
+    return _get_raw_meminfo()["MemTotal"]
+
+
 def virtual_memory() -> VirtualMemoryInfo:
     raw_meminfo = _get_raw_meminfo()
 
