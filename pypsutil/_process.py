@@ -413,6 +413,8 @@ class Process:  # pylint: disable=too-many-instance-attributes
         sys_meminfo = _system.virtual_memory()
 
         try:
+            if memtype.startswith("_"):
+                raise AttributeError
             proc_val = getattr(proc_meminfo, memtype)
         except AttributeError as ex:
             raise ValueError(
