@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 # pylint: disable=no-member
+import math
 import os
 import sys
 
@@ -42,6 +43,28 @@ def test_memory_info_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.memory_info()
+
+
+def test_memory_percent() -> None:
+    proc = pypsutil.Process()
+
+    proc_meminfo = proc.memory_info()
+    sys_meminfo = pypsutil.virtual_memory()
+    proc_rss_pct = proc.memory_percent()
+
+    assert math.isclose(proc_meminfo.rss * 100.0 / sys_meminfo.total, proc_rss_pct, abs_tol=0.1)
+
+
+def test_memory_percent_error() -> None:
+    proc = get_dead_process()
+    with pytest.raises(pypsutil.NoSuchProcess):
+        proc.memory_percent("rss")
+
+    proc = pypsutil.Process()
+    with pytest.raises(ValueError, match="memory type"):
+        proc.memory_percent("__class__")
+    with pytest.raises(ValueError, match="memory type"):
+        proc.memory_percent("BADTYPE")
 
 
 if hasattr(pypsutil.Process, "memory_maps"):
