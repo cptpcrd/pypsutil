@@ -8,6 +8,16 @@ import pypsutil
 
 from .util import linux_only, populate_directory, replace_info_directories
 
+if hasattr(pypsutil.Process, "cpu_num"):
+
+    def test_cpu_num_valid() -> None:
+        ncpus = os.cpu_count()
+        assert ncpus
+
+        for proc in pypsutil.process_iter():
+            cpu = proc.cpu_num()
+            assert cpu == -1 or 0 <= cpu < ncpus
+
 
 @linux_only
 def test_cpu_freq_sysfs(tmp_path: pathlib.Path) -> None:
