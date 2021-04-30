@@ -51,6 +51,18 @@ def test_percpu_info() -> None:
         assert len(pypsutil.percpu_freq()) in (0, ncpus)  # type: ignore[attr-defined]
 
 
+if hasattr(pypsutil, "cpu_freq"):
+
+    def test_cpu_freq_range() -> None:
+        freqs = pypsutil.cpu_freq()  # type: ignore[attr-defined]  # pylint: disable=no-member
+        if freqs is None:
+            pytest.skip("Unable to determine CPU frequencies")
+
+        assert freqs.current > 0
+        assert freqs.min == 0.0 or freqs.current >= freqs.min
+        assert freqs.max == 0.0 or freqs.current <= freqs.max
+
+
 @linux_only
 def test_cpu_info(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(procfs=str(tmp_path)):
