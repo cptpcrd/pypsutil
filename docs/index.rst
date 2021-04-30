@@ -1022,6 +1022,8 @@ Process information
 
         An unknown file type.
 
+        On macOS, ``flags`` and ``offset`` may be -1  for ``UNKNOWN`` files.
+
 
 .. py:class:: Connection
 
