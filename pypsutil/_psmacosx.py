@@ -1786,10 +1786,12 @@ def percpu_times() -> List[CPUTimes]:
             for i in range(pcount.value)
         ]
 
-        libc.vm_deallocate(
-            _mach_task_self(),
-            ctypes.addressof(ticks.contents),
-            tickcount.value * ctypes.sizeof(natural_t),
+        _check_kernerror(
+            libc.vm_deallocate(
+                _mach_task_self(),
+                ctypes.addressof(ticks.contents),
+                tickcount.value * ctypes.sizeof(natural_t),
+            )
         )
 
     return times
