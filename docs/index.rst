@@ -952,8 +952,8 @@ Process information
         A socket. Note that for Unix sockets, whether or not the path is returned in
         :py:attr:`ProcessFd.path` is platform-dependent.
 
-        On macOS, FreeBSD, OpenBSD, :py:attr:`ProcessFd.extra_info` will contain ``domain``, ``type``,
-        and ``protocol``, ``recvq``, and ``sendq`` fields indicating these attributes of the socket.
+        On macOS, FreeBSD, and OpenBSD, :py:attr:`ProcessFd.extra_info` will contain ``domain``, ``type``,
+        ``protocol``, ``recvq``, and ``sendq`` fields indicating these attributes of the socket.
 
    .. py:data:: PIPE
 
@@ -961,7 +961,7 @@ Process information
 
         On macOS and FreeBSD, :py:attr:`ProcessFd.extra_info` will contain a ``buffer_cnt`` field
         specifying the amount of data in the pipe's read buffer. (Note that since pipes are
-        bidirectional on FreeBSD, this means the amount of data waiting to be *read* by this end of
+        bidirectional on FreeBSD, this means the amount of data waiting to be read by *this* end of
         the pipe.)
 
         On macOS, :py:attr:`ProcessFd.extra_info` will also contain a ``buffer_max`` field specifying
@@ -975,8 +975,8 @@ Process information
 
         (macOS/\*BSD) A kqueue instance.
 
-        On macOS/OpenBSD, :py:attr:`ProcessFd.extra_info` will contain a ``kq_count`` field indicating
-        the number of pending events on the kqueue instance.
+        On macOS and OpenBSD, :py:attr:`ProcessFd.extra_info` will contain a ``kq_count`` field
+        indicating the number of pending events on the kqueue instance.
 
    .. py:data:: PROCDESC
 
