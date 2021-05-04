@@ -74,6 +74,10 @@ Currently, the following platforms are supported:
 Not all platforms support all interfaces. Availability of different functions on different
 platforms is noted in the documentation.
 
+Additionally, pypsutil is only properly tested on x86_64. It may work on other architectures, but
+support is probably less reliable. (In particular, big-endian architectures may have trouble,
+especially with regards to networking APIs.)
+
 Process information
 ===================
 
