@@ -27,12 +27,6 @@ task:
         PYTHON_PORT_NAMES: python38 py38-sqlite3
         PYTHON_EXE: python3.8
         PIP_EXE: python3.8 -m pip
-    - env:
-        PYTHON_VERSION: 3.7
-        PYTHON_PORT_NAMES: python37 py37-sqlite3
-        PIP_PORT_NAME: py37-pip
-        PYTHON_EXE: python3.7
-        PIP_EXE: pip-3.7
 
   env:
     CODECOV_TOKEN: ENCRYPTED[6995f47b1af730984aabeb833c897df376a13dfe01593bb2b816c2c99e51c1a57cf99e1b3e90bcb8a5fb9d220b3f3c74]
