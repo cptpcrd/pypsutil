@@ -1677,9 +1677,7 @@ def swap_memory() -> _util.SwapInfo:
     )
 
 
-def _list_batteries_raw() -> List[Tuple[ACPIBif, ACPIBst]]:
-    batteries = []
-
+def _iter_batteries_raw() -> Iterator[Tuple[ACPIBif, ACPIBst]]:
     try:
         with open(os.path.join(_util.get_devfs_path(), "acpi")) as acpi_file:
             # Get the number of batteries
@@ -1706,12 +1704,10 @@ def _list_batteries_raw() -> List[Tuple[ACPIBif, ACPIBst]]:
                 except PermissionError:
                     pass
                 else:
-                    batteries.append((bif, bst))
+                    yield (bif, bst)
 
     except FileNotFoundError:
         pass
-
-    return batteries
 
 
 def _extract_battery_status(state: int, is_full: bool) -> BatteryStatus:
@@ -1733,7 +1729,7 @@ def sensors_power() -> PowerSupplySensorInfo:
     batteries = []
     ac_adapters = []
 
-    for i, (bif, bst) in enumerate(_list_batteries_raw()):
+    for i, (bif, bst) in enumerate(_iter_batteries_raw()):
         if bif.lfcap == 0 or bif.lfcap == ACPI_BATT_UNKNOWN or bst.cap == ACPI_BATT_UNKNOWN:
             continue
 
