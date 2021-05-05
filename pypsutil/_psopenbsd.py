@@ -257,7 +257,7 @@ class KinfoProc(ctypes.Structure):
 class KinfoFile(ctypes.Structure):
     _fields_ = [
         ("f_fileaddr", ctypes.c_uint64),
-        ("f_flags", ctypes.c_uint32),
+        ("f_flag", ctypes.c_uint32),
         ("f_iflags", ctypes.c_uint32),
         ("f_type", ctypes.c_uint32),
         ("f_count", ctypes.c_uint32),
@@ -690,7 +690,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         else:
             fdtype = ProcessFdType.UNKNOWN
 
-        flags = kfile.f_flags
+        flags = kfile.f_flag
         if kfile.fd_ofileflags & UF_EXCLOSE:
             flags |= os.O_CLOEXEC
         else:
