@@ -637,6 +637,10 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         if kfile.fd_fd < 0:
             continue
 
+        # This will succeed if it was properly initialized with a non-NULL fp in fill_file().
+        # That should be true since we use KERN_FILE_BYPID and we ignore negative `fd_fd`s.
+        assert kfile.f_count != 0
+
         path = ""
         ino = None
         dev = None
@@ -644,12 +648,15 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         mode = None
         size = None
 
-        extra_info = {
-            "rbytes": kfile.f_rbytes,
-            "wbytes": kfile.f_wbytes,
-            "rxfer": kfile.f_rxfer,
-            "rwfer": kfile.f_rwfer,
-        }
+        extra_info = {}
+        position = 0
+        if kfile.f_offset != -1:
+            # All these fields should be initialized properly
+            position = kfile.f_offset
+            extra_info["rbytes"] = kfile.f_rbytes
+            extra_info["wbytes"] = kfile.f_wbytes
+            extra_info["rxfer"] = kfile.f_rxfer
+            extra_info["rwfer"] = kfile.f_rwfer
 
         if kfile.f_type == DTYPE_VNODE:
             if kfile.v_type == VFIFO:
@@ -657,15 +664,15 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             else:
                 fdtype = ProcessFdType.FILE
 
-                if kfile.va_mode != 0:
-                    # The va_* fields were filled in
-                    ino = kfile.va_fileid
-                    mode = kfile.va_mode
-                    dev = kfile.va_fsid
-                    # It seems va_rdev may be 0 when it shouldn't be sometimes
-                    rdev = kfile.va_rdev or None
-                    size = kfile.va_size
-                    extra_info["nlink"] = kfile.va_nlink
+            if kfile.va_mode != 0:
+                # The va_* fields were filled in
+                ino = kfile.va_fileid
+                mode = kfile.va_mode
+                dev = kfile.va_fsid
+                # It seems va_rdev may be 0 when it shouldn't be sometimes
+                rdev = kfile.va_rdev or None
+                size = kfile.va_size
+                extra_info["nlink"] = kfile.va_nlink
 
         elif kfile.f_type == DTYPE_SOCKET:
             fdtype = ProcessFdType.SOCKET
@@ -690,7 +697,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         else:
             fdtype = ProcessFdType.UNKNOWN
 
-        flags = kfile.f_flag
+        flags = (kfile.f_flag & ~os.O_ACCMODE) | ((kfile.f_flag - 1) & os.O_ACCMODE)
         if kfile.fd_ofileflags & UF_EXCLOSE:
             flags |= os.O_CLOEXEC
         else:
@@ -701,7 +708,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fd=kfile.fd_fd,
             fdtype=fdtype,
             flags=flags,
-            position=kfile.f_offset,
+            position=position,
             dev=dev,
             rdev=rdev,
             ino=ino,
