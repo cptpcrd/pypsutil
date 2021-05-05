@@ -1036,6 +1036,11 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
         elif kfile.kf_type == KF_TYPE_FIFO:
             fdtype = ProcessFdType.FIFO
+            dev = kfile.kf_un.kf_file.kf_file_fsid or kfile.kf_un.kf_file.kf_file_fsid_freebsd11
+            rdev = kfile.kf_un.kf_file.kf_file_rdev or kfile.kf_un.kf_file.kf_file_rdev_freebsd11
+            ino = kfile.kf_un.kf_file.kf_file_fileid
+            size = kfile.kf_un.kf_file.kf_file_size
+            mode = kfile.kf_un.kf_file.kf_file_mode
 
         elif kfile.kf_type == KF_TYPE_KQUEUE:
             fdtype = ProcessFdType.KQUEUE
