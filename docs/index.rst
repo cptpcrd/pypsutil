@@ -27,7 +27,7 @@ Reasons **not** to use ``pypsutil`` instead of ``psutil``:
 
 - You need to support Windows, Solaris, and/or AIX (``pypsutil`` currently does not support these
   platforms)
-- You need to support Python versions prior to 3.7 (``pypsutil`` is Python 3.7+ only)
+- You need to support Python versions prior to 3.6 (``pypsutil`` is Python 3.6+ only)
 - You are concerned about speed (simple benchmarks have shown that ``psutil`` is faster, which is
   expected since it is partially written in C)
 - You need professional support

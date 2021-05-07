@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,fixme
 import ctypes
 import dataclasses
 import os
@@ -37,6 +37,9 @@ from ._util import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
+
+
+CLOCK_BOOTTIME = getattr(time, "CLOCK_BOOTTIME", 7)  # XXX: time.CLOCK_BOOTTIME added in 3.7
 
 
 @dataclasses.dataclass
@@ -1453,7 +1456,7 @@ def _internal_boot_time() -> float:
 
 
 def time_since_boot() -> float:
-    return time.clock_gettime(time.CLOCK_BOOTTIME)  # pylint: disable=no-member
+    return time.clock_gettime(CLOCK_BOOTTIME)
 
 
 def uptime() -> float:

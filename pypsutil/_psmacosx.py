@@ -24,6 +24,8 @@ from ._util import (
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
+CLOCK_UPTIME_RAW = getattr(time, "CLOCK_UPTIME_RAW", 8)  # XXX: time.CLOCK_UPTIME_RAW added in 3.8
+
 libc = _ffi.load_libc()
 
 libc.proc_pidinfo.argtypes = (
@@ -127,8 +129,6 @@ KERN_DENIED = 53
 TSI_T_NTIMERS = 4
 
 SOCK_MAXADDRLEN = 255
-
-CLOCK_UPTIME_RAW = 8
 
 HOST_CPU_LOAD_INFO = 3
 PROCESSOR_CPU_LOAD_INFO = 2
