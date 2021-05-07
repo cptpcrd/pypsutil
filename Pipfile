@@ -11,10 +11,10 @@ pylint = "~=2.8.2"
 mypy = "~=0.812"
 
 isort = "~=5.8.0"
-black = "==21.4b2"
-autopep8 = "~=1.5.6"
+black = "==21.5b0"
+autopep8 = "~=1.5.7"
 
-pytest = "~=6.2.3"
+pytest = "~=6.2.4"
 pytest-cov = "~=2.11.1"
 
 # Required by pytest, but not properly pulled in by Pipenv
