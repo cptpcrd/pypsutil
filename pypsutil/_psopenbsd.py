@@ -687,9 +687,25 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             if kfile.so_family == socket.AF_UNIX:
                 path = os.fsdecode(kfile.unp_path)
 
-            elif kfile.so_family in (socket.AF_INET, socket.AF_INET6):
-                extra_info["local_port"] = kfile.inp_lport
-                extra_info["foreign_port"] = kfile.inp_fport
+            elif kfile.so_family == socket.AF_INET:
+                extra_info["local_addr"] = _util.decode_inet4_full(
+                    kfile.inp_laddru[0],
+                    _util.cvt_endian_ntoh(kfile.inp_lport, ctypes.sizeof(ctypes.c_uint16)),
+                )
+                extra_info["foreign_addr"] = _util.decode_inet4_full(
+                    kfile.inp_faddru[0],
+                    _util.cvt_endian_ntoh(kfile.inp_fport, ctypes.sizeof(ctypes.c_uint16)),
+                )
+
+            elif kfile.so_family == socket.AF_INET6:
+                extra_info["local_addr"] = _util.decode_inet6_full(
+                    _pack_addr6(kfile.inp_laddru),
+                    _util.cvt_endian_ntoh(kfile.inp_lport, ctypes.sizeof(ctypes.c_uint16)),
+                )
+                extra_info["foreign_addr"] = _util.decode_inet6_full(
+                    _pack_addr6(kfile.inp_faddru),
+                    _util.cvt_endian_ntoh(kfile.inp_fport, ctypes.sizeof(ctypes.c_uint16)),
+                )
 
         elif kfile.f_type == DTYPE_PIPE:
             fdtype = ProcessFdType.PIPE

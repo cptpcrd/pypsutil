@@ -1312,11 +1312,20 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                 extra_info["type"] = sinfo.psi.soi_type
 
                 if sinfo.psi.soi_family == socket.AF_UNIX:
-                    path = os.fsdecode(sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path)
+                    path = extra_info["local_addr"] = os.fsdecode(
+                        sinfo.psi.soi_proto.pri_un.unsi_addr.ua_sun.sun_path
+                    )
+                    extra_info["foreign_addr"] = os.fsdecode(
+                        sinfo.psi.soi_proto.pri_un.unsi_caddr.ua_sun.sun_path
+                    )
 
                 elif sinfo.psi.soi_family in (socket.AF_INET, socket.AF_INET6):
-                    extra_info["local_port"] = sinfo.psi.soi_proto.pri_in.insi_lport
-                    extra_info["foreign_port"] = sinfo.psi.soi_proto.pri_in.insi_fport
+                    extra_info["local_addr"] = sinfo.psi.soi_proto.pri_in.insi_laddr.to_tuple(
+                        sinfo.psi.soi_family, sinfo.psi.soi_proto.pri_in.insi_lport
+                    )
+                    extra_info["foreign_addr"] = sinfo.psi.soi_proto.pri_in.insi_faddr.to_tuple(
+                        sinfo.psi.soi_family, sinfo.psi.soi_proto.pri_in.insi_fport
+                    )
 
             elif fdinfo.proc_fdtype == PROX_FDTYPE_PIPE:
                 fdtype = ProcessFdType.PIPE

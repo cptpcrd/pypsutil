@@ -1003,6 +1003,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         if kfile.kf_fd < 0:
             continue
 
+        path = os.fsdecode(kfile.kf_path) if kfile.kf_path.startswith(b"/") else ""
         dev = None
         ino = None
         rdev = None
@@ -1025,6 +1026,28 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             extra_info["domain"] = kfile.kf_un.kf_sock.kf_sock_domain0
             extra_info["type"] = kfile.kf_un.kf_sock.kf_sock_type0
             extra_info["protocol"] = kfile.kf_un.kf_sock.kf_sock_protocol0
+
+            if kfile.kf_un.kf_sock.kf_sock_domain0 == socket.AF_INET:
+                extra_info["local_addr"] = SockaddrIn.from_buffer(
+                    kfile.kf_un.kf_sock.kf_sa_local
+                ).to_tuple()
+                extra_info["foreign_addr"] = SockaddrIn.from_buffer(
+                    kfile.kf_un.kf_sock.kf_sa_peer
+                ).to_tuple()
+            elif kfile.kf_un.kf_sock.kf_sock_domain0 == socket.AF_INET6:
+                extra_info["local_addr"] = SockaddrIn6.from_buffer(
+                    kfile.kf_un.kf_sock.kf_sa_local
+                ).to_tuple()
+                extra_info["foreign_addr"] = SockaddrIn6.from_buffer(
+                    kfile.kf_un.kf_sock.kf_sa_peer
+                ).to_tuple()
+            elif kfile.kf_un.kf_sock.kf_sock_domain0 == socket.AF_UNIX:
+                path = extra_info["local_addr"] = os.fsdecode(
+                    SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_local).sun_path
+                )
+                extra_info["foreign_addr"] = os.fsdecode(
+                    SockaddrUn.from_buffer(kfile.kf_un.kf_sock.kf_sa_peer).sun_path
+                )
 
         elif kfile.kf_type == KF_TYPE_PTS:
             fdtype = ProcessFdType.FILE
@@ -1058,7 +1081,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fdtype = ProcessFdType.UNKNOWN
 
         yield ProcessFd(
-            path=(os.fsdecode(kfile.kf_path) if kfile.kf_path.startswith(b"/") else ""),
+            path=path,
             fd=kfile.kf_fd,
             fdtype=fdtype,
             flags=kfile.kf_flags,
