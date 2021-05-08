@@ -772,9 +772,16 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
     for kfile in kfiles:
         path = ""
+        dev = None
+        rdev = None
+        ino = None
         mode = None
         size = None
         extra_info: Dict[str, Any] = {}
+
+        procfs_fd_path = os.path.join(
+            _util.get_procfs_path(), str(proc.pid), "fd", str(kfile.ki_fd)
+        )
 
         if kfile.ki_ftype == DTYPE_VNODE:
             if kfile.ki_vtype == VFIFO:
@@ -782,15 +789,24 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             else:
                 fdtype = ProcessFdType.FILE
                 size = kfile.ki_vsize
-                mode = _VTYPE_TO_ST_MODE.get(kfile.ki_vtype, None)
+
+            try:
+                fd_stat = os.stat(procfs_fd_path)
+            except OSError:
+                pass
+            else:
+                if _VTYPE_TO_ST_MODE.get(kfile.ki_vtype) in (stat.S_IFMT(fd_stat.st_mode), None):
+                    dev = fd_stat.st_dev
+                    rdev = fd_stat.st_rdev
+                    ino = fd_stat.st_ino
+                    mode = fd_stat.st_mode
+                    size = fd_stat.st_size
 
             if kfile.ki_vtype == VDIR:
                 # NetBSD's procfs allows readlink()ing /proc/$PID/fd/$FD if the file descriptor
                 # refers to a directory
                 try:
-                    path = os.readlink(
-                        os.path.join(_util.get_procfs_path(), str(proc.pid), "fd", str(kfile.ki_fd))
-                    )
+                    path = os.readlink(procfs_fd_path)
                 except OSError:
                     pass
 
@@ -818,9 +834,9 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fdtype=fdtype,
             flags=flags,
             position=kfile.ki_foffset,
-            dev=None,
-            rdev=None,
-            ino=None,
+            dev=dev,
+            rdev=rdev,
+            ino=ino,
             size=size,
             mode=mode,
             extra_info=extra_info,

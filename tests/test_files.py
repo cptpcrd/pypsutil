@@ -141,6 +141,7 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
             assert pfds[fd].rdev in (st.st_rdev, None)
             assert pfds[fd].dev in (st.st_dev, None)
             assert pfds[fd].ino in (st.st_ino, None)
+            assert pfds[fd].mode in (st.st_mode, None)
 
         for fd in [0, 1, 2]:
             if pfds[fd].path:

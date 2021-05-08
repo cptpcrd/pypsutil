@@ -837,7 +837,8 @@ Process information
         Availability of ``dev``, ``ino``, and ``rdev``, ``size``, and ``mode``:
 
         - Always set on Linux (though they are meaningless for some file types)
-        - Always ``None`` on NetBSD (except ``size`` and part of ``mode``; see notes below)
+        - Available on NetBSD for :py:attr:`ProcessFdType.FILE` s and
+          :py:attr:`ProcessFdType.FIFO` s if procfs is mounted
         - Availability on macOS/FreeBSD/OpenBSD varies depending on the file type. They are usually
           only available for :py:attr:`ProcessFdType.FILE` s.
 
@@ -851,6 +852,8 @@ Process information
 
         The path to the file. This will be empty if this cannot be retrieved, or if it is
         not meaningful for the file type in question.
+
+        Note that this is always empty on OpenBSD, and on NetBSD it is only set for directories.
 
    .. py:attribute:: fd
 
@@ -889,11 +892,6 @@ Process information
 
         The mode of the file (i.e. ``st_mode``), or ``None`` if not available. For
         :py:attr:`ProcessFdType.FILE` s, this can be used to get the file type.
-
-        .. warning::
-
-            On NetBSD, this is set for :py:attr:`ProcessFdType.FILE` s, but only the file type
-            portion is filled in; i.e. ``stat.S_IMODE(fd.mode) == 0``. Be careful!
 
    .. py:attribute:: size
 
