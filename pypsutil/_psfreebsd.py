@@ -1565,8 +1565,7 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
 
 
 def proc_cpu_num(proc: "Process") -> int:
-    kinfo = _get_kinfo_proc(proc)
-    return cast(int, kinfo.ki_lastcpu if kinfo.ki_oncpu == -1 else kinfo.ki_oncpu)
+    return cast(int, _get_kinfo_proc(proc).ki_lastcpu)
 
 
 def physical_cpu_count() -> Optional[int]:
