@@ -996,29 +996,23 @@ def proc_ppid(proc: "Process") -> int:
 
 
 def proc_pgid(proc: "Process") -> int:
-    if proc.pid == 0 or proc._is_cache_enabled():  # pylint: disable=protected-access
-        # Either a) pid=0, so we can't use getpgid() (because for that function
-        # pid=0 means the current process) or b) we're in a oneshot() and
-        # we should retrieve extra information.
-        return cast(int, _get_kinfo_proc(proc).p__pgid)
-    else:
+    if proc.pid != 0 and not proc._is_cache_enabled():  # pylint: disable=protected-access
         try:
             return _psposix.proc_pgid(proc)
         except PermissionError:
-            return cast(int, _get_kinfo_proc(proc).p__pgid)
+            pass
+
+    return cast(int, _get_kinfo_proc(proc).p__pgid)
 
 
 def proc_sid(proc: "Process") -> int:
-    if proc.pid == 0 or proc._is_cache_enabled():  # pylint: disable=protected-access
-        # Either a) pid=0, so we can't use getsid() (because for that function
-        # pid=0 means the current process) or b) we're in a oneshot() and
-        # we should retrieve extra information.
-        return cast(int, _get_kinfo_proc(proc).p_sid)
-    else:
+    if proc.pid != 0 and not proc._is_cache_enabled():  # pylint: disable=protected-access
         try:
             return _psposix.proc_sid(proc)
         except PermissionError:
-            return cast(int, _get_kinfo_proc(proc).p_sid)
+            pass
+
+    return cast(int, _get_kinfo_proc(proc).p_sid)
 
 
 def proc_getpriority(proc: "Process") -> int:
