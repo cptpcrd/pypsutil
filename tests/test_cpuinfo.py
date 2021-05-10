@@ -15,7 +15,11 @@ if hasattr(pypsutil.Process, "cpu_num"):
         assert ncpus
 
         for proc in pypsutil.process_iter():
-            cpu = proc.cpu_num()
+            try:
+                cpu = proc.cpu_num()
+            except pypsutil.NoSuchProcess:
+                continue
+
             assert cpu == -1 or 0 <= cpu < ncpus
 
 
