@@ -7,6 +7,9 @@ task:
 
   matrix:
     - env:
+        FREEBSD_VERSION: 11.4
+        FREEBSD_IMAGE: freebsd-11-4
+    - env:
         FREEBSD_VERSION: 12.2
         FREEBSD_IMAGE: freebsd-12-2
     - env:
