@@ -1222,6 +1222,9 @@ def net_connections(kind: str, *, _pid: Optional[int] = None) -> Iterator[Connec
         {xu.xu_socket.xso_so: xu for xu in _iter_unix_pcblist()} if kind in ("unix", "all") else {}
     )
 
+    if not (tcp_infos or udp_infos or unix_infos):
+        return
+
     for xfile in _iter_xfiles():
         if xfile.xf_type != DTYPE_SOCKET:
             continue
