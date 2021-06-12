@@ -76,6 +76,7 @@ class ProcessFdType(enum.Enum):
     SIGNALFD = "signalfd"
     EPOLL = "epoll"
     TIMERFD = "timerfd"
+    PIDFD = "pidfd"
     EVENTFD = "eventfd"
 
     UNKNOWN = "unknown"

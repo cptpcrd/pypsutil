@@ -356,6 +356,7 @@ _ANON_FD_TYPES = {
     "[eventfd]": ProcessFdType.EVENTFD,
     "[signalfd]": ProcessFdType.SIGNALFD,
     "[timerfd]": ProcessFdType.TIMERFD,
+    "[pidfd]": ProcessFdType.PIDFD,
     "inotify": ProcessFdType.INOTIFY,
 }
 
@@ -405,6 +406,9 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
                     elif line.startswith("sigmask:"):
                         extra_info["sigmask"] = parse_sigmask(line[8:].strip())
+
+                    elif line.startswith("Pid:"):
+                        extra_info["pid"] = int(line[4:].strip())
 
                 assert flags is not None
 

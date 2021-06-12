@@ -1009,6 +1009,13 @@ Process information
 
         (Linux) A timerfd instance.
 
+   .. py:data:: PIDFD
+
+        (Linux) An PID file descriptor.
+
+        :py:attr:`ProcessFd.extra_info` will contain a ``pid`` field containing the PID of the
+        process referred to by this process descriptor.
+
    .. py:data:: EVENTFD
 
         (Linux/FreeBSD) An eventfd.
