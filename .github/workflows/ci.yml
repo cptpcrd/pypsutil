@@ -74,7 +74,7 @@ jobs:
         run: pipenv run pytest --cov-report=xml --verbose --showlocals tests/
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.13
+        uses: codecov/codecov-action@v1
         with:
           name: ${{ matrix.os }}-${{ matrix.python-version }}
           fail_ci_if_error: true
