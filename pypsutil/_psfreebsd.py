@@ -1850,7 +1850,9 @@ def time_since_boot() -> float:
 
 
 def uptime() -> float:
-    return time.clock_gettime(time.CLOCK_UPTIME)  # pylint: disable=no-member
+    return time.clock_gettime(
+        time.CLOCK_UPTIME  # type: ignore[attr-defined] # pylint: disable=no-member
+    )
 
 
 DiskUsage = _psposix.DiskUsage
