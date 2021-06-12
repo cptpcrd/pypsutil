@@ -941,6 +941,9 @@ Process information
    Note that all of the variants here are added on all OSes. For example, :py:attr:`ProcessFdType.KQUEUE`
    is available on Linux, though it is BSD/macOS-specific. It will simply never actually be returned.
 
+   Additionally, new variants may be added to this enum at any time. Treat unrecognized variants as
+   equivalent to :py:attr:`ProcessFdType.UNKNOWN`.
+
    .. py:data:: FILE
 
         A file on the disk. Note that this doesn't necessarily mean a *regular* file, it could still
