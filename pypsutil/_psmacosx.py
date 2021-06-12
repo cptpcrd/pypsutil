@@ -1448,6 +1448,11 @@ def net_connections(kind: str) -> Iterator[Connection]:
             )
             assert xt.xt_inpcb.xi_socket.so_type == socket.SOCK_STREAM
 
+            if (kind in ("tcp4", "inet4") and family == socket.AF_INET6) or (
+                kind in ("tcp6", "inet6") and family == socket.AF_INET
+            ):
+                continue
+
             yield Connection(
                 family=family,
                 type=socket.SOCK_STREAM,
@@ -1469,6 +1474,11 @@ def net_connections(kind: str) -> Iterator[Connection]:
 
             family = socket.AddressFamily(xi.xi_socket.xso_family)  # pylint: disable=no-member
             assert xi.xi_socket.so_type == socket.SOCK_DGRAM
+
+            if (kind in ("udp4", "inet4") and family == socket.AF_INET6) or (
+                kind in ("udp6", "inet6") and family == socket.AF_INET
+            ):
+                continue
 
             yield Connection(
                 family=family,
