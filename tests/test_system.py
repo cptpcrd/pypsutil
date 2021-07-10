@@ -15,7 +15,7 @@ def test_boot_time() -> None:
 
 def test_time_since_boot() -> None:
     # Make sure they match up approximately
-    assert round(time.time() - (pypsutil.boot_time() + pypsutil.time_since_boot()), 1) == 0
+    assert time.time() == pytest.approx(pypsutil.boot_time() + pypsutil.time_since_boot(), abs=0.1)
 
 
 if hasattr(pypsutil, "uptime"):
