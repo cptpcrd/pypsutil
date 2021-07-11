@@ -545,7 +545,8 @@ Process information
    .. py:method:: cpu_num()
 
       Get number of the CPU this process is running on (or was last running on if it is not currently
-      running).
+      running). Note that the CPU number can change at any time, so the returned value may already
+      be outdated.
 
       This will return -1 if the CPU number cannot be determined (for example, on FreeBSD with certain
       kernel processes).
