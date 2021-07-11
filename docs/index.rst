@@ -513,9 +513,9 @@ Process information
 
    .. py:method:: has_terminal()
 
-      Check whether this process has a controlling terminal. This is exactly equivalent to
-      ``proc.terminal() is not None``, but it is more efficient if you don't need the name of the
-      terminal (just whether or not the process has one).
+      Check whether this process has a controlling terminal. ``proc.has_terminal()`` is exactly
+      equivalent to ``proc.terminal() is not None``, but it is more efficient if you don't need the
+      name of the terminal (just whether or not the process has one).
 
       .. note::
           See the note on :py:meth:`terminal()` for an explanation of how this differs from
@@ -533,8 +533,8 @@ Process information
       .. note::
           Usually, the name returned by this function will be the same as with the ``tty`` command
           or ``ttyname(0)``. However, this function returns the name of the process's *controlling
-          terminal*; ``tty`` and ``ttyname(0)`` return the name of *the terminal connected to standard
-          input* (if the process's standard input is a terminal).
+          terminal*, while ``tty`` and ``ttyname(0)`` return the name of *the terminal connected to
+          standard input* (if the process's standard input is a terminal).
 
           In most cases, these will be the same thing. However, they are not technically *required*
           to be, and in some edge cases they may be different.
