@@ -904,8 +904,7 @@ proc_getrlimit = proc_rlimit
 
 
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
-    tty_nr = int(_get_proc_stat_fields(proc)[6])
-    return tty_nr if tty_nr != 0 else None
+    return int(_get_proc_stat_fields(proc)[6]) or None
 
 
 def proc_cpu_num(proc: "Process") -> int:
