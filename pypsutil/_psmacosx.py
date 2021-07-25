@@ -1365,7 +1365,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             offset = pfi.fi_offset
 
             # Map F* flags to O_* flags
-            flags = pfi.fi_openflags & ~os.O_ACCMODE
+            flags = pfi.fi_openflags & ~os.O_ACCMODE  # type: ignore[attr-defined]
             if pfi.fi_openflags & 3:
                 flags |= (pfi.fi_openflags & 3) - 1
 

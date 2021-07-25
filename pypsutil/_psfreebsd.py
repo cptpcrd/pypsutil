@@ -1017,16 +1017,16 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 _KF_FLAGS_TABLE = [
     (KF_FLAG_APPEND, os.O_APPEND),
     (KF_FLAG_ASYNC, os.O_ASYNC),
-    (KF_FLAG_FSYNC, os.O_FSYNC),
+    (KF_FLAG_FSYNC, os.O_FSYNC),  # type: ignore[attr-defined]  # pylint: disable=no-member
     (KF_FLAG_NONBLOCK, os.O_NONBLOCK),
     (KF_FLAG_DIRECT, os.O_DIRECT),
-    (KF_FLAG_SHLOCK, os.O_SHLOCK),
-    (KF_FLAG_EXLOCK, os.O_EXLOCK),
+    (KF_FLAG_SHLOCK, os.O_SHLOCK),  # pylint: disable=no-member
+    (KF_FLAG_EXLOCK, os.O_EXLOCK),  # pylint: disable=no-member
     (KF_FLAG_NOFOLLOW, os.O_NOFOLLOW),
     (KF_FLAG_CREAT, os.O_CREAT),
     (KF_FLAG_TRUNC, os.O_TRUNC),
     (KF_FLAG_EXCL, os.O_EXCL),
-    (KF_FLAG_EXEC, os.O_EXEC),
+    (KF_FLAG_EXEC, os.O_EXEC),  # type: ignore[attr-defined]  # pylint: disable=no-member
 ]
 
 

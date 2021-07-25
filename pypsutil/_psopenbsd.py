@@ -718,7 +718,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fdtype = ProcessFdType.UNKNOWN
 
         # Map F* flags to O_* flags
-        flags = kfile.f_flag & ~os.O_ACCMODE
+        flags = kfile.f_flag & ~os.O_ACCMODE  # type: ignore[attr-defined]
         if kfile.f_flag & 3:
             flags |= (kfile.f_flag & 3) - 1
 
