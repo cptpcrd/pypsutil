@@ -20,7 +20,7 @@ def test_environ() -> None:
 
     # Check that env is a subset of proc.environ()
     # On macOS, proc.environ() includes some extra ifnormation
-    for name in env:
+    for name in env:  # pylint: disable=consider-using-dict-items
         assert env[name] == proc_env[name]
 
 
