@@ -717,9 +717,11 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         else:
             fdtype = ProcessFdType.UNKNOWN
 
-        flags = (kfile.f_flag & ~os.O_ACCMODE) | (  # type: ignore[attr-defined]
-            kfile.f_flag - 1
-        ) & os.O_ACCMODE  # type: ignore[attr-defined]
+        # Map F* flags to O_* flags
+        flags = kfile.f_flag & ~os.O_ACCMODE
+        if kfile.f_flag & 3:
+            flags |= (kfile.f_flag & 3) - 1
+
         if kfile.fd_ofileflags & UF_EXCLOSE:
             flags |= os.O_CLOEXEC
         else:

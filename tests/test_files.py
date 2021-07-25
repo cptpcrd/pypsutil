@@ -118,6 +118,8 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
     os.mkfifo(tmp_path / "fifo")
     os.mkdir(tmp_path / "dir")
 
+    expect_cloexec = 0 if pypsutil.FREEBSD else os.O_CLOEXEC
+
     with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
         socket.AF_INET
     ) as sock_in, managed_pipe() as (r, w), open(
@@ -178,6 +180,10 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
         assert pfds[fifo].fdtype == pypsutil.ProcessFdType.FIFO
         assert pfds[file].fdtype == pypsutil.ProcessFdType.FILE
         assert pfds[dirfd].fdtype == pypsutil.ProcessFdType.FILE
+
+        assert pfds[file].flags == os.O_WRONLY | expect_cloexec
+        assert pfds[fifo].flags == os.O_RDONLY | os.O_NONBLOCK | expect_cloexec
+        assert pfds[dirfd].flags == os.O_RDONLY | os.O_DIRECTORY | expect_cloexec
 
         if pypsutil.FREEBSD or pypsutil.MACOS:
             assert pfds[r].extra_info["buffer_cnt"] == 3

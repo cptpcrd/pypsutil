@@ -41,6 +41,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 CLOCK_BOOTTIME = getattr(time, "CLOCK_BOOTTIME", 7)  # XXX: time.CLOCK_BOOTTIME added in 3.7
 
+# O_LARGEFILE is sometimes #define'd to 0 in the headers (and the value is added in in the open(2)
+# wrapper). We need to define it manually.
+O_LARGEFILE = 0o0100000
+
 
 @dataclasses.dataclass
 class ProcessOpenFile(_util.ProcessOpenFile):
@@ -321,7 +325,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
                         if line.startswith("pos:"):
                             position = int(line[4:].strip())
                         elif line.startswith("flags:"):
-                            flags = int(line[6:].strip(), 8)
+                            flags = int(line[6:].strip(), 8) & ~O_LARGEFILE
 
                         if position is not None and flags is not None:
                             break
@@ -386,7 +390,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                     if line.startswith("pos:"):
                         position = int(line[4:].strip())
                     elif line.startswith("flags:"):
-                        flags = int(line[6:].strip(), 8)
+                        flags = int(line[6:].strip(), 8) & ~O_LARGEFILE
 
                     elif line.startswith(("mnt_id:", "scm_fds:", "eventfd-count:")):
                         key, value = line.split(":", 1)

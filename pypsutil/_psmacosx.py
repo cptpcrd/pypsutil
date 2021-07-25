@@ -1364,7 +1364,11 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         if pfi is not None:
             offset = pfi.fi_offset
 
-            flags = pfi.fi_openflags
+            # Map F* flags to O_* flags
+            flags = pfi.fi_openflags & ~os.O_ACCMODE
+            if pfi.fi_openflags & 3:
+                flags |= (pfi.fi_openflags & 3) - 1
+
             if pfi.fi_status & PROC_FP_CLEXEC:
                 flags |= os.O_CLOEXEC
             else:

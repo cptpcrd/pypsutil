@@ -917,6 +917,8 @@ Process information
         This will include ``O_CLOEXEC`` if the file descriptor's close-on-exec flag is set (except
         on FreeBSD).
 
+        On Linux, this will never include the ``O_LARGEFILE`` flag.
+
    .. py:attribute:: open_mode
 
          :type: str

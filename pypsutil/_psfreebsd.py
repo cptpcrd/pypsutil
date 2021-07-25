@@ -83,6 +83,22 @@ KF_TYPE_EVENTFD = 13
 KF_VTYPE_VREG = 1
 KF_FD_TYPE_ROOT = -2
 
+KF_FLAG_READ = 0x00000001
+KF_FLAG_WRITE = 0x00000002
+KF_FLAG_APPEND = 0x00000004
+KF_FLAG_ASYNC = 0x00000008
+KF_FLAG_FSYNC = 0x00000010
+KF_FLAG_NONBLOCK = 0x00000020
+KF_FLAG_DIRECT = 0x00000040
+KF_FLAG_HASLOCK = 0x00000080
+KF_FLAG_SHLOCK = 0x00000100
+KF_FLAG_EXLOCK = 0x00000200
+KF_FLAG_NOFOLLOW = 0x00000400
+KF_FLAG_CREAT = 0x00000800
+KF_FLAG_TRUNC = 0x00001000
+KF_FLAG_EXCL = 0x00002000
+KF_FLAG_EXEC = 0x00004000
+
 DTYPE_SOCKET = 2
 
 KVME_TYPE_NONE = 0
@@ -998,6 +1014,22 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
     ]
 
 
+_KF_FLAGS_TABLE = [
+    (KF_FLAG_APPEND, os.O_APPEND),
+    (KF_FLAG_ASYNC, os.O_ASYNC),
+    (KF_FLAG_FSYNC, os.O_FSYNC),
+    (KF_FLAG_NONBLOCK, os.O_NONBLOCK),
+    (KF_FLAG_DIRECT, os.O_DIRECT),
+    (KF_FLAG_SHLOCK, os.O_SHLOCK),
+    (KF_FLAG_EXLOCK, os.O_EXLOCK),
+    (KF_FLAG_NOFOLLOW, os.O_NOFOLLOW),
+    (KF_FLAG_CREAT, os.O_CREAT),
+    (KF_FLAG_TRUNC, os.O_TRUNC),
+    (KF_FLAG_EXCL, os.O_EXCL),
+    (KF_FLAG_EXEC, os.O_EXEC),
+]
+
+
 def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
     for kfile in _iter_kinfo_files(proc):
         if kfile.kf_fd < 0:
@@ -1080,11 +1112,24 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         else:
             fdtype = ProcessFdType.UNKNOWN
 
+        flags = 0
+        if kfile.kf_flags & KF_FLAG_READ:
+            if kfile.kf_flags & KF_FLAG_WRITE:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+        elif kfile.kf_flags & KF_FLAG_WRITE:
+            flags |= os.O_WRONLY
+
+        for kflag, oflag in _KF_FLAGS_TABLE:
+            if kfile.kf_flags & kflag:
+                flags |= oflag
+
         yield ProcessFd(
             path=path,
             fd=kfile.kf_fd,
             fdtype=fdtype,
-            flags=kfile.kf_flags,
+            flags=flags,
             position=kfile.kf_offset,
             dev=dev,
             rdev=rdev,
