@@ -1022,7 +1022,7 @@ _KF_FLAGS_TABLE = [
     (KF_FLAG_ASYNC, os.O_ASYNC),
     (KF_FLAG_FSYNC, O_FSYNC),  # pylint: disable=no-member
     (KF_FLAG_NONBLOCK, os.O_NONBLOCK),
-    (KF_FLAG_DIRECT, os.O_DIRECT),
+    (KF_FLAG_DIRECT, os.O_DIRECT),  # pylint: disable=no-member
     (KF_FLAG_SHLOCK, os.O_SHLOCK),  # pylint: disable=no-member
     (KF_FLAG_EXLOCK, os.O_EXLOCK),  # pylint: disable=no-member
     (KF_FLAG_NOFOLLOW, os.O_NOFOLLOW),
