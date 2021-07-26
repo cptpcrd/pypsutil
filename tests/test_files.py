@@ -185,7 +185,9 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
         assert pfds[fifo].flags == os.O_RDONLY | os.O_NONBLOCK | expect_cloexec
         assert (
             pfds[dirfd].flags
-            == os.O_RDONLY | (0 if pypsutil.MACOS else os.O_DIRECTORY) | expect_cloexec
+            == os.O_RDONLY
+            | (0 if pypsutil.MACOS or pypsutil.BSD else os.O_DIRECTORY)
+            | expect_cloexec
         )
 
         if pypsutil.FREEBSD or pypsutil.MACOS:

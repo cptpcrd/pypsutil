@@ -919,9 +919,22 @@ Process information
 
         On Linux, this will never include the ``O_LARGEFILE`` flag.
 
-        On macOS, only the following flags will be preserved: ``O_RDONLY``, ``O_WRONLY``,
-        ``O_RDWR``, ``O_APPEND``, ``O_ASYNC``, ``O_FSYNC``, ``O_DSYNC``, ``O_NONBLOCK``,
-        ``O_EVTONLY``.
+        On macOS/\*BSD, only the following flags will be preserved:
+        - ``O_RDONLY``
+        - ``O_WRONLY``
+        - ``O_RDWR``
+        - ``O_APPEND``
+        - ``O_ASYNC``
+        - ``O_FSYNC``
+        - ``O_NONBLOCK``
+        - ``O_EVTONLY`` (macOS)
+        - ``O_DSYNC`` (macOS, FreeBSD, NetBSD)
+        - ``O_DIRECT`` (FreeBSD, NetBSD)
+        - ``O_EXEC`` (FreeBSD)
+        - ``O_PATH`` (FreeBSD 14+)
+        - ``O_RSYNC`` (NetBSD)
+        - ``O_ALT_IO`` (NetBSD)
+        - ``O_NOSIGPIPE`` (NetBSD)
 
    .. py:attribute:: open_mode
 
