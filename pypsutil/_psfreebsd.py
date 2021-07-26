@@ -25,7 +25,8 @@ from ._util import (
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
-O_FSYNC = getattr(os, "O_FSYNC", 0)  # FIXME: os.O_FSYNC added in Python 3.10
+# FIXME: os.O_FSYNC added in Python 3.10  # pylint:disable=fixme
+O_FSYNC = getattr(os, "O_FSYNC", 0)
 
 CTL_KERN = 1
 KERN_FILE = 15
@@ -1019,7 +1020,7 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 _KF_FLAGS_TABLE = [
     (KF_FLAG_APPEND, os.O_APPEND),
     (KF_FLAG_ASYNC, os.O_ASYNC),
-    (KF_FLAG_FSYNC, O_FSYNC),  # type: ignore[attr-defined]  # pylint: disable=no-member
+    (KF_FLAG_FSYNC, O_FSYNC),  # pylint: disable=no-member
     (KF_FLAG_NONBLOCK, os.O_NONBLOCK),
     (KF_FLAG_DIRECT, os.O_DIRECT),
     (KF_FLAG_SHLOCK, os.O_SHLOCK),  # pylint: disable=no-member
