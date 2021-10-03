@@ -87,8 +87,8 @@ def verify_connections(
         family, stype, laddr, raddr = test_socks.pop(conn.fd)
         assert conn.family == family
         assert conn.type == stype
-        assert conn.laddr == laddr or conn.laddr == ("" if family == socket.AF_UNIX else ("", 0))
-        assert conn.raddr == raddr or conn.raddr == ("" if family == socket.AF_UNIX else ("", 0))
+        assert conn.laddr in [laddr, ("" if family == socket.AF_UNIX else ("", 0))]
+        assert conn.raddr in [raddr, ("" if family == socket.AF_UNIX else ("", 0))]
 
         if stype == socket.SOCK_STREAM and family != socket.AF_UNIX:
             assert conn.status is not None
