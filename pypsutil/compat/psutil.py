@@ -185,7 +185,7 @@ class Popen(Process):
     def __init__(  # pylint: disable=super-init-not-called
         self,
         args: Union[List[Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]], str, bytes],
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._proc = pypsutil.Popen(args, **kwargs)
 
