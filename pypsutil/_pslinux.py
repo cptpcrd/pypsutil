@@ -43,7 +43,17 @@ CLOCK_BOOTTIME = getattr(time, "CLOCK_BOOTTIME", 7)  # XXX: time.CLOCK_BOOTTIME 
 
 # O_LARGEFILE is sometimes #define'd to 0 in the headers (and the value is added in in the open(2)
 # wrapper). We need to define it manually.
-O_LARGEFILE = 0o0100000
+O_LARGEFILE = {
+    "i386": 0o0100000,
+    "x86_64": 0o0100000,
+    "armv7l": 0o400000,
+    "aarch64": 0o400000,
+    "aarch64_be": 0o400000,
+    "mips": 0o20000,
+    "mips64": 0o20000,
+    "ppc": 0o200000,
+    "ppc64": 0o200000,
+}.get(os.uname().machine, os.O_LARGEFILE)
 
 
 @dataclasses.dataclass
