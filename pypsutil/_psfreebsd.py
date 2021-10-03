@@ -1757,7 +1757,7 @@ def swap_memory() -> _util.SwapInfo:
 
 def _iter_batteries_raw() -> Iterator[Tuple[ACPIBif, ACPIBst]]:
     try:
-        with open(os.path.join(_util.get_devfs_path(), "acpi")) as acpi_file:
+        with open(os.path.join(_util.get_devfs_path(), "acpi"), "rb") as acpi_file:
             # Get the number of batteries
             c_bat_count = ctypes.c_int()
             try:

@@ -85,7 +85,7 @@ def test_parse_environ() -> None:
 
 
 def test_read_file(tmp_path: pathlib.Path) -> None:
-    with open(tmp_path / "a.txt", "w") as file:
+    with open(tmp_path / "a.txt", "w", encoding="utf8") as file:
         file.write("abc\ndef")
 
     assert pypsutil._util.read_file(str(tmp_path / "a.txt")) == "abc\ndef"

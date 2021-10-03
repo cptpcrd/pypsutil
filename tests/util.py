@@ -129,7 +129,7 @@ def populate_directory(root_dir: str, structure: Dict[str, Any]) -> None:
         path = os.path.join(root_dir, name)
 
         if isinstance(item, str):
-            with open(path, "x") as file:
+            with open(path, "x", encoding="utf8") as file:
                 file.write(item)
         elif isinstance(item, list):
             assert len(item) == 1

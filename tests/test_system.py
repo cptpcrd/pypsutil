@@ -84,17 +84,17 @@ def test_cpu_info(tmp_path: pathlib.Path) -> None:
         assert pypsutil.physical_cpu_count() is None
 
         # /proc/cpuinfo is an empty file
-        with open(tmp_path / "cpuinfo", "w") as file:
+        with open(tmp_path / "cpuinfo", "w", encoding="utf8") as file:
             pass
         assert pypsutil.physical_cpu_count() is None
 
         # /proc/cpuinfo contains insufficient data
-        with open(tmp_path / "cpuinfo", "w") as file:
+        with open(tmp_path / "cpuinfo", "w", encoding="utf8") as file:
             file.write("processor\t: 0\ncore id:\t0\n")
         assert pypsutil.physical_cpu_count() is None
 
         # Some entries in /proc/cpuinfo contain insufficient data
-        with open(tmp_path / "cpuinfo", "w") as file:
+        with open(tmp_path / "cpuinfo", "w", encoding="utf8") as file:
             file.write(
                 """
 core id\t: 0
@@ -106,7 +106,7 @@ core id\t: 1
         assert pypsutil.physical_cpu_count() is None
 
         # Some entries in /proc/cpuinfo contain insufficient data
-        with open(tmp_path / "cpuinfo", "w") as file:
+        with open(tmp_path / "cpuinfo", "w", encoding="utf8") as file:
             file.write(
                 """
 core id\t: 0

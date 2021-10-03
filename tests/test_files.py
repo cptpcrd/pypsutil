@@ -60,7 +60,7 @@ def test_open_files_empty() -> None:
 
 
 def test_open_files_2(tmp_path: pathlib.Path) -> None:
-    with open(tmp_path / "a", "w"):
+    with open(tmp_path / "a", "w", encoding="utf8"):
         pass
 
     with managed_child_process2(
@@ -123,9 +123,14 @@ def test_iter_fds(tmp_path: pathlib.Path) -> None:
     with socket.socket(socket.AF_UNIX) as sock_un, socket.socket(
         socket.AF_INET
     ) as sock_in, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        tmp_path / "fifo",
+        "r",
+        opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK),
+        encoding="utf8",
     ) as fifo, open(
-        tmp_path / "file", "w"
+        tmp_path / "file",
+        "w",
+        encoding="utf8",
     ) as file, managed_fd(
         os.open(tmp_path / "dir", os.O_RDONLY | os.O_DIRECTORY)
     ) as dirfd:
@@ -210,7 +215,10 @@ def test_iter_fds_epoll(tmp_path: pathlib.Path) -> None:
     os.mkfifo(tmp_path / "fifo")
 
     with select.epoll() as epoll, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        tmp_path / "fifo",
+        "r",
+        opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK),
+        encoding="utf8",
     ) as fifo:
         epoll.register(r, select.EPOLLIN)
         epoll.register(w, select.EPOLLOUT)
@@ -259,7 +267,10 @@ def test_iter_fds_kqueue(tmp_path: pathlib.Path) -> None:
     os.mkfifo(tmp_path / "fifo")
 
     with contextlib.closing(select.kqueue()) as kqueue, managed_pipe() as (r, w), open(
-        tmp_path / "fifo", "r", opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK)
+        tmp_path / "fifo",
+        "r",
+        opener=lambda path, flags: os.open(path, flags | os.O_NONBLOCK),
+        encoding="utf8",
     ) as fifo:
         kqueue.control([select.kevent(r, select.KQ_FILTER_READ)], 0)
         kqueue.control([select.kevent(w, select.KQ_FILTER_WRITE)], 0)

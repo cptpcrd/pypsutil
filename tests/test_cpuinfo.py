@@ -109,7 +109,7 @@ def test_cpu_freq_none(tmp_path: pathlib.Path) -> None:
 
 @linux_only
 def test_cpu_stats(tmp_path: pathlib.Path) -> None:
-    with open(tmp_path / "stat", "w") as file:
+    with open(tmp_path / "stat", "w", encoding="utf8") as file:
         file.write(
             """cpu 0 0 0 0 0 0 0 0 0 0
 cpu0 0 0 0 0 0 0 0 0 0 0
@@ -139,7 +139,7 @@ CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 
 @linux_only
 def test_cpu_times(tmp_path: pathlib.Path) -> None:
-    with open(tmp_path / "stat", "w") as file:
+    with open(tmp_path / "stat", "w", encoding="utf8") as file:
         file.write(
             """cpu {}
 cpu0 0 0 0 0 0 0 0 0 0 0
@@ -169,7 +169,7 @@ swap 0 0
 @linux_only
 def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
     # No "cpu" or "cpuN" entries
-    with open(tmp_path / "stat", "w") as file:
+    with open(tmp_path / "stat", "w", encoding="utf8") as file:
         file.write("page 0 0\nswap 0 0\n")
 
     with replace_info_directories(procfs=str(tmp_path)):
@@ -181,7 +181,7 @@ def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
 
 @linux_only
 def test_percpu_times(tmp_path: pathlib.Path) -> None:
-    with open(tmp_path / "stat", "w") as file:
+    with open(tmp_path / "stat", "w", encoding="utf8") as file:
         file.write(
             """cpu 0 0 0 0 0 0 0 0 0 0
 cpu0 {}

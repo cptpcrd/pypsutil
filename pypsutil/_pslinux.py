@@ -202,7 +202,11 @@ def _parse_procfs_stat_fields(line: str) -> List[str]:
 
 def _get_pid_stat_fields(pid: int) -> List[str]:
     try:
-        with open(os.path.join(_util.get_procfs_path(), str(pid), "stat")) as file:
+        with open(
+            os.path.join(_util.get_procfs_path(), str(pid), "stat"),
+            encoding="utf8",
+            errors="surrogateescape",
+        ) as file:
             line = file.readline().strip()
     except FileNotFoundError as ex:
         raise ProcessLookupError from ex
@@ -330,7 +334,11 @@ def proc_open_files(proc: "Process") -> List[ProcessOpenFile]:
 
                 position = None
                 flags = None
-                with open(os.path.join(proc_dir, "fdinfo", name)) as file:
+                with open(
+                    os.path.join(proc_dir, "fdinfo", name),
+                    encoding="utf8",
+                    errors="surrogateescape",
+                ) as file:
                     for line in file:
                         if line.startswith("pos:"):
                             position = int(line[4:].strip())
@@ -507,7 +515,7 @@ def _iter_connections(
     ]
 ]:
     if kind in ("tcp4", "tcp", "inet4", "inet", "all"):
-        with open("/proc/net/tcp") as file:
+        with open("/proc/net/tcp", encoding="utf8", errors="surrogateescape") as file:
             file.readline()
 
             for line in file:
@@ -522,7 +530,7 @@ def _iter_connections(
                 )
 
     if kind in ("tcp6", "tcp", "inet6", "inet", "all"):
-        with open("/proc/net/tcp6") as file:
+        with open("/proc/net/tcp6", encoding="utf8", errors="surrogateescape") as file:
             file.readline()
 
             for line in file:
@@ -537,7 +545,7 @@ def _iter_connections(
                 )
 
     if kind in ("udp4", "udp", "inet4", "inet", "all"):
-        with open("/proc/net/udp") as file:
+        with open("/proc/net/udp", encoding="utf8", errors="surrogateescape") as file:
             file.readline()
 
             for line in file:
@@ -552,7 +560,7 @@ def _iter_connections(
                 )
 
     if kind in ("udp6", "udp", "inet6", "inet", "all"):
-        with open("/proc/net/udp6") as file:
+        with open("/proc/net/udp6", encoding="utf8", errors="surrogateescape") as file:
             file.readline()
 
             for line in file:
@@ -567,7 +575,7 @@ def _iter_connections(
                 )
 
     if kind in ("unix", "all"):
-        with open("/proc/net/unix") as file:
+        with open("/proc/net/unix", encoding="utf8", errors="surrogateescape") as file:
             file.readline()
 
             for line in file:
@@ -699,7 +707,9 @@ def proc_threads(proc: "Process") -> List[ThreadInfo]:
                 tid = int(entry.name)
 
                 try:
-                    with open(os.path.join(entry.path, "stat")) as file:
+                    with open(
+                        os.path.join(entry.path, "stat"), encoding="utf8", errors="surrogateescape"
+                    ) as file:
                         line = file.readline().strip()
                 except FileNotFoundError:
                     pass
@@ -927,7 +937,11 @@ def proc_cpu_num(proc: "Process") -> int:
 
 def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
     try:
-        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "statm")) as file:
+        with open(
+            os.path.join(_util.get_procfs_path(), str(proc.pid), "statm"),
+            encoding="utf8",
+            errors="surrogateescape",
+        ) as file:
             items = list(map(int, file.readline().split()))
 
     except FileNotFoundError as ex:
@@ -960,7 +974,11 @@ def proc_memory_maps(proc: "Process") -> List[ProcessMemoryMap]:
     try:
         maps = []
 
-        with open(os.path.join(_util.get_procfs_path(), str(proc.pid), "smaps")) as file:
+        with open(
+            os.path.join(_util.get_procfs_path(), str(proc.pid), "smaps"),
+            encoding="utf8",
+            errors="surrogateescape",
+        ) as file:
             for line in file:
                 line = line.rstrip("\n")
 
@@ -1054,7 +1072,9 @@ def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple
 
 
 def _iter_procfs_cpuinfo_entries() -> Iterator[Tuple[str, str]]:
-    with open(os.path.join(_util.get_procfs_path(), "cpuinfo")) as file:
+    with open(
+        os.path.join(_util.get_procfs_path(), "cpuinfo"), encoding="utf8", errors="surrogateescape"
+    ) as file:
         for line in file:
             if ":" in line:
                 name, value = line.split(":", maxsplit=1)
@@ -1064,7 +1084,9 @@ def _iter_procfs_cpuinfo_entries() -> Iterator[Tuple[str, str]]:
 
 
 def _iter_procfs_stat_entries() -> Iterator[List[str]]:
-    with open(os.path.join(_util.get_procfs_path(), "stat")) as file:
+    with open(
+        os.path.join(_util.get_procfs_path(), "stat"), encoding="utf8", errors="surrogateescape"
+    ) as file:
         for line in file:
             yield line.split()
 
@@ -1170,7 +1192,9 @@ def percpu_times() -> List[CPUTimes]:
 
 def _get_raw_meminfo() -> Dict[str, int]:
     raw_meminfo = {}
-    with open(os.path.join(_util.get_procfs_path(), "meminfo")) as file:
+    with open(
+        os.path.join(_util.get_procfs_path(), "meminfo"), encoding="utf8", errors="surrogateescape"
+    ) as file:
         for line in file:
             line = line.strip()
             if line.endswith(" kB"):
@@ -1218,7 +1242,9 @@ def swap_memory() -> SwapInfo:
 
     swap_in = 0
     swap_out = 0
-    with open(os.path.join(_util.get_procfs_path(), "vmstat")) as file:
+    with open(
+        os.path.join(_util.get_procfs_path(), "vmstat"), encoding="utf8", errors="surrogateescape"
+    ) as file:
         for line in file:
             if line.startswith("pswpin "):
                 swap_in = int(line[7:].strip()) * 4096
@@ -1247,7 +1273,9 @@ class PowerSupplyInfo:
         # The "uevent" file usually gives us a lot of information in one shot,
         # so let's try that.
         try:
-            with open(os.path.join(self.path, "uevent")) as file:
+            with open(
+                os.path.join(self.path, "uevent"), encoding="utf8", errors="surrogateescape"
+            ) as file:
                 for line in file:
                     key, value = line.strip().split("=")
                     if key.startswith("POWER_SUPPLY_"):
