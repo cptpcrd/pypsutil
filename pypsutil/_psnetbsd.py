@@ -147,7 +147,7 @@ def proc_rlimit(
     try:
         old_soft = _proc_rlimit_getset(proc, res, new_soft, False)
     except OSError as ex:
-        if ex.errno == errno.EINVAL:
+        if ex.errno == errno.EINVAL and new_soft is not None:
             old_soft = None
         else:
             raise
