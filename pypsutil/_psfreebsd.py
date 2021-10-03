@@ -1373,7 +1373,7 @@ def proc_memory_maps(proc: "Process") -> Iterator[ProcessMemoryMap]:
         if kentry.kve_type == KVME_TYPE_VNODE:
             path = os.fsdecode(kentry.kve_path)
         else:
-            path = "[{}]".format(_KVME_TYPE_NAMES.get(kentry.kve_type, "unknown"))
+            path = f"[{_KVME_TYPE_NAMES.get(kentry.kve_type, 'unknown')}]"
 
         yield ProcessMemoryMap(
             path=path,
@@ -1639,11 +1639,11 @@ def percpu_freq() -> List[Tuple[float, float, float]]:
         i = 0
         while True:
             cur_freq = ctypes.c_int()
-            _bsd.sysctlbyname_into("dev.cpu.{}.freq".format(i), cur_freq)
+            _bsd.sysctlbyname_into(f"dev.cpu.{i}.freq", cur_freq)
 
             try:
                 levels = _bsd.sysctlbyname_bytes_retry(
-                    "dev.cpu.{}.freq_levels".format(i), None, trim_nul=True
+                    f"dev.cpu.{i}.freq_levels", None, trim_nul=True
                 )
             except OSError:
                 min_freq = 0
@@ -1811,7 +1811,7 @@ def sensors_power() -> PowerSupplySensorInfo:
         if bif.lfcap == 0 or bif.lfcap == ACPI_BATT_UNKNOWN or bst.cap == ACPI_BATT_UNKNOWN:
             continue
 
-        name = "BAT{}".format(i)
+        name = f"BAT{i}"
         percent = bst.cap * 100 / bif.lfcap
 
         # Extract the current energy

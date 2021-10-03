@@ -121,19 +121,19 @@ def format_create_time(create_time: Union[int, float]) -> str:
 def test_repr() -> None:
     cur_proc = pypsutil.Process()
 
-    assert repr(cur_proc) == "Process(pid={}, name={!r}, status={!r}, started={!r})".format(
-        cur_proc.pid,
-        cur_proc.name(),
-        cur_proc.status().value,  # type: ignore[attr-defined]
-        format_create_time(cur_proc.create_time()),
+    assert (
+        repr(cur_proc) == f"Process(pid={cur_proc.pid}, name={cur_proc.name()!r}, "
+        f"status={cur_proc.status().value!r}, "  # type: ignore[attr-defined]
+        f"started={format_create_time(cur_proc.create_time())!r})"
     )
 
 
 def test_repr_no_proc() -> None:
     proc = get_dead_process()
 
-    assert repr(proc) == "Process(pid={}, status='terminated', started={!r})".format(
-        proc.pid, format_create_time(proc.create_time())
+    assert (
+        repr(proc) == f"Process(pid={proc.pid}, status='terminated', "
+        f"started={format_create_time(proc.create_time())!r})"
     )
 
 

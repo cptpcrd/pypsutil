@@ -11,18 +11,18 @@ class NoSuchProcess(Error):
         self.pid = pid
 
     def __repr__(self) -> str:
-        return "pypsutil.NoSuchProcess(pid={!r})".format(self.pid)
+        return f"pypsutil.NoSuchProcess(pid={self.pid!r})"
 
     def __str__(self) -> str:
-        return "pypsutil.NoSuchProcess: process does not exist (pid={})".format(self.pid)
+        return f"pypsutil.NoSuchProcess: process does not exist (pid={self.pid})"
 
 
 class ZombieProcess(NoSuchProcess):
     def __repr__(self) -> str:
-        return "pypsutil.ZombieProcess(pid={!r})".format(self.pid)
+        return f"pypsutil.ZombieProcess(pid={self.pid!r})"
 
     def __str__(self) -> str:
-        return "pypsutil.ZombieProcess: process exists but is a zombie (pid={})".format(self.pid)
+        return f"pypsutil.ZombieProcess: process exists but is a zombie (pid={self.pid})"
 
 
 class AccessDenied(Error):
@@ -31,12 +31,10 @@ class AccessDenied(Error):
         self.pid = pid
 
     def __repr__(self) -> str:
-        return "pypsutil.AccessDenied(pid={!r})".format(self.pid)
+        return f"pypsutil.AccessDenied(pid={self.pid!r})"
 
     def __str__(self) -> str:
-        return "pypsutil.AccessDenied{}".format(
-            " (pid={})".format(self.pid) if self.pid is not None else ""
-        )
+        return "pypsutil.AccessDenied" + (f" (pid={self.pid})" if self.pid is not None else "")
 
 
 class TimeoutExpired(Error):
@@ -46,9 +44,9 @@ class TimeoutExpired(Error):
         self.pid = pid
 
     def __repr__(self) -> str:
-        return "pypsutil.TimeoutExpired({}, pid={!r})".format(self.seconds, self.pid)
+        return f"pypsutil.TimeoutExpired({self.seconds}, pid={self.pid!r})"
 
     def __str__(self) -> str:
-        return "pypsutil.TimeoutExpired: timeout after {} seconds{}".format(
-            self.seconds, " (pid={})".format(self.pid) if self.pid is not None else ""
+        return f"pypsutil.TimeoutExpired: timeout after {self.seconds} seconds" + (
+            f" (pid={self.pid})" if self.pid is not None else ""
         )

@@ -167,7 +167,7 @@ class Process:
         return self._proc.oneshot()
 
     def __repr__(self) -> str:
-        return "pypsutil.compat.psutil.{}(pid={})".format(self.__class__.__name__, self.pid)
+        return f"pypsutil.compat.psutil.{self.__class__.__name__}(pid={self.pid})"
 
     def __eq__(self, other: Any) -> Union[bool, type(NotImplemented)]:  # type: ignore[valid-type]
         if isinstance(other, Process):

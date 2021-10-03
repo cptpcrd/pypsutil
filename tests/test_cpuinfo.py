@@ -140,15 +140,13 @@ CLK_TCK = os.sysconf(os.sysconf_names["SC_CLK_TCK"])
 @linux_only
 def test_cpu_times(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "stat", "w", encoding="utf8") as file:
+        # This has an extra field to test how pypsutil handles that
         file.write(
-            """cpu {}
+            f"""cpu {' '.join(str(val * CLK_TCK) for val in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])}
 cpu0 0 0 0 0 0 0 0 0 0 0
 page 0 0
 swap 0 0
-""".format(
-                # This has an extra field to test how pypsutil handles that
-                " ".join(str(val * CLK_TCK) for val in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-            )
+"""
         )
 
     with replace_info_directories(procfs=str(tmp_path)):
@@ -182,17 +180,14 @@ def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
 @linux_only
 def test_percpu_times(tmp_path: pathlib.Path) -> None:
     with open(tmp_path / "stat", "w", encoding="utf8") as file:
+        # The second one has an extra field to test how pypsutil handles that
         file.write(
-            """cpu 0 0 0 0 0 0 0 0 0 0
-cpu0 {}
-cpu1 {}
+            f"""cpu 0 0 0 0 0 0 0 0 0 0
+cpu0 {' '.join(str(val * CLK_TCK) for val in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])}
+cpu1 {' '.join(str(val * CLK_TCK) for val in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])}
 page 0 0
 swap 0 0
-""".format(
-                " ".join(str(val * CLK_TCK) for val in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-                # This has an extra field to test how pypsutil handles that
-                " ".join(str(val * CLK_TCK) for val in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
-            )
+"""
         )
 
     with replace_info_directories(procfs=str(tmp_path)):

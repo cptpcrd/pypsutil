@@ -425,9 +425,8 @@ class Process:  # pylint: disable=too-many-instance-attributes
             proc_val = getattr(proc_meminfo, memtype)
         except AttributeError as ex:
             raise ValueError(
-                "Bad process memory type {!r} (valid types: {})".format(
-                    memtype, list(proc_meminfo.__dict__.keys())
-                )
+                f"Bad process memory type {memtype!r} (valid types: "
+                f"{list(proc_meminfo.__dict__.keys())})"
             ) from ex
         else:
             return proc_val * 100.0 / virtual_memory_total()
@@ -654,12 +653,10 @@ class Process:  # pylint: disable=too-many-instance-attributes
         else:
             start_time = creation.strftime("%Y-%m-%d %H:%M:%S")
 
-        return "{}(pid={}, {}status={!r}, started={!r})".format(
-            self.__class__.__name__,
-            self._pid,
-            "name={!r}, ".format(name) if name is not None else "",
-            status,
-            start_time,
+        return (
+            f"{self.__class__.__name__}(pid={self._pid}, "
+            + (f"name={name!r}, " if name is not None else "")
+            + f"status={status!r}, started={start_time!r})"
         )
 
 

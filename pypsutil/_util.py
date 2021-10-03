@@ -228,16 +228,9 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
 
     def __repr__(self) -> str:
         return (
-            "{}(name={!r}, status={!r}, power_plugged={!r}, percent={!r}, secsleft={!r}, "
-            "secsleft_full={!r})".format(
-                self.__class__.__name__,
-                self.name,
-                self.status,
-                self.power_plugged,
-                self.percent,
-                self.secsleft,
-                self.secsleft_full,
-            )
+            f"{self.__class__.__name__}(name={self.name!r}, status={self.status!r}, "
+            f"power_plugged={self.power_plugged!r}, percent={self.percent!r}, "
+            f"secsleft={self.secsleft!r}, secsleft_full={self.secsleft_full!r})"
         )
 
 

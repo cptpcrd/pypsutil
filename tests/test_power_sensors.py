@@ -9,7 +9,7 @@ from .util import linux_only, populate_directory, replace_info_directories
 
 
 def build_supply_uevent(data: Dict[str, str]) -> str:
-    return "".join("POWER_SUPPLY_{}={}\n".format(key.upper(), value) for key, value in data.items())
+    return "".join(f"POWER_SUPPLY_{key.upper()}={value}\n" for key, value in data.items())
 
 
 @linux_only

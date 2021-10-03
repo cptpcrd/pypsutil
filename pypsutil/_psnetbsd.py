@@ -901,7 +901,7 @@ def pid_connections(pid: int, kind: str) -> Iterator[Connection]:
 
     for (family, stype) in allowed_combos:
         base_mib = _bsd.sysctlnametomib(
-            "net.{}.pcblist".format(_SOCK_TYPES[family][stype]),
+            f"net.{_SOCK_TYPES[family][stype]}.pcblist",
             maxlen=4,
         )
 
