@@ -53,7 +53,7 @@ O_LARGEFILE = {
     "mips64": 0o20000,
     "ppc": 0o200000,
     "ppc64": 0o200000,
-}.get(os.uname().machine, os.O_LARGEFILE)
+}.get(os.uname().machine, os.O_LARGEFILE)  # pylint: disable=no-member
 
 
 @dataclasses.dataclass
