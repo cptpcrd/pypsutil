@@ -743,9 +743,9 @@ Process information
       +---------------------------------+------------------------------------+----------------------------------------------+
       | :py:meth:`cpu_times()`          | :py:meth:`gids()`                  | :py:meth:`uids()`                            |
       +---------------------------------+------------------------------------+----------------------------------------------+
-      | :py:meth:`cpu_num()`            | :py:meth:`username()`              | :py:meth:`gids()`                            |
+      | :py:meth:`cpu_num()`            | :py:meth:`username()` [2]_         | :py:meth:`gids()`                            |
       +---------------------------------+------------------------------------+----------------------------------------------+
-      | :py:meth:`num_threads()` [1]_   | :py:meth:`getgroups()`             | :py:meth:`username()`                        |
+      | :py:meth:`num_threads()` [1]_   | :py:meth:`getgroups()`             | :py:meth:`username()` [2]_                   |
       +---------------------------------+------------------------------------+----------------------------------------------+
       |                                 | :py:meth:`terminal()` [2]_         | :py:meth:`getgroups()` [3]_                  |
       +---------------------------------+------------------------------------+----------------------------------------------+
@@ -753,7 +753,7 @@ Process information
       +---------------------------------+------------------------------------+----------------------------------------------+
       | :py:meth:`gids()`               | :py:meth:`sigmasks()`              | :py:meth:`has_terminal()`                    |
       +---------------------------------+------------------------------------+----------------------------------------------+
-      | :py:meth:`username()`           |                                    | :py:meth:`sigmasks()`                        |
+      | :py:meth:`username()` [2]_      |                                    | :py:meth:`sigmasks()`                        |
       +---------------------------------+------------------------------------+----------------------------------------------+
       | :py:meth:`getgroups()`          | :py:meth:`cmdline()`               | :py:meth:`cpu_times()`                       |
       +---------------------------------+------------------------------------+----------------------------------------------+
@@ -780,8 +780,8 @@ Process information
          requested information in a different way that collects as much extra information as possible about
          the process for later use.
 
-      .. [2] :py:meth:`terminal()` has to do additional processing after retrieving the cached information, so it will
-         likely only see a minor speedup.
+      .. [2] :py:meth:`terminal()` and :py:meth:`username()` have to do additional processing after
+         retrieving the cached information, so they will likely only see minor speedups.
 
       .. [3] On FreeBSD, calling :py:meth:`getgroups()` inside a :py:meth:`oneshot()` will first attempt to retrieve
          the group list via a method that collects as much extra information as possible. However, this method may
