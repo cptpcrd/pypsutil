@@ -83,6 +83,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                         "charge_full": "1000",
                         "current_now": "300",
                         "voltage_now": "1000000",
+                        "temp": "329",
                     },
                     # Will be ignored for lack of information
                     "BAT7": {
@@ -165,6 +166,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
                 energy_now=700,
                 energy_full=1000,
                 power_now=300,
+                temperature=32.9,
             ),
         ]
 

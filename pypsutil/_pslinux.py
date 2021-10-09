@@ -1350,6 +1350,10 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                     voltage = int(supply[name]) / 1000000
                     break
 
+            temperature = None
+            if "temp" in supply:
+                temperature = int(supply["temp"]) / 10.0
+
             energy_now = None
             energy_full = None
             power_now = None
@@ -1386,6 +1390,7 @@ def _iter_sensors_power() -> Iterator[Union[BatteryInfo, ACPowerInfo]]:
                 energy_full=energy_full,
                 percent=percent,
                 status=status,
+                temperature=temperature,
             )
 
         elif ps_type == "mains" and "online" in supply:

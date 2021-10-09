@@ -1433,6 +1433,9 @@ Sensor information
    - ``secsleft_full``: The number of seconds left until the battery is full. If the battery is
      full, this is 0; if the the information cannot be determined (or the battery is in the
      "unknown" or "discharging" states) it is ``None``.
+   - ``temperature``: The temperature (in Celsius) of the battery, or ``None`` if unknown.
+   - ``temperature_fahrenheit``: The temperature (in Fahrenheit) of the battery, or ``None`` if
+     unknown.
 
    The elements of the :py:class:`BatteryStatus` enum are as follows:
 

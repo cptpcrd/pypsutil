@@ -185,8 +185,14 @@ class BatteryInfo:  # pylint: disable=too-many-instance-attributes
     energy_now: Optional[int]
     power_now: Optional[int]
 
+    temperature: Optional[float] = None
+
     _power_plugged: Optional[bool] = None
     _secsleft: Optional[float] = None
+
+    @property
+    def temperature_fahrenheit(self) -> Optional[float]:
+        return (self.temperature * 1.8 + 32) if self.temperature is not None else None
 
     @property
     def power_plugged(self) -> Optional[bool]:
