@@ -1126,7 +1126,7 @@ def proc_root(proc: "Process") -> str:
         return "/"
     else:
         # This will return an empty string if the kernel couldn't get the path
-        return cast(str, root_vip.vip_path.decode())
+        return os.fsdecode(root_vip.vip_path)
 
 
 def proc_name(proc: "Process") -> str:
