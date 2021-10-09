@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 import contextlib
+import errno
 import os
 import pathlib
 import select
@@ -301,6 +302,27 @@ def test_iter_fds_kqueue(tmp_path: pathlib.Path) -> None:
 
         if pypsutil.OPENBSD or pypsutil.MACOS:
             assert pfds[kqueue].extra_info["kq_count"] == 2
+
+
+@linux_only
+def test_iter_fds_pidfd() -> None:
+    if not hasattr(os, "pidfd_open"):
+        pytest.skip("pidfd_open() not supported")
+
+    try:
+        pidfd = os.pidfd_open(os.getpid())
+    except OSError as ex:
+        if ex.errno in (errno.ENOSYS, errno.EPERM):
+            pytest.skip("pidfd_open() not supported")
+        raise
+
+    try:
+        pfds = {pfd.fd: pfd for pfd in pypsutil.Process().iter_fds()}
+        assert not pfds[pidfd].path
+        assert pfds[pidfd].fdtype == pypsutil.ProcessFdType.PIDFD
+        assert pfds[pidfd].extra_info["pid"] == os.getpid()
+    finally:
+        os.close(pidfd)
 
 
 def test_iter_fds_no_proc() -> None:
