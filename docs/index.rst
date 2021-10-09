@@ -577,7 +577,7 @@ Process information
       On Linux, this is equivalent to ``os.sched_setaffinity(proc.pid, cpus)`` (see
       `os.sched_setaffinity() <https://docs.python.org/3/library/os.html#os.sched_setaffinity>`_
       for more information). However, it may support other platforms which have APIs that allow
-      similar functionality.
+      similar functionality. It also preemptively checks for PID reuse.
 
       Currently, if the ``cpus`` list is empty, this method will throw an exception. However, in the
       future, it may be changed to replicate ``psutil``'s behavior in that case (i.e. use all
