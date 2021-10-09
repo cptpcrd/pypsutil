@@ -8,6 +8,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -126,6 +127,25 @@ class Process:
 
         def cpu_num(self) -> int:
             return self._proc.cpu_num()
+
+    if hasattr(pypsutil.Process, "cpu_setaffinity") and hasattr(
+        pypsutil.Process, "cpu_getaffinity"
+    ):
+
+        @overload
+        def cpu_affinity(self, cpus: Iterable[int]) -> None:
+            ...
+
+        @overload
+        def cpu_affinity(self, cpus: None = None) -> Set[int]:
+            ...
+
+        def cpu_affinity(self, cpus: Optional[Iterable[int]] = None) -> Optional[Set[int]]:
+            if cpus is not None:
+                self._proc.cpu_setaffinity(cpus)
+                return None
+            else:
+                return self._proc.cpu_getaffinity()
 
     def num_fds(self) -> int:
         return self._proc.num_fds()
