@@ -75,17 +75,17 @@ def test_sensors_temperature(tmp_path: pathlib.Path) -> None:
 
 
 @linux_only
-def test_temp_sensor_farenheit() -> None:
+def test_temp_sensor_fahrenheit() -> None:
     sensor_a = pypsutil.TempSensorInfo(  # type: ignore
         label="sensor_a", current=0, high=100, critical=100
     )
-    assert sensor_a.current_farenheit == 32
-    assert sensor_a.high_farenheit == 212
-    assert sensor_a.critical_farenheit == 212
+    assert sensor_a.current_fahrenheit == 32
+    assert sensor_a.high_fahrenheit == 212
+    assert sensor_a.critical_fahrenheit == 212
 
     sensor_b = pypsutil.TempSensorInfo(  # type: ignore
         label="sensor_b", current=100, high=None, critical=None
     )
-    assert sensor_b.current_farenheit == 212
-    assert sensor_b.high_farenheit is None
-    assert sensor_b.critical_farenheit is None
+    assert sensor_b.current_fahrenheit == 212
+    assert sensor_b.high_fahrenheit is None
+    assert sensor_b.critical_fahrenheit is None

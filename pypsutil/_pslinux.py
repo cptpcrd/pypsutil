@@ -167,15 +167,15 @@ class TempSensorInfo:
     critical: Optional[float]
 
     @property
-    def current_farenheit(self) -> float:
+    def current_fahrenheit(self) -> float:
         return self.current * 1.8 + 32
 
     @property
-    def high_farenheit(self) -> Optional[float]:
+    def high_fahrenheit(self) -> Optional[float]:
         return (self.high * 1.8 + 32) if self.high is not None else None
 
     @property
-    def critical_farenheit(self) -> Optional[float]:
+    def critical_fahrenheit(self) -> Optional[float]:
         return (self.critical * 1.8 + 32) if self.critical is not None else None
 
 
