@@ -310,7 +310,7 @@ def test_iter_fds_pidfd() -> None:
         pytest.skip("pidfd_open() not supported")
 
     try:
-        pidfd = os.pidfd_open(os.getpid())
+        pidfd = os.pidfd_open(os.getpid())  # pylint: disable=no-member
     except OSError as ex:
         if ex.errno in (errno.ENOSYS, errno.EPERM):
             pytest.skip("pidfd_open() not supported")
