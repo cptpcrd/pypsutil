@@ -937,8 +937,12 @@ def proc_cpu_num(proc: "Process") -> int:
     return int(_get_proc_stat_fields(proc)[38])
 
 
+assert hasattr(os, "sched_getaffinity")
+assert hasattr(os, "sched_setaffinity")
+
+
 def proc_cpu_getaffinity(proc: "Process") -> Set[int]:
-    return os.sched_getaffinity(proc.pid)
+    return cast(Set[int], os.sched_getaffinity(proc.pid))  # type: ignore
 
 
 def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
