@@ -1426,7 +1426,7 @@ Sensor information
      available).
    - ``power_now``: The amount of power currently flowing into or out of the battery (this value is
      always positive; check whether the battery is charging or discharging to determine the
-     direction) or ``None`` if not available.
+     direction) in uW or ``None`` if not available.
    - ``secsleft``: The number of seconds left until the battery is empty. If the battery is either
      charging or full, this is ``float("inf")``; if the information cannot be determined (or the
      battery is in the "unknown" state) it is ``None``.
