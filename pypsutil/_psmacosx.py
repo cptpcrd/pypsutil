@@ -53,6 +53,14 @@ libc.proc_pidpath.argtypes = (
 )
 libc.proc_pidpath.restype = ctypes.c_int
 
+libc.proc_listpids.argtypes = (
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.c_void_p,
+    ctypes.c_int,
+)
+libc.proc_listpids.restype = ctypes.c_int
+
 WMESGLEN = 7
 NGROUPS = 16
 COMPAT_MAXLOGNAME = 12
@@ -96,6 +104,8 @@ PROC_PIDFDVNODEPATHINFO = 2
 PROC_PIDFDSOCKETINFO = 3
 PROC_PIDFDPIPEINFO = 6
 PROC_PIDFDKQUEUEINFO = 7
+
+PROC_ALL_PIDS = 1
 
 VREG = 1
 VFIFO = 7
@@ -1032,6 +1042,24 @@ def _proc_pidfdinfo(
     return cast(int, res)
 
 
+def _proc_listpids(
+    type: int,  # pylint: disable=redefined-builtin
+    typeinfo: int,
+    buf: Union[ctypes.Array, ctypes.Structure, None],  # type: ignore
+    allow_zero: bool = False,
+) -> int:
+    res = libc.proc_listpids(
+        type,
+        typeinfo,
+        ctypes.byref(buf) if buf is not None else None,
+        ctypes.sizeof(buf) if buf is not None else 0,
+    )
+    if res < 0 or (res == 0 and not allow_zero):
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    return cast(int, res)
+
+
 @_cache.CachedByProcess
 def _get_proc_vnode_info(proc: "Process") -> ProcVnodePathInfo:
     info = ProcVnodePathInfo()
@@ -1065,8 +1093,22 @@ def iter_pid_raw_create_time(
 
 
 def iter_pids() -> Iterator[int]:
-    for kinfo in _list_kinfo_procs():
-        yield kinfo.kp_proc.p_pid
+    while True:
+        max_nprocs = _proc_listpids(PROC_ALL_PIDS, 0, None, allow_zero=True) // ctypes.sizeof(
+            ctypes.c_int
+        )
+
+        # We add an extra 1 just in case
+        buf = (ctypes.c_int * (max_nprocs + 1))()  # pytype: disable=not-callable
+
+        nprocs = _proc_listpids(PROC_ALL_PIDS, 0, buf, allow_zero=True) // ctypes.sizeof(
+            ctypes.c_int
+        )
+
+        # Because we added 1 when creating the buffer, we may run into nprocs == max_nprocs + 1.
+        # That may mean truncation, and we want to try again.
+        if nprocs <= max_nprocs:
+            return iter(buf[:nprocs])
 
 
 def pid_raw_create_time(pid: int) -> float:
