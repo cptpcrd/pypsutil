@@ -556,6 +556,37 @@ Process information
 
       Availability: Linux, FreeBSD, OpenBSD, NetBSD
 
+   .. py:method:: cpu_getaffinity()
+
+      Get the CPU affinity of this process.
+
+      On Linux, this is equivalent to ``os.sched_getaffinity(proc.pid)`` (see
+      `os.sched_getaffinity() <https://docs.python.org/3/library/os.html#os.sched_getaffinity>`_
+      for more information). However, it may support other platforms which have APIs that allow
+      similar functionality.
+
+      :return: The set of CPUs this process is eligible to run on
+      :rtype: set[int]
+
+      Availablity: Linux
+
+   .. py:method:: cpu_setaffinity(cpus)
+
+      Set the CPU affinity of this process.
+
+      On Linux, this is equivalent to ``os.sched_setaffinity(proc.pid, cpus)`` (see
+      `os.sched_setaffinity() <https://docs.python.org/3/library/os.html#os.sched_setaffinity>`_
+      for more information). However, it may support other platforms which have APIs that allow
+      similar functionality.
+
+      Currently, if the ``cpus`` list is empty, this method will throw an exception. However, in the
+      future, it may be changed to replicate ``psutil``'s behavior in that case (i.e. use all
+      available CPUs).
+
+      :param iterable[int] cpus: The new set of CPUs that the process should be eligible to run on
+
+      Availablity: Linux
+
    .. py:method:: getpriority()
 
       Equivalent to ``os.getpriority(os.PRIO_PROCESS, proc.pid)`` in most cases. (However, on systems

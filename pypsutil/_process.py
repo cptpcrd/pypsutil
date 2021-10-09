@@ -12,7 +12,7 @@ import signal
 import subprocess
 import threading
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _system, _util
 from ._detect import _psimpl
@@ -411,6 +411,17 @@ class Process:  # pylint: disable=too-many-instance-attributes
     @translate_proc_errors
     def cpu_times(self) -> ProcessCPUTimes:
         return _psimpl.proc_cpu_times(self)
+
+    if hasattr(_psimpl, "proc_cpu_getaffinity"):
+
+        def cpu_getaffinity(self) -> Set[int]:
+            return _psimpl.proc_cpu_getaffinity(self)
+
+    if hasattr(_psimpl, "proc_cpu_setaffinity"):
+
+        def cpu_setaffinity(self, cpus: Iterable[int]) -> None:
+            self._check_running()
+            _psimpl.proc_cpu_setaffinity(self, list(cpus))
 
     @translate_proc_errors
     def memory_info(self) -> ProcessMemoryInfo:
