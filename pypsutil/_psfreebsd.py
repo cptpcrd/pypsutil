@@ -1041,15 +1041,18 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         path = os.fsdecode(kfile.kf_path) if kfile.kf_path.startswith(b"/") else ""
         dev = None
         ino = None
-        rdev = None
         size = None
         mode = None
+        rdev_options = None
         extra_info = {}
 
         if kfile.kf_type == KF_TYPE_VNODE:
             fdtype = ProcessFdType.FILE
             dev = kfile.kf_un.kf_file.kf_file_fsid or kfile.kf_un.kf_file.kf_file_fsid_freebsd11
-            rdev = kfile.kf_un.kf_file.kf_file_rdev or kfile.kf_un.kf_file.kf_file_rdev_freebsd11
+            rdev_options = (
+                kfile.kf_un.kf_file.kf_file_rdev,
+                kfile.kf_un.kf_file.kf_file_rdev_freebsd11,
+            )
             ino = kfile.kf_un.kf_file.kf_file_fileid
             size = kfile.kf_un.kf_file.kf_file_size
             mode = kfile.kf_un.kf_file.kf_file_mode
@@ -1086,7 +1089,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
 
         elif kfile.kf_type == KF_TYPE_PTS:
             fdtype = ProcessFdType.FILE
-            rdev = kfile.kf_un.kf_pts.kf_pts_dev or kfile.kf_un.kf_pts.kf_pts_dev_freebsd11
+            rdev_options = (kfile.kf_un.kf_pts.kf_pts_dev, kfile.kf_un.kf_pts.kf_pts_dev_freebsd11)
 
         elif kfile.kf_type == KF_TYPE_PIPE:
             fdtype = ProcessFdType.PIPE
@@ -1095,7 +1098,10 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         elif kfile.kf_type == KF_TYPE_FIFO:
             fdtype = ProcessFdType.FIFO
             dev = kfile.kf_un.kf_file.kf_file_fsid or kfile.kf_un.kf_file.kf_file_fsid_freebsd11
-            rdev = kfile.kf_un.kf_file.kf_file_rdev or kfile.kf_un.kf_file.kf_file_rdev_freebsd11
+            rdev_options = (
+                kfile.kf_un.kf_file.kf_file_rdev,
+                kfile.kf_un.kf_file.kf_file_rdev_freebsd11,
+            )
             ino = kfile.kf_un.kf_file.kf_file_fileid
             size = kfile.kf_un.kf_file.kf_file_size
             mode = kfile.kf_un.kf_file.kf_file_mode
@@ -1127,6 +1133,18 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         for kflag, oflag in _KF_FLAGS_TABLE:
             if kfile.kf_flags & kflag:
                 flags |= oflag
+
+        rdev = None
+        if rdev_options is not None:
+            if rdev_options[0]:
+                if rdev_options[0] == 2 ** 64 - 1:
+                    rdev = -1
+                else:
+                    rdev = rdev_options[0]
+            elif rdev_options[1] == 2 ** 32 - 1:
+                rdev = -1
+            else:
+                rdev = rdev_options[1]
 
         yield ProcessFd(
             path=path,
