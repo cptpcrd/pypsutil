@@ -106,6 +106,7 @@ PROC_PIDFDPIPEINFO = 6
 PROC_PIDFDKQUEUEINFO = 7
 
 PROC_ALL_PIDS = 1
+PROC_PPID_ONLY = 6
 
 VREG = 1
 VFIFO = 7
@@ -1717,6 +1718,25 @@ def proc_getpriority(proc: "Process") -> int:
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc(proc).kp_eproc.e_tdev
     return tdev if tdev != -1 else None
+
+
+def proc_child_pids(proc: "Process") -> List[int]:
+    while True:
+        max_nprocs = _proc_listpids(
+            PROC_PPID_ONLY, proc.pid, None, allow_zero=True
+        ) // ctypes.sizeof(ctypes.c_int)
+
+        # We add an extra 1 just in case
+        buf = (ctypes.c_int * (max_nprocs + 1))()  # pytype: disable=not-callable
+
+        nprocs = _proc_listpids(PROC_PPID_ONLY, proc.pid, buf, allow_zero=True) // ctypes.sizeof(
+            ctypes.c_int
+        )
+
+        # Because we added 1 when creating the buffer, we may run into nprocs == max_nprocs + 1.
+        # That may mean truncation, and we want to try again.
+        if nprocs <= max_nprocs:
+            return buf[:nprocs]
 
 
 def physical_cpu_count() -> Optional[int]:

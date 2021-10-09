@@ -145,50 +145,95 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
             parents.append(proc)
 
-    def children(self, *, recursive: bool = False) -> List["Process"]:
-        self._check_running()
+    if hasattr(_psimpl, "proc_child_pids"):
 
-        if recursive:
-            search_parents = {self}
-            children = []
-            children_set = set()
+        def children(self, *, recursive: bool = False) -> List["Process"]:
+            self._check_running()
 
-            while True:
-                new_search_parents = set()
+            if recursive:
+                search_parents = {self}
+                children = []
+                children_set = set()
 
-                # Loop through every process
+                while True:
+                    new_search_parents = set()
+
+                    for parent in search_parents:
+                        for child_pid in _psimpl.proc_child_pids(parent):
+                            try:
+                                proc = Process(child_pid)
+                            except NoSuchProcess:
+                                pass
+                            else:
+                                if proc not in children_set:
+                                    children.append(proc)
+                                    children_set.add(proc)
+                                    # Look for its children next round
+                                    new_search_parents.add(proc)
+
+                    search_parents = new_search_parents
+                    if not search_parents:
+                        break
+
+            else:
+                children = []
+
+                for child_pid in _psimpl.proc_child_pids(self):
+                    try:
+                        children.append(Process(child_pid))
+                    except NoSuchProcess:
+                        pass
+
+            return children
+
+    else:
+
+        def children(self, *, recursive: bool = False) -> List["Process"]:
+            self._check_running()
+
+            if recursive:
+                search_parents = {self}
+                children = []
+                children_set = set()
+
+                while True:
+                    new_search_parents = set()
+
+                    # Loop through every process
+                    for proc in process_iter():
+                        try:
+                            # We can skip the is_running() check because we literally just got this
+                            # PID/create time from the OS
+                            proc_parent = (
+                                proc._parent_unchecked()  # pylint: disable=protected-access
+                            )
+                        except NoSuchProcess:
+                            pass
+                        else:
+                            if proc_parent in search_parents and proc not in children_set:
+                                # Its parent is one of the processes we were looking for
+                                children.append(proc)
+                                children_set.add(proc)
+                                # Look for its children next round
+                                new_search_parents.add(proc)
+
+                    search_parents = new_search_parents
+                    if not search_parents:
+                        break
+
+            else:
+                children = []
+
                 for proc in process_iter():
                     try:
-                        # We can skip the is_running() check because we literally just got this
-                        # PID/create time from the OS
-                        proc_parent = proc._parent_unchecked()  # pylint: disable=protected-access
+                        proc_ppid = proc.ppid()
                     except NoSuchProcess:
                         pass
                     else:
-                        if proc_parent in search_parents and proc not in children_set:
-                            # Its parent is one of the processes we were looking for
+                        if proc_ppid == self._pid:
                             children.append(proc)
-                            children_set.add(proc)
-                            # Look for its children next round
-                            new_search_parents.add(proc)
 
-                search_parents = new_search_parents
-                if not search_parents:
-                    break
-
-        else:
-            children = []
-
-            for proc in process_iter():
-                try:
-                    proc_ppid = proc.ppid()
-                except NoSuchProcess:
-                    pass
-                else:
-                    if proc_ppid == self._pid:
-                        children.append(proc)
-
-        return children
+            return children
 
     @translate_proc_errors
     def raw_create_time(self) -> float:
