@@ -942,10 +942,9 @@ def proc_cpu_getaffinity(proc: "Process") -> Set[int]:
     return cast(Set[int], os.sched_getaffinity(proc.pid))  # type: ignore
 
 
-if hasattr(os, "sched_setaffinity"):
-
-    def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
-        os.sched_setaffinity(proc.pid, cpus)  # pylint: disable=no-member
+def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
+    # pylint: disable=no-member
+    os.sched_setaffinity(proc.pid, cast(List[int], cpus))  # type: ignore
 
 
 def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
