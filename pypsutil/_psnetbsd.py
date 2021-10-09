@@ -973,12 +973,12 @@ def proc_name(proc: "Process") -> str:
 
 def proc_uids(proc: "Process") -> Tuple[int, int, int]:
     kinfo = _get_kinfo_proc2(proc)
-    return kinfo.p_uid, kinfo.p_ruid, kinfo.p_svuid
+    return kinfo.p_ruid, kinfo.p_uid, kinfo.p_svuid
 
 
 def proc_gids(proc: "Process") -> Tuple[int, int, int]:
     kinfo = _get_kinfo_proc2(proc)
-    return kinfo.p_gid, kinfo.p_rgid, kinfo.p_svgid
+    return kinfo.p_rgid, kinfo.p_gid, kinfo.p_svgid
 
 
 def proc_getgroups(proc: "Process") -> List[int]:
