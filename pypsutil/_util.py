@@ -296,6 +296,15 @@ def check_rlimit_resource(res: int) -> None:
         raise ValueError("invalid resource specified")
 
 
+def expand_bitmask(mask: int, *, start: int) -> Iterator[int]:
+    i = start
+    while mask:
+        if mask & 1:
+            yield i
+        mask >>= 1
+        i += 1
+
+
 def expand_sig_bitmask(
     mask: int, *, include_internal: bool = False
 ) -> Set[Union[signal.Signals, int]]:  # pylint: disable=no-member
@@ -303,20 +312,15 @@ def expand_sig_bitmask(
     # for signal sets. Only the size varies.
 
     res: Set[Union[signal.Signals, int]] = set()  # pylint: disable=no-member
-    sig = 1  # Bit 0 in the mask corresponds to signal 1
 
-    while mask:
-        if mask & 1:
-            try:
-                res.add(signal.Signals(sig))  # pylint: disable=no-member
-            except ValueError:
-                if include_internal or getattr(signal, "SIGRTMIN", float("inf")) <= sig <= getattr(
-                    signal, "SIGRTMAX", float("-inf")
-                ):
-                    res.add(sig)
-
-        mask >>= 1
-        sig += 1
+    for sig in expand_bitmask(mask, start=1):  # Bit 0 in the mask corresponds to signal 1
+        try:
+            res.add(signal.Signals(sig))  # pylint: disable=no-member
+        except ValueError:
+            if include_internal or getattr(signal, "SIGRTMIN", float("inf")) <= sig <= getattr(
+                signal, "SIGRTMAX", float("-inf")
+            ):
+                res.add(sig)
 
     return res
 

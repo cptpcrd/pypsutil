@@ -2,7 +2,7 @@
 import ctypes
 import pathlib
 import signal
-from typing import Iterable
+from typing import Iterable, cast
 
 import pytest
 
@@ -92,6 +92,24 @@ def test_read_file(tmp_path: pathlib.Path) -> None:
 
     with pytest.raises(FileNotFoundError):
         pypsutil._util.read_file(str(tmp_path / "b.txt"))
+
+
+def test_expand_bitmask() -> None:
+    def build_mask(values: Iterable[int]) -> int:
+        mask = 0
+        for val in values:
+            mask |= 1 << val
+        return mask
+
+    for start in [0, 10, 50]:
+        for values in [
+            [],
+            [1, 2, 3],
+        ]:
+            values = cast(Iterable[int], values)
+            assert set(pypsutil._util.expand_bitmask(build_mask(values), start=start)) == {
+                val + start for val in values
+            }
 
 
 def test_expand_sig_bitmask() -> None:
