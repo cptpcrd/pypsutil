@@ -568,7 +568,7 @@ Process information
       :return: The set of CPUs this process is eligible to run on
       :rtype: set[int]
 
-      Availablity: Linux
+      Availablity: Linux, FreeBSD
 
    .. py:method:: cpu_setaffinity(cpus)
 
@@ -585,7 +585,7 @@ Process information
 
       :param iterable[int] cpus: The new set of CPUs that the process should be eligible to run on
 
-      Availablity: Linux
+      Availablity: Linux, FreeBSD
 
    .. py:method:: getpriority()
 
