@@ -9,7 +9,7 @@ import socket
 import sys
 import time
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import (
@@ -27,6 +27,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 # FIXME: os.O_FSYNC added in Python 3.10  # pylint:disable=fixme
 O_FSYNC = getattr(os, "O_FSYNC", 0)
+
+libc = _ffi.load_libc()
 
 CTL_KERN = 1
 KERN_FILE = 15
@@ -152,6 +154,11 @@ sa_family_t = ctypes.c_uint8
 
 in_port_t = ctypes.c_uint16
 
+id_t = ctypes.c_int64
+
+cpulevel_t = ctypes.c_int
+cpuwhich_t = ctypes.c_int
+
 SUNPATHLEN = 104
 
 _SS_MAXSIZE = 128
@@ -179,6 +186,12 @@ IOCPARM_MASK = (1 << IOCPARM_SHIFT) - 1
 IOC_OUT = 0x40000000
 IOC_IN = 0x80000000
 IOC_INOUT = IOC_IN | IOC_OUT
+
+CPU_SETSIZE = 256
+CPU_LEVEL_WHICH = 3
+CPU_WHICH_PID = 2
+
+_BITSET_BITS = ctypes.sizeof(ctypes.c_long) * 8
 
 
 def _IOC(inout: int, group: int, num: int, length: int) -> int:
@@ -912,8 +925,33 @@ class ACPIBatteryIoctlArg(ctypes.Union):
     ]
 
 
+class Cpuset(ctypes.Structure):
+    _fields_ = [
+        ("bits", (ctypes.c_long * ((CPU_SETSIZE + _BITSET_BITS - 1) // _BITSET_BITS))),
+    ]
+
+
 ACPIIO_BATT_GET_BIF = _IOC(IOC_INOUT, ord("B"), 0x10, ctypes.sizeof(ACPIBatteryIoctlArg))
 ACPIIO_BATT_GET_BST = _IOC(IOC_INOUT, ord("B"), 0x11, ctypes.sizeof(ACPIBatteryIoctlArg))
+
+
+libc.cpuset_getaffinity.argtypes = (
+    cpulevel_t,
+    cpuwhich_t,
+    id_t,
+    ctypes.c_size_t,
+    ctypes.POINTER(Cpuset),
+)
+libc.cpuset_getaffinity.restype = ctypes.c_int
+
+libc.cpuset_setaffinity.argtypes = (
+    cpulevel_t,
+    cpuwhich_t,
+    id_t,
+    ctypes.c_size_t,
+    ctypes.POINTER(Cpuset),
+)
+libc.cpuset_setaffinity.restype = ctypes.c_int
 
 
 def _get_kinfo_proc_pid(pid: int) -> KinfoProc:
@@ -1635,6 +1673,37 @@ def proc_tty_rdev(proc: "Process") -> Optional[int]:
 
 def proc_cpu_num(proc: "Process") -> int:
     return cast(int, _get_kinfo_proc(proc).ki_lastcpu)
+
+
+def proc_cpu_getaffinity(proc: "Process") -> Set[int]:
+    cpuset = Cpuset()
+    if (
+        libc.cpuset_getaffinity(
+            CPU_LEVEL_WHICH, CPU_WHICH_PID, proc.pid, ctypes.sizeof(cpuset), ctypes.byref(cpuset)
+        )
+        < 0
+    ):
+        raise _ffi.build_oserror(ctypes.get_errno())
+
+    return {
+        i * _BITSET_BITS + j
+        for i, bits in enumerate(cpuset.bits)
+        for j in _util.expand_bitmask(bits, start=0)
+    }
+
+
+def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
+    cpuset = Cpuset()
+    for cpu in cpus:
+        cpuset.bits[cpu >> 3] |= 1 << (cpu & 7)
+
+    if (
+        libc.cpuset_setaffinity(
+            CPU_LEVEL_WHICH, CPU_WHICH_PID, proc.pid, ctypes.sizeof(cpuset), ctypes.byref(cpuset)
+        )
+        < 0
+    ):
+        raise _ffi.build_oserror(ctypes.get_errno())
 
 
 def physical_cpu_count() -> Optional[int]:
