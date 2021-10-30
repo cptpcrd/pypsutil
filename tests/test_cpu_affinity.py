@@ -31,8 +31,10 @@ def test_getsetaffinity() -> None:
     pypsutil.Process().cpu_setaffinity([cpu])
     assert pypsutil.Process().cpu_getaffinity() == {cpu}
 
+    pypsutil.Process().cpu_setaffinity([])
+    cpus = pypsutil.Process().cpu_getaffinity()
+    assert cpus >= orig_cpus
+    assert len(cpus) <= (os.cpu_count() or 1)
+
     pypsutil.Process().cpu_setaffinity(orig_cpus)
     assert pypsutil.Process().cpu_getaffinity() == orig_cpus
-
-    with pytest.raises(OSError):
-        pypsutil.Process().cpu_setaffinity([])

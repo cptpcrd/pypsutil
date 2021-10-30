@@ -188,6 +188,7 @@ IOC_IN = 0x80000000
 IOC_INOUT = IOC_IN | IOC_OUT
 
 CPU_SETSIZE = 256
+CPU_LEVEL_CPUSET = 2
 CPU_LEVEL_WHICH = 3
 CPU_WHICH_PID = 2
 
@@ -1694,8 +1695,23 @@ def proc_cpu_getaffinity(proc: "Process") -> Set[int]:
 
 def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
     cpuset = Cpuset()
-    for cpu in cpus:
-        cpuset.bits[cpu >> 3] |= 1 << (cpu & 7)
+
+    if cpus:
+        for cpu in cpus:
+            cpuset.bits[cpu >> 3] |= 1 << (cpu & 7)
+    else:
+        # Empty list; use the assigned set (i.e. all available CPUs)
+        if (
+            libc.cpuset_getaffinity(
+                CPU_LEVEL_CPUSET,
+                CPU_WHICH_PID,
+                proc.pid,
+                ctypes.sizeof(cpuset),
+                ctypes.byref(cpuset),
+            )
+            < 0
+        ):
+            raise _ffi.build_oserror(ctypes.get_errno())
 
     if (
         libc.cpuset_setaffinity(

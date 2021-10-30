@@ -579,9 +579,8 @@ Process information
       for more information). However, it may support other platforms which have APIs that allow
       similar functionality. It also preemptively checks for PID reuse.
 
-      Currently, if the ``cpus`` list is empty, this method will throw an exception. However, in the
-      future, it may be changed to replicate ``psutil``'s behavior in that case (i.e. use all
-      available CPUs).
+      If the ``cpus`` list is empty, this method will reset the CPU affinity to the set of all
+      available CPUs which this process can run on.
 
       :param iterable[int] cpus: The new set of CPUs that the process should be eligible to run on
 

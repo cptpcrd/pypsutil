@@ -57,6 +57,8 @@ O_LARGEFILE = {
     os.uname().machine, os.O_LARGEFILE  # pylint: disable=no-member
 )
 
+CPU_SETSIZE = 1024
+
 
 @dataclasses.dataclass
 class ProcessOpenFile(_util.ProcessOpenFile):
@@ -944,7 +946,10 @@ def proc_cpu_getaffinity(proc: "Process") -> Set[int]:
 
 def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
     # pylint: disable=no-member
-    os.sched_setaffinity(proc.pid, cast(List[int], cpus))  # type: ignore
+
+    # If cpus is empty, give the kernel a full CPU set. It will truncate the set to match the number
+    # of CPUs in the system.
+    os.sched_setaffinity(proc.pid, cast(List[int], cpus) or range(CPU_SETSIZE))  # type: ignore
 
 
 def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
