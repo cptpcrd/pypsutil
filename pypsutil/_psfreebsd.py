@@ -1698,6 +1698,9 @@ def proc_cpu_setaffinity(proc: "Process", cpus: List[int]) -> None:
 
     if cpus:
         for cpu in cpus:
+            if cpu < 0 or cpu >= CPU_SETSIZE:
+                raise ValueError("CPU out of range")
+
             cpuset.bits[cpu >> 3] |= 1 << (cpu & 7)
     else:
         # Empty list; use the assigned set (i.e. all available CPUs)
