@@ -1,9 +1,11 @@
 # mypy: ignore-errors
 import contextlib
+import ctypes
 import errno
 import os
 import pathlib
 import select
+import signal
 import socket
 import subprocess
 import sys
@@ -323,6 +325,49 @@ def test_iter_fds_pidfd() -> None:
         assert pfds[pidfd].extra_info["pid"] == os.getpid()
     finally:
         os.close(pidfd)
+
+
+@linux_only
+def test_iter_fds_signalfd() -> None:
+    # Definitions
+    libc = pypsutil._ffi.load_libc()  # pylint: disable=protected-access
+
+    class Sigset(ctypes.Structure):  # pylint: disable=too-few-public-methods
+        _fields_ = [
+            ("__val", ctypes.c_ulong * (1024 // (8 * ctypes.sizeof(ctypes.c_ulong)))),
+        ]
+
+    SFD_CLOEXEC = os.O_CLOEXEC
+
+    libc.signalfd.argtypes = (ctypes.c_int, ctypes.POINTER(Sigset), ctypes.c_int)
+    libc.signalfd.restype = ctypes.c_int
+    libc.sigemptyset.argtypes = (ctypes.POINTER(Sigset),)
+    libc.sigemptyset.restype = ctypes.c_int
+    libc.sigaddset.argtypes = (ctypes.POINTER(Sigset), ctypes.c_int)
+    libc.sigaddset.restype = ctypes.c_int
+
+    # Create a signal set and add a few signals to it
+    signals = {signal.SIGINT, signal.SIGTERM}
+    sigset = Sigset()
+    libc.sigemptyset(ctypes.byref(sigset))
+    for sig in signals:
+        libc.sigaddset(ctypes.byref(sigset), int(sig))
+
+    # Create a signalfd with that set of signals
+    sigfd = libc.signalfd(-1, ctypes.byref(sigset), SFD_CLOEXEC)
+    if sigfd < 0:
+        raise pypsutil._ffi.build_oserror(ctypes.get_errno())  # pylint: disable=protected-access
+
+    try:
+        assert not os.get_inheritable(sigfd)
+
+        # Make sure everything shows up properly in iter_fds()
+        pfds = {pfd.fd: pfd for pfd in pypsutil.Process().iter_fds()}
+        assert not pfds[sigfd].path
+        assert pfds[sigfd].fdtype == pypsutil.ProcessFdType.SIGNALFD
+        assert pfds[sigfd].extra_info["sigmask"] == signals
+    finally:
+        os.close(sigfd)
 
 
 def test_iter_fds_no_proc() -> None:
