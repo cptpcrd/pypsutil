@@ -459,11 +459,13 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
     if hasattr(_psimpl, "proc_cpu_getaffinity"):
 
+        @translate_proc_errors
         def cpu_getaffinity(self) -> Set[int]:
             return _psimpl.proc_cpu_getaffinity(self)
 
     if hasattr(_psimpl, "proc_cpu_setaffinity"):
 
+        @translate_proc_errors
         def cpu_setaffinity(self, cpus: Iterable[int]) -> None:
             self._check_running()
             _psimpl.proc_cpu_setaffinity(self, list(cpus))
