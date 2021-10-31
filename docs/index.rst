@@ -1062,6 +1062,21 @@ Process information
 
         (Linux) A timerfd instance.
 
+        On Linux 3.17+, :py:attr:`ProcessFd.extra_info` will contain the following extra fields:
+
+        - ``clockid``: The clock ID used to mark the progress of the timer; e.g.
+          ``time.CLOCK_REALTIME``.
+        - ``ticks``: The number of timer expirations that have occurred.
+        - ``settime_flags``: The integer flags that were last used to arm the timer using
+          ``timerfd_settime()``.
+        - ``it_value`` The amount of time until the timer exipres (in seconds, represented as a
+          float).
+        - ``it_value_ns``: The same value as ``it_value``, but in nanoseconds.
+        - ``it_interval``: The interval of the timer (in seconds, represented as a float).
+        - ``it_interval_ns``: The same value as ``it_interval``, but in nanoseconds.
+
+        See ``timerfd_settime(2)`` and ``timerfd_gettime(2)`` for more information.
+
    .. py:data:: PIDFD
 
         (Linux) An PID file descriptor.

@@ -436,6 +436,28 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                     elif line.startswith("Pid:"):
                         extra_info["pid"] = int(line[4:].strip())
 
+                    elif line.startswith("clockid:"):
+                        extra_info["clockid"] = int(line[8:].strip())
+
+                    elif line.startswith("ticks:"):
+                        extra_info["ticks"] = int(line[6:].strip())
+
+                    elif line.startswith("settime flags:"):
+                        extra_info["settime_flags"] = int(line[14:].strip(), 8)
+
+                    elif line.startswith(("it_value:", "it_interval")):
+                        if line.startswith("it_value:"):
+                            name = "it_value"
+                            value = line[9:].strip()
+                        else:
+                            name = "it_interval"
+                            value = line[12:].strip()
+
+                        assert value.startswith("(") and value.endswith(")")
+                        secs, ns = map(int, map(str.strip, value[1:-1].split(",")))
+                        extra_info[name] = secs + ns / 1000000000.0
+                        extra_info[name + "_ns"] = secs * 1000000000 + ns
+
                 assert flags is not None
 
                 if target.startswith("/"):
