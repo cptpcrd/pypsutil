@@ -71,3 +71,6 @@ def test_setaffinity_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.cpu_setaffinity([])
+
+    with pytest.raises(pypsutil.NoSuchProcess):
+        proc.cpu_setaffinity([0])
