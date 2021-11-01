@@ -454,9 +454,9 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
                             value = line[12:].strip()
 
                         assert value.startswith("(") and value.endswith(")")
-                        secs, ns = map(int, map(str.strip, value[1:-1].split(",")))
-                        extra_info[name] = secs + ns / 1000000000.0
-                        extra_info[name + "_ns"] = secs * 1000000000 + ns
+                        secs, subsec_ns = map(int, map(str.strip, value[1:-1].split(",")))
+                        extra_info[name] = secs + subsec_ns / 1000000000.0
+                        extra_info[name + "_ns"] = secs * 1000000000 + subsec_ns
 
                 assert flags is not None
 

@@ -337,7 +337,7 @@ def test_iter_fds_signalfd() -> None:
             ("__val", ctypes.c_ulong * (1024 // (8 * ctypes.sizeof(ctypes.c_ulong)))),
         ]
 
-    SFD_CLOEXEC = os.O_CLOEXEC
+    SFD_CLOEXEC = os.O_CLOEXEC  # pylint: disable=invalid-name
 
     libc.signalfd.argtypes = (ctypes.c_int, ctypes.POINTER(Sigset), ctypes.c_int)
     libc.signalfd.restype = ctypes.c_int
