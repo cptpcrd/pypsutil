@@ -1,5 +1,4 @@
 # mypy: ignore-errors
-# pylint: disable=no-member
 import math
 import os
 import sys
@@ -78,7 +77,6 @@ if hasattr(pypsutil.Process, "memory_maps"):
 
 @linux_only
 def test_memory_maps_grouped() -> None:
-    # pylint: disable=no-member
     mmaps = {os.path.realpath(mmap.path): mmap for mmap in pypsutil.Process().memory_maps_grouped()}
 
     exe_mmap = mmaps[os.path.realpath(sys.executable)]

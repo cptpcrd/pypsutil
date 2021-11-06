@@ -41,27 +41,6 @@ from ._system import (
     virtual_memory,
 )
 
-_OPTIONAL_SYSTEM = [
-    "uptime",
-    "cpu_freq",
-    "percpu_freq",
-    "cpu_stats",
-    "CPUTimes",
-    "cpu_times",
-    "percpu_times",
-    "sensors_power",
-    "sensors_battery",
-    "sensors_battery_total",
-    "sensors_is_on_ac_power",
-    "TempSensorInfo",
-    "sensors_temperatures",
-    "net_connections",
-    "net_io_counters",
-    "pernic_net_io_counters",
-]
-
-_OPTIONAL_PROCESS = ["ProcessMemoryMap", "ProcessMemoryMapGrouped"]
-
 __version__ = "0.1.0"
 
 __all__ = [
@@ -115,15 +94,62 @@ __all__ = [
     "TimeoutExpired",
 ]
 
-for name in _OPTIONAL_SYSTEM:
-    if hasattr(_system, name):
-        globals()[name] = getattr(_system, name)
-        __all__.append(name)
+if hasattr(_system, "uptime"):
+    uptime = _system.uptime
+    __all__.append("uptime")
+if hasattr(_system, "cpu_freq"):
+    cpu_freq = _system.cpu_freq
+    __all__.append("cpu_freq")
+if hasattr(_system, "percpu_freq"):
+    percpu_freq = _system.percpu_freq
+    __all__.append("percpu_freq")
+if hasattr(_system, "cpu_stats"):
+    cpu_stats = _system.cpu_stats
+    __all__.append("cpu_stats")
+if hasattr(_system, "cpu_times"):
+    cpu_times = _system.cpu_times
+    __all__.append("cpu_times")
+if hasattr(_system, "percpu_times"):
+    percpu_times = _system.percpu_times
+    __all__.append("percpu_times")
+if hasattr(_system, "sensors_power"):
+    sensors_power = _system.sensors_power
+    __all__.append("sensors_power")
+if hasattr(_system, "sensors_battery"):
+    sensors_battery = _system.sensors_battery
+    __all__.append("sensors_battery")
+if hasattr(_system, "sensors_battery_total"):
+    sensors_battery_total = _system.sensors_battery_total
+    __all__.append("sensors_battery_total")
+if hasattr(_system, "sensors_is_on_ac_power"):
+    sensors_is_on_ac_power = _system.sensors_is_on_ac_power
+    __all__.append("sensors_is_on_ac_power")
+if hasattr(_system, "sensors_temperatures"):
+    sensors_temperatures = _system.sensors_temperatures
+    __all__.append("sensors_temperatures")
+if hasattr(_system, "net_connections"):
+    net_connections = _system.net_connections
+    __all__.append("net_connections")
+if hasattr(_system, "net_io_counters"):
+    net_io_counters = _system.net_io_counters
+    __all__.append("net_io_counters")
+if hasattr(_system, "pernic_net_io_counters"):
+    pernic_net_io_counters = _system.pernic_net_io_counters
+    __all__.append("pernic_net_io_counters")
+if hasattr(_system, "CPUTimes"):
+    CPUTimes = _system.CPUTimes
+    __all__.append("CPUTimes")
+if hasattr(_system, "TempSensorInfo"):
+    TempSensorInfo = _system.TempSensorInfo
+    __all__.append("TempSensorInfo")
 
-for name in _OPTIONAL_PROCESS:
-    if hasattr(_process, name):
-        globals()[name] = getattr(_process, name)
-        __all__.append(name)
+if hasattr(_process, "ProcessMemoryMap"):
+    ProcessMemoryMap = _process.ProcessMemoryMap
+    __all__.append("ProcessMemoryMap")
+if hasattr(_process, "ProcessMemoryMapGrouped"):
+    ProcessMemoryMapGrouped = _process.ProcessMemoryMapGrouped
+    __all__.append("ProcessMemoryMapGrouped")
+
 
 DEVFS_PATH = "/dev"
 

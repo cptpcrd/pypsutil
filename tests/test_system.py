@@ -23,10 +23,7 @@ if hasattr(pypsutil, "uptime"):
     def test_uptime() -> None:
         # time_since_boot() should always be greater than or equal to uptime()
         # Allow some minor flexibility, though
-        assert (
-            pypsutil.time_since_boot() + 0.1
-            >= pypsutil.uptime()  # type: ignore  # pylint: disable=no-member
-        )
+        assert pypsutil.time_since_boot() + 0.1 >= pypsutil.uptime()
 
 
 def test_physical_cpu_count() -> None:
@@ -38,23 +35,21 @@ def test_physical_cpu_count() -> None:
 
 
 def test_percpu_info() -> None:
-    # pylint: disable=no-member
-
     ncpus = os.cpu_count()
     if not ncpus:
         pytest.skip("Unable to detect number of CPUs")
 
     if hasattr(pypsutil, "percpu_times"):
-        assert len(pypsutil.percpu_times()) == ncpus  # type: ignore[attr-defined]
+        assert len(pypsutil.percpu_times()) == ncpus
 
     if hasattr(pypsutil, "percpu_freq"):
-        assert len(pypsutil.percpu_freq()) in (0, ncpus)  # type: ignore[attr-defined]
+        assert len(pypsutil.percpu_freq()) in (0, ncpus)
 
 
 if hasattr(pypsutil, "cpu_freq"):
 
     def test_cpu_freq_range() -> None:
-        freqs = pypsutil.cpu_freq()  # type: ignore[attr-defined]  # pylint: disable=no-member
+        freqs = pypsutil.cpu_freq()
         if freqs is None:
             pytest.skip("Unable to determine CPU frequencies")
 
@@ -66,8 +61,7 @@ if hasattr(pypsutil, "cpu_freq"):
 if hasattr(pypsutil, "percpu_freq"):
 
     def test_percpu_freq_range() -> None:
-        # pylint: disable=no-member
-        all_freqs = pypsutil.percpu_freq()  # type: ignore[attr-defined]
+        all_freqs = pypsutil.percpu_freq()
         if not all_freqs:
             pytest.skip("Unable to determine CPU frequencies")
 

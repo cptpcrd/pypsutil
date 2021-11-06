@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import os
 import pathlib
 
@@ -53,14 +52,12 @@ def test_cpu_freq_sysfs(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.percpu_freq() == [  # type: ignore
+        assert pypsutil.percpu_freq() == [
             pypsutil.CPUFrequencies(current=2000, min=1000, max=3000),
             pypsutil.CPUFrequencies(current=2500, min=1500, max=3500),
         ]
 
-        assert pypsutil.cpu_freq() == (  # type: ignore
-            pypsutil.CPUFrequencies(current=2250, min=1250, max=3250)
-        )
+        assert pypsutil.cpu_freq() == (pypsutil.CPUFrequencies(current=2250, min=1250, max=3250))
 
 
 @linux_only
@@ -84,14 +81,12 @@ cpu MHz: 2500
     )
 
     with replace_info_directories(sysfs=str(tmp_path / "sysfs"), procfs=str(tmp_path / "procfs")):
-        assert pypsutil.percpu_freq() == [  # type: ignore
+        assert pypsutil.percpu_freq() == [
             pypsutil.CPUFrequencies(current=2000, min=0, max=0),
             pypsutil.CPUFrequencies(current=2500, min=0, max=0),
         ]
 
-        assert pypsutil.cpu_freq() == (  # type: ignore
-            pypsutil.CPUFrequencies(current=2250, min=0, max=0)
-        )
+        assert pypsutil.cpu_freq() == (pypsutil.CPUFrequencies(current=2250, min=0, max=0))
 
 
 @linux_only
@@ -102,9 +97,9 @@ def test_cpu_freq_none(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path / "sysfs"), procfs=str(tmp_path / "procfs")):
-        assert pypsutil.percpu_freq() == []  # type: ignore
+        assert pypsutil.percpu_freq() == []
 
-        assert pypsutil.cpu_freq() is None  # type: ignore
+        assert pypsutil.cpu_freq() is None
 
 
 @linux_only
@@ -126,7 +121,7 @@ softirq 900 0 500 400
         )
 
     with replace_info_directories(procfs=str(tmp_path)):
-        assert pypsutil.cpu_stats() == pypsutil.CPUStats(  # type: ignore
+        assert pypsutil.cpu_stats() == pypsutil.CPUStats(
             ctx_switches=455,
             interrupts=1234,
             soft_interrupts=900,
@@ -150,7 +145,7 @@ swap 0 0
         )
 
     with replace_info_directories(procfs=str(tmp_path)):
-        assert pypsutil.cpu_times() == pypsutil.CPUTimes(  # type: ignore
+        assert pypsutil.cpu_times() == pypsutil.CPUTimes(
             user=1,
             nice=2,
             system=3,
@@ -172,9 +167,9 @@ def test_cpu_times_empty(tmp_path: pathlib.Path) -> None:
 
     with replace_info_directories(procfs=str(tmp_path)):
         with pytest.raises(RuntimeError):
-            pypsutil.cpu_times()  # type: ignore
+            pypsutil.cpu_times()
 
-        assert pypsutil.percpu_times() == []  # type: ignore
+        assert pypsutil.percpu_times() == []
 
 
 @linux_only
@@ -191,8 +186,8 @@ swap 0 0
         )
 
     with replace_info_directories(procfs=str(tmp_path)):
-        assert pypsutil.percpu_times() == [  # type: ignore
-            pypsutil.CPUTimes(  # type: ignore
+        assert pypsutil.percpu_times() == [
+            pypsutil.CPUTimes(
                 user=1,
                 nice=2,
                 system=3,
@@ -204,7 +199,7 @@ swap 0 0
                 guest=9,
                 guest_nice=10,
             ),
-            pypsutil.CPUTimes(  # type: ignore
+            pypsutil.CPUTimes(
                 user=2,
                 nice=3,
                 system=4,

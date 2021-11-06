@@ -145,20 +145,16 @@ if hasattr(pypsutil.Process, "connections"):
 if hasattr(pypsutil, "net_connections"):
 
     def test_net_connections_all() -> None:
-        # pylint: disable=no-member
-
         cur_pid = os.getpid()
 
         existing_conn_fds = {
-            conn.fd
-            for conn in pypsutil.net_connections("all")  # type: ignore[attr-defined]
-            if conn.pid == cur_pid
+            conn.fd for conn in pypsutil.net_connections("all") if conn.pid == cur_pid
         }
 
         with open_testing_sockets() as test_socks:
             conns = [
                 conn
-                for conn in pypsutil.net_connections("all")  # type: ignore[attr-defined]
+                for conn in pypsutil.net_connections("all")
                 if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
@@ -167,7 +163,7 @@ if hasattr(pypsutil, "net_connections"):
         with open_testing_sockets(families=[socket.AF_INET]) as test_socks:
             conns = [
                 conn
-                for conn in pypsutil.net_connections("inet")  # type: ignore[attr-defined]
+                for conn in pypsutil.net_connections("inet")
                 if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
@@ -178,7 +174,7 @@ if hasattr(pypsutil, "net_connections"):
         ) as test_socks:
             conns = [
                 conn
-                for conn in pypsutil.net_connections("udp")  # type: ignore[attr-defined]
+                for conn in pypsutil.net_connections("udp")
                 if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
@@ -187,7 +183,7 @@ if hasattr(pypsutil, "net_connections"):
         with open_testing_sockets(families=[socket.AF_UNIX]) as test_socks:
             conns = [
                 conn
-                for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
+                for conn in pypsutil.net_connections("unix")
                 if conn.pid == cur_pid and conn.fd not in existing_conn_fds
             ]
 
@@ -195,11 +191,10 @@ if hasattr(pypsutil, "net_connections"):
 
         conns = [
             conn
-            for conn in pypsutil.net_connections("unix")  # type: ignore[attr-defined]
+            for conn in pypsutil.net_connections("unix")
             if conn.pid == cur_pid and conn.fd not in existing_conn_fds
         ]
         verify_connections({}, conns)
 
     def test_net_connections_bad_kind() -> None:
-        # pylint: disable=no-member
-        assert pypsutil.net_connections("") == []  # type: ignore[attr-defined]
+        assert pypsutil.net_connections("") == []

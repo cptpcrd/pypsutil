@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import pathlib
 import shutil
 from typing import Dict, Optional
@@ -108,7 +107,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        psinfo = pypsutil.sensors_power()  # type: ignore
+        psinfo = pypsutil.sensors_power()
 
         assert psinfo.batteries == [
             pypsutil.BatteryInfo(
@@ -170,7 +169,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
             ),
         ]
 
-        assert pypsutil.sensors_battery_total() == pypsutil.BatteryInfo(  # type: ignore
+        assert pypsutil.sensors_battery_total() == pypsutil.BatteryInfo(
             name="Combined",
             percent=5099 * 100 / 7000,
             status=pypsutil.BatteryStatus.UNKNOWN,
@@ -185,7 +184,7 @@ def test_sensors_power(tmp_path: pathlib.Path) -> None:
             pypsutil.ACPowerInfo(name="AC1", is_online=False),
         ]
 
-        assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
+        assert pypsutil.sensors_is_on_ac_power() is True
 
 
 @linux_only
@@ -196,7 +195,7 @@ def test_sensors_battery(tmp_path: pathlib.Path) -> None:
     ) -> None:
         populate_directory(str(tmp_path), {"class": {"power_supply": ps_info}})
 
-        assert pypsutil.sensors_battery() == battery_info  # type: ignore
+        assert pypsutil.sensors_battery() == battery_info
 
         shutil.rmtree(tmp_path / "class")
 
@@ -344,7 +343,7 @@ def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
     ) -> None:
         populate_directory(str(tmp_path), {"class": {"power_supply": ps_info}})
 
-        assert pypsutil.sensors_is_on_ac_power() == ac_power_result  # type: ignore
+        assert pypsutil.sensors_is_on_ac_power() == ac_power_result
 
         shutil.rmtree(tmp_path / "class")
 
@@ -436,15 +435,15 @@ def test_sensors_is_on_ac_power(tmp_path: pathlib.Path) -> None:
 @linux_only
 def test_sensors_power_empty(tmp_path: pathlib.Path) -> None:
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore
+        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(
             batteries=[], ac_supplies=[]
         )
 
-        assert pypsutil.sensors_battery() is None  # type: ignore
+        assert pypsutil.sensors_battery() is None
 
-        assert pypsutil.sensors_battery_total() is None  # type: ignore
+        assert pypsutil.sensors_battery_total() is None
 
-        assert pypsutil.sensors_is_on_ac_power() is None  # type: ignore
+        assert pypsutil.sensors_is_on_ac_power() is None
 
 
 @linux_only
@@ -476,7 +475,7 @@ def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(  # type: ignore
+        assert pypsutil.sensors_power() == pypsutil.PowerSupplySensorInfo(
             batteries=[
                 pypsutil.BatteryInfo(
                     name="BAT0",
@@ -498,7 +497,7 @@ def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
             ac_supplies=[pypsutil.ACPowerInfo(name="AC0", is_online=True)],
         )
 
-        assert pypsutil.sensors_battery() == pypsutil.BatteryInfo(  # type: ignore
+        assert pypsutil.sensors_battery() == pypsutil.BatteryInfo(
             name="BAT0",
             status=pypsutil.BatteryStatus.FULL,
             percent=100,
@@ -509,6 +508,6 @@ def test_sensors_power_unknown_cap(tmp_path: pathlib.Path) -> None:
         )
 
         # Unable to determine total capacity
-        assert pypsutil.sensors_battery_total() is None  # type: ignore
+        assert pypsutil.sensors_battery_total() is None
 
-        assert pypsutil.sensors_is_on_ac_power() is True  # type: ignore
+        assert pypsutil.sensors_is_on_ac_power() is True

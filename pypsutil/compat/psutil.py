@@ -150,7 +150,6 @@ class Process:
                 return self._proc.cpu_getaffinity()
 
     if hasattr(pypsutil.Process, "memory_maps_grouped"):
-        # pylint: disable=no-member
         assert hasattr(pypsutil.Process, "memory_maps")
         assert hasattr(pypsutil, "ProcessMemoryMap")
         assert hasattr(pypsutil, "ProcessMemoryMapGrouped")
@@ -160,23 +159,20 @@ class Process:
             self,
             *,
             grouped: Literal[False] = False,
-        ) -> pypsutil.ProcessMemoryMap:  # type: ignore[name-defined]
+        ) -> List[pypsutil.ProcessMemoryMap]:
             ...
 
         @overload
         def memory_maps(
             self,
             *,
-            grouped: Literal[True] = True,
-        ) -> pypsutil.ProcessMemoryMapGrouped:  # type: ignore[name-defined]
+            grouped: Literal[True],
+        ) -> List[pypsutil.ProcessMemoryMapGrouped]:
             ...
 
         def memory_maps(
             self, *, grouped: bool = True
-        ) -> Union[  # type: ignore[name-defined]
-            pypsutil.ProcessMemoryMap,
-            pypsutil.ProcessMemoryMapGrouped,
-        ]:
+        ) -> Union[List[pypsutil.ProcessMemoryMap], List[pypsutil.ProcessMemoryMapGrouped]]:
             return self._proc.memory_maps_grouped() if grouped else self._proc.memory_maps()
 
     def num_fds(self) -> int:
@@ -320,13 +316,13 @@ swap_memory = pypsutil.swap_memory
 boot_time = pypsutil.boot_time
 
 if hasattr(pypsutil, "cpu_stats"):
-    cpu_stats = pypsutil.cpu_stats  # type: ignore  # pylint: disable=no-member
+    cpu_stats = pypsutil.cpu_stats
 
 if hasattr(pypsutil, "sensors_battery"):
-    sensors_battery = pypsutil.sensors_battery  # type: ignore  # pylint: disable=no-member
+    sensors_battery = pypsutil.sensors_battery
 
-if hasattr(pypsutil, "sensors_temperature"):
-    sensors_temperature = pypsutil.sensors_temperature  # type: ignore  # pylint: disable=no-member
+if hasattr(pypsutil, "sensors_temperatures"):
+    sensors_temperatures = pypsutil.sensors_temperatures
 
 
 def cpu_count(logical: bool = True) -> Optional[int]:
@@ -339,20 +335,18 @@ if (
     and hasattr(pypsutil, "CPUTimes")
 ):
 
-    # pylint: disable=no-member
-
     @overload
-    def cpu_times(percpu: Literal[False] = False) -> pypsutil.CPUTimes:  # type: ignore
+    def cpu_times(percpu: Literal[False] = False) -> pypsutil.CPUTimes:
         ...
 
     @overload
-    def cpu_times(percpu: Literal[True]) -> List[pypsutil.CPUTimes]:  # type: ignore
+    def cpu_times(percpu: Literal[True]) -> List[pypsutil.CPUTimes]:
         ...
 
     def cpu_times(
         percpu: bool = False,
-    ) -> Union[pypsutil.CPUTimes, List[pypsutil.CPUTimes]]:  # type: ignore
-        return pypsutil.percpu_times() if percpu else pypsutil.cpu_times()  # type: ignore
+    ) -> Union[pypsutil.CPUTimes, List[pypsutil.CPUTimes]]:
+        return pypsutil.percpu_times() if percpu else pypsutil.cpu_times()
 
 
 if (
@@ -361,10 +355,8 @@ if (
     and hasattr(pypsutil, "CPUFrequencies")
 ):
 
-    # pylint: disable=no-member
-
     @overload
-    def cpu_freq(percpu: Literal[False] = False) -> pypsutil.CPUFrequencies:
+    def cpu_freq(percpu: Literal[False] = False) -> Optional[pypsutil.CPUFrequencies]:
         ...
 
     @overload
@@ -373,31 +365,30 @@ if (
 
     def cpu_freq(
         percpu: bool = False,
-    ) -> Union[pypsutil.CPUFrequencies, List[pypsutil.CPUFrequencies]]:
-        return pypsutil.percpu_freq() if percpu else pypsutil.cpu_freq()  # type: ignore
+    ) -> Union[pypsutil.CPUFrequencies, List[pypsutil.CPUFrequencies], None]:
+        return pypsutil.percpu_freq() if percpu else pypsutil.cpu_freq()
 
 
 if hasattr(pypsutil, "net_io_counters"):
-    # pylint: disable=no-member
     assert hasattr(pypsutil, "pernic_net_io_counters")
 
     @overload
     def net_io_counters(
         *, pernic: Literal[False] = False, nowrap: bool = True
-    ) -> pypsutil.NetIOCounts:
+    ) -> Optional[pypsutil.NetIOCounts]:
         ...
 
     @overload
     def net_io_counters(
         *, pernic: Literal[True], nowrap: bool = True
-    ) -> List[pypsutil.NetIOCounts]:
+    ) -> Dict[str, pypsutil.NetIOCounts]:
         ...
 
     def net_io_counters(
         *, pernic: bool = False, nowrap: bool = True
-    ) -> Union[pypsutil.NetIOCounts, List[pypsutil.NetIOCounts]]:
-        return (  # type: ignore[no-any-return]
-            pypsutil.pernic_net_io_counters(nowrap=nowrap)  # type: ignore[attr-defined]
+    ) -> Union[pypsutil.NetIOCounts, Dict[str, pypsutil.NetIOCounts], None]:
+        return (
+            pypsutil.pernic_net_io_counters(nowrap=nowrap)
             if pernic
-            else pypsutil.net_io_counters(nowrap=nowrap)  # type: ignore[attr-defined]
+            else pypsutil.net_io_counters(nowrap=nowrap)
         )

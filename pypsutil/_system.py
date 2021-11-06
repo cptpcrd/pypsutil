@@ -42,7 +42,7 @@ else:
 if hasattr(_psimpl, "cpu_freq"):
 
     def cpu_freq() -> Optional[CPUFrequencies]:
-        result = _psimpl.cpu_freq()  # pylint: disable=no-member
+        result = _psimpl.cpu_freq()
 
         if result is not None:
             return CPUFrequencies(current=result[0], min=result[1], max=result[2])

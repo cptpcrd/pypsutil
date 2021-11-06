@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import pathlib
 import shutil
 
@@ -8,7 +7,7 @@ from .util import linux_only, populate_directory, replace_info_directories
 
 
 @linux_only
-def test_sensors_temperature(tmp_path: pathlib.Path) -> None:
+def test_sensors_temperatures(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
         {
@@ -44,48 +43,34 @@ def test_sensors_temperature(tmp_path: pathlib.Path) -> None:
     )
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_temperatures() == {  # type: ignore
+        assert pypsutil.sensors_temperatures() == {
             "acpi": [
-                pypsutil.TempSensorInfo(  # type: ignore
-                    label="", current=50, high=None, critical=None
-                ),
+                pypsutil.TempSensorInfo(label="", current=50, high=None, critical=None),
             ],
             "coretemp": [
-                pypsutil.TempSensorInfo(  # type: ignore
-                    label="", current=60, high=100, critical=100
-                ),
-                pypsutil.TempSensorInfo(  # type: ignore
-                    label="Chassis", current=90, high=None, critical=None
-                ),
+                pypsutil.TempSensorInfo(label="", current=60, high=100, critical=100),
+                pypsutil.TempSensorInfo(label="Chassis", current=90, high=None, critical=None),
             ],
             "coretemp2": [
-                pypsutil.TempSensorInfo(  # type: ignore
-                    label="", current=60, high=100, critical=100
-                ),
-                pypsutil.TempSensorInfo(  # type: ignore
-                    label="Chassis", current=90, high=None, critical=None
-                ),
+                pypsutil.TempSensorInfo(label="", current=60, high=100, critical=100),
+                pypsutil.TempSensorInfo(label="Chassis", current=90, high=None, critical=None),
             ],
         }
 
     shutil.rmtree(tmp_path / "class")
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_temperatures() == {}  # type: ignore
+        assert pypsutil.sensors_temperatures() == {}
 
 
 @linux_only
 def test_temp_sensor_fahrenheit() -> None:
-    sensor_a = pypsutil.TempSensorInfo(  # type: ignore
-        label="sensor_a", current=0, high=100, critical=100
-    )
+    sensor_a = pypsutil.TempSensorInfo(label="sensor_a", current=0, high=100, critical=100)
     assert sensor_a.current_fahrenheit == 32
     assert sensor_a.high_fahrenheit == 212
     assert sensor_a.critical_fahrenheit == 212
 
-    sensor_b = pypsutil.TempSensorInfo(  # type: ignore
-        label="sensor_b", current=100, high=None, critical=None
-    )
+    sensor_b = pypsutil.TempSensorInfo(label="sensor_b", current=100, high=None, critical=None)
     assert sensor_b.current_fahrenheit == 212
     assert sensor_b.high_fahrenheit is None
     assert sensor_b.critical_fahrenheit is None
