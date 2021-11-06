@@ -71,6 +71,14 @@ elif hasattr(_psimpl, "percpu_freq"):
         )
 
 
+if hasattr(_psimpl, "percpu_freq"):
+
+    def percpu_freq() -> List[CPUFrequencies]:
+        return [
+            CPUFrequencies(f_cur, f_min, f_max) for f_cur, f_min, f_max in _psimpl.percpu_freq()
+        ]
+
+
 if hasattr(_psimpl, "cpu_stats"):
 
     def cpu_stats() -> CPUStats:
@@ -79,14 +87,6 @@ if hasattr(_psimpl, "cpu_stats"):
         return CPUStats(
             ctx_switches=ctx, interrupts=intr, soft_interrupts=soft_intr, syscalls=syscalls
         )
-
-
-if hasattr(_psimpl, "percpu_freq"):
-
-    def percpu_freq() -> List[CPUFrequencies]:
-        return [
-            CPUFrequencies(f_cur, f_min, f_max) for f_cur, f_min, f_max in _psimpl.percpu_freq()
-        ]
 
 
 if hasattr(_psimpl, "cpu_times"):
