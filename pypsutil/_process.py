@@ -1,8 +1,10 @@
 # Type checkers don't like the wrapper names not existing.
+# pylint: disable=too-many-lines
 # mypy: ignore-errors
 # pytype: disable=module-attr
 import collections
 import contextlib
+import dataclasses
 import datetime
 import os
 import pwd
@@ -40,6 +42,11 @@ if hasattr(_psimpl, "ProcessMemoryMap"):
     ProcessMemoryMap = _psimpl.ProcessMemoryMap
 if hasattr(_psimpl, "ProcessMemoryMapGrouped"):
     ProcessMemoryMapGrouped = _psimpl.ProcessMemoryMapGrouped
+
+if hasattr(_psimpl, "ProcessMemoryFullInfo"):
+    ProcessMemoryFullInfo = _psimpl.ProcessMemoryFullInfo
+else:
+    ProcessMemoryFullInfo = ProcessMemoryInfo
 
 
 if getattr(_psimpl.pid_raw_create_time, "works_on_zombies", True):
@@ -474,8 +481,22 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def memory_info(self) -> ProcessMemoryInfo:
         return _psimpl.proc_memory_info(self)
 
+    if hasattr(_psimpl, "proc_memory_full_info"):
+
+        @translate_proc_errors
+        def memory_full_info(self) -> ProcessMemoryFullInfo:
+            return _psimpl.proc_memory_full_info(self)
+
+    else:
+
+        def memory_full_info(self) -> ProcessMemoryFullInfo:
+            return self.memory_info()
+
     def memory_percent(self, memtype: str = "rss") -> float:
-        proc_meminfo = self.memory_info()
+        if any(field.name == memtype for field in dataclasses.fields(ProcessMemoryInfo)):
+            proc_meminfo = self.memory_info()
+        else:
+            proc_meminfo = self.memory_full_info()
 
         try:
             if memtype.startswith("_"):

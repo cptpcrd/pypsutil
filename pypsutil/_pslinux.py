@@ -119,6 +119,15 @@ class ProcessMemoryInfo:
 
 
 @dataclasses.dataclass
+class ProcessMemoryFullInfo(ProcessMemoryInfo):
+    lib: int
+    dirty: int
+    uss: int
+    pss: int
+    swap: int
+
+
+@dataclasses.dataclass
 class ProcessMemoryMap:  # pylint: disable=too-many-instance-attributes
     path: str
     addr_start: int
@@ -994,6 +1003,66 @@ def proc_memory_info(proc: "Process") -> ProcessMemoryInfo:
             text=items[3] * _util.PAGESIZE,
             data=items[5] * _util.PAGESIZE,
         )
+
+
+def proc_memory_full_info(proc: "Process") -> ProcessMemoryFullInfo:
+    rss = 0
+    vms = 0
+    rssfile = 0
+    rssshm = 0
+    text = 0
+    data = 0
+    stack = 0
+    lib = 0
+    swap = 0
+
+    for name, value in _iter_proc_status_entries(proc):
+        value = value.strip()
+        val: Union[int, str]
+        if value.endswith(" kB"):
+            val = int(value[:-3].rstrip()) * 1024
+        else:
+            val = value
+
+        if name == "VmRSS":
+            rss = int(val)
+        elif name == "VmSize":
+            vms = int(val)
+        elif name == "RssFile":
+            rssfile = int(val)
+        elif name == "RssShmem":
+            rssshm = int(val)
+        elif name == "VmExe":
+            text = int(val)
+        elif name == "VmData":
+            data = int(val)
+        elif name == "VmStk":
+            stack = int(val)
+        elif name == "VmLib":
+            lib = int(val)
+        elif name == "VmSwap":
+            swap = int(val)
+
+    pss = 0
+    uss = 0
+    dirty = 0
+    for mmap in proc_memory_maps(proc):
+        pss += mmap.pss
+        uss += mmap.private_clean + mmap.private_dirty
+        dirty += mmap.private_dirty + mmap.shared_dirty
+
+    return ProcessMemoryFullInfo(
+        rss=rss,
+        vms=vms,
+        shared=rssfile + rssshm,
+        text=text,
+        data=data + stack,
+        lib=lib,
+        dirty=dirty,
+        uss=uss,
+        pss=pss,
+        swap=swap,
+    )
 
 
 _SMAPS_SIZE_NAMES = {
