@@ -9,7 +9,7 @@ import pytest
 
 import pypsutil
 
-macos_only = pytest.mark.skipif(sys.platform != "darwin", reason="Tests Linux-specific behavior")
+macos_only = pytest.mark.skipif(sys.platform != "darwin", reason="Tests macOS-specific behavior")
 macos_bsd_only = pytest.mark.skipif(
     not (pypsutil.BSD or pypsutil.MACOS), reason="Tests macOS/*BSD-specific behavior"
 )
