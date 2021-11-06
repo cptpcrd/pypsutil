@@ -2,7 +2,7 @@
 # mypy: ignore-errors
 # pytype: disable=module-attr
 import dataclasses
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from . import _util
 from ._detect import _psimpl
@@ -205,9 +205,20 @@ if hasattr(_psimpl, "sensors_temperatures"):
 
 
 if hasattr(_psimpl, "pernic_net_io_counters"):
-    pernic_net_io_counters = _psimpl.pernic_net_io_counters
+    _pernic_net_io_cache: Dict[str, NetIOCounts] = {}
 
-    def net_io_counters() -> Optional[NetIOCounts]:
+    def pernic_net_io_counters(*, nowrap: bool = True) -> Dict[str, NetIOCounts]:
+        pernic_counts = _psimpl.pernic_net_io_counters()
+        if nowrap:
+            for name, counts in pernic_counts.items():
+                _pernic_net_io_cache[name] = counts._nowrap(  # pylint: disable=protected-access
+                    _pernic_net_io_cache.get(name)
+                )
+        return pernic_counts
+
+    pernic_net_io_counters.cache_clear = _pernic_net_io_cache.clear
+
+    def net_io_counters(*, nowrap: bool = True) -> Optional[NetIOCounts]:
         totals = NetIOCounts(
             bytes_sent=0,
             bytes_recv=0,
@@ -219,7 +230,7 @@ if hasattr(_psimpl, "pernic_net_io_counters"):
             dropout=0,
         )
 
-        allnic_counts = pernic_net_io_counters().values()
+        allnic_counts = pernic_net_io_counters(nowrap=nowrap).values()
         if not allnic_counts:
             return None
 
@@ -232,6 +243,8 @@ if hasattr(_psimpl, "pernic_net_io_counters"):
                 )
 
         return totals
+
+    net_io_counters.cache_clear = pernic_net_io_counters.cache_clear
 
 
 boot_time = _psimpl.boot_time

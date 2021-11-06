@@ -294,6 +294,19 @@ class NetIOCounts:  # pylint: disable=too-many-instance-attributes
     dropin: int
     dropout: int
 
+    def _nowrap(self, cacheobj: Optional["NetIOCounts"]) -> "NetIOCounts":
+        if cacheobj is None:
+            return dataclasses.replace(self)  # Trick to make a copy
+
+        for field in dataclasses.fields(NetIOCounts):
+            self_value = getattr(self, field.name)
+            cache_value = getattr(cacheobj, field.name)
+            if self_value < cache_value:
+                setattr(self, field.name, self_value + cache_value)
+                setattr(cacheobj, field.name, self_value + cache_value)
+
+        return cacheobj
+
 
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
