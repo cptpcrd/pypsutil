@@ -495,20 +495,15 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def memory_percent(self, memtype: str = "rss") -> float:
         if any(field.name == memtype for field in dataclasses.fields(ProcessMemoryInfo)):
             proc_meminfo = self.memory_info()
-        else:
+        elif any(field.name == memtype for field in dataclasses.fields(ProcessMemoryFullInfo)):
             proc_meminfo = self.memory_full_info()
-
-        try:
-            if memtype.startswith("_"):
-                raise AttributeError
-            proc_val = getattr(proc_meminfo, memtype)
-        except AttributeError as ex:
+        else:
             raise ValueError(
                 f"Bad process memory type {memtype!r} (valid types: "
-                f"{list(proc_meminfo.__dict__.keys())})"
-            ) from ex
-        else:
-            return proc_val * 100.0 / virtual_memory_total()
+                f"{[field.name for field in dataclasses.fields(ProcessMemoryFullInfo)]})"
+            )
+
+        return getattr(proc_meminfo, memtype) * 100.0 / virtual_memory_total()
 
     if hasattr(_psimpl, "proc_memory_maps"):
 
