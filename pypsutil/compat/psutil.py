@@ -147,6 +147,36 @@ class Process:
             else:
                 return self._proc.cpu_getaffinity()
 
+    if hasattr(pypsutil.Process, "memory_maps_grouped"):
+        # pylint: disable=no-member
+        assert hasattr(pypsutil.Process, "memory_maps")
+        assert hasattr(pypsutil, "ProcessMemoryMap")
+        assert hasattr(pypsutil, "ProcessMemoryMapGrouped")
+
+        @overload
+        def memory_maps(
+            self,
+            *,
+            grouped: False = False,  # type: ignore[valid-type]
+        ) -> pypsutil.ProcessMemoryMap:  # type: ignore[name-defined]
+            ...
+
+        @overload
+        def memory_maps(  # type: ignore
+            self,
+            *,
+            grouped: True = True,  # type: ignore[valid-type]
+        ) -> pypsutil.ProcessMemoryMapGrouped:  # type: ignore[name-defined]
+            ...
+
+        def memory_maps(
+            self, *, grouped: bool = True
+        ) -> Union[  # type: ignore[name-defined]
+            pypsutil.ProcessMemoryMap,
+            pypsutil.ProcessMemoryMapGrouped,
+        ]:
+            return self._proc.memory_maps_grouped() if grouped else self._proc.memory_maps()
+
     def num_fds(self) -> int:
         return self._proc.num_fds()
 
