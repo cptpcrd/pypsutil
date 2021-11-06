@@ -284,6 +284,26 @@ class PowerSupplySensorInfo:
 
 
 @dataclasses.dataclass
+class TempSensorInfo:
+    label: str
+    current: float
+    high: Optional[float]
+    critical: Optional[float]
+
+    @property
+    def current_fahrenheit(self) -> float:
+        return self.current * 1.8 + 32
+
+    @property
+    def high_fahrenheit(self) -> Optional[float]:
+        return (self.high * 1.8 + 32) if self.high is not None else None
+
+    @property
+    def critical_fahrenheit(self) -> Optional[float]:
+        return (self.critical * 1.8 + 32) if self.critical is not None else None
+
+
+@dataclasses.dataclass
 class NetIOCounts:  # pylint: disable=too-many-instance-attributes
     bytes_sent: int
     bytes_recv: int

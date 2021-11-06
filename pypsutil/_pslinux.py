@@ -169,27 +169,7 @@ PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 BatteryInfo = _util.BatteryInfo
 BatteryStatus = _util.BatteryStatus
 ACPowerInfo = _util.ACPowerInfo
-
-
-@dataclasses.dataclass
-class TempSensorInfo:
-    label: str
-    current: float
-    high: Optional[float]
-    critical: Optional[float]
-
-    @property
-    def current_fahrenheit(self) -> float:
-        return self.current * 1.8 + 32
-
-    @property
-    def high_fahrenheit(self) -> Optional[float]:
-        return (self.high * 1.8 + 32) if self.high is not None else None
-
-    @property
-    def critical_fahrenheit(self) -> Optional[float]:
-        return (self.critical * 1.8 + 32) if self.critical is not None else None
-
+TempSensorInfo = _util.TempSensorInfo
 
 SwapInfo = _util.SwapInfo
 ThreadInfo = _util.ThreadInfo

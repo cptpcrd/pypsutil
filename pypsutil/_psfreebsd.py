@@ -20,6 +20,7 @@ from ._util import (
     ProcessFdType,
     ProcessSignalMasks,
     ProcessStatus,
+    TempSensorInfo,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -49,6 +50,9 @@ KERN_PROC_CWD = 42
 
 CTL_HW = 6
 HW_PHYSMEM = 5
+
+CTL_SYSCTL = 0
+CTL_SYSCTL_OIDFMT = 4
 
 KI_NSPARE_INT = 2
 KI_NSPARE_LONG = 12
@@ -1990,6 +1994,62 @@ def sensors_is_on_ac_power() -> Optional[bool]:
         return bool(_bsd.sysctlbyname_into("hw.acpi.acline", ctypes.c_int()).value)
     except FileNotFoundError:
         return None
+
+
+def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
+    results = {}
+
+    try:
+        i = 0
+        coretemp_results = []
+        while True:
+            try:
+                mib = _bsd.sysctlnametomib(f"dev.cpu.{i}.temperature", maxlen=4)
+            except FileNotFoundError:
+                break
+
+            # This shouldn't fail with ENOENT since we just got the MIB from sysctlnametomib()
+            temp_raw = ctypes.c_int()
+            _bsd.sysctl_into(mib, temp_raw)
+
+            try:
+                temp_fmt = _bsd.sysctl_bytes_retry(
+                    [CTL_SYSCTL, CTL_SYSCTL_OIDFMT, *mib], None, trim_nul=True
+                ).decode(errors="surrogatescape")
+            except FileNotFoundError:
+                # If we couldn't find the format, just skip this CPU
+                i += 1
+                continue
+
+            assert temp_fmt.startswith("I") and 2 <= len(temp_fmt) <= 3
+
+            temp_raw_val = temp_raw.value
+            if len(temp_fmt) == 3:
+                temp_raw_val *= 10 ** int(temp_fmt[2])
+            else:
+                temp_raw_val *= 10
+
+            if temp_fmt[1] == "K":
+                temp_c = temp_raw_val - 273.15
+            elif temp_fmt[1] == "C":
+                temp_c = float(temp_raw_val)
+            elif temp_fmt[1] == "F":
+                temp_c = (temp_raw_val - 32) / 1.8
+            else:
+                raise ValueError("Invalid format")
+
+            coretemp_results.append(
+                TempSensorInfo(label=f"cpu{i}", current=temp_c, high=None, critical=None)
+            )
+            i += 1
+
+    except FileNotFoundError:
+        pass
+
+    if coretemp_results:
+        results["coretemp"] = coretemp_results
+
+    return results
 
 
 def boot_time() -> float:
