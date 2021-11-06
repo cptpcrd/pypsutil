@@ -283,6 +283,18 @@ class PowerSupplySensorInfo:
         return False if self.ac_supplies else None
 
 
+@dataclasses.dataclass
+class NetIOCounts:  # pylint: disable=too-many-instance-attributes
+    bytes_sent: int
+    bytes_recv: int
+    packets_sent: int
+    packets_recv: int
+    errin: int
+    errout: int
+    dropin: int
+    dropout: int
+
+
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 

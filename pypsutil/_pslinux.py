@@ -29,6 +29,7 @@ from ._errors import AccessDenied, ZombieProcess
 from ._util import (
     Connection,
     ConnectionStatus,
+    NetIOCounts,
     ProcessCPUTimes,
     ProcessFd,
     ProcessFdType,
@@ -1525,6 +1526,49 @@ def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
         pass
 
     return results
+
+
+def pernic_net_io_counters() -> Dict[str, NetIOCounts]:
+    counts = {}
+
+    with open("/proc/net/dev", encoding="utf8") as file:
+        file.readline()
+        file.readline()
+
+        for line in file:
+            name, *parts = line.split()
+            name = name.rstrip(":")
+            (
+                b_recv,
+                p_recv,
+                errin,
+                dropin,
+                _,
+                _,
+                _,
+                _,
+                b_send,
+                p_send,
+                errout,
+                dropout,
+                _,
+                _,
+                _,
+                _,
+            ) = map(int, parts)
+
+            counts[name] = NetIOCounts(
+                bytes_sent=b_send,
+                bytes_recv=b_recv,
+                packets_sent=p_send,
+                packets_recv=p_recv,
+                errin=errin,
+                errout=errout,
+                dropin=dropin,
+                dropout=dropout,
+            )
+
+    return counts
 
 
 _cached_boot_time = None

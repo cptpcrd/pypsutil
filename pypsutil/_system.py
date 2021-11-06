@@ -13,6 +13,7 @@ PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 ACPowerInfo = _util.ACPowerInfo
 BatteryInfo = _util.BatteryInfo
 BatteryStatus = _util.BatteryStatus
+NetIOCounts = _util.NetIOCounts
 
 
 @dataclasses.dataclass
@@ -201,6 +202,36 @@ if hasattr(_psimpl, "sensors_temperatures"):
     TempSensorInfo = _psimpl.TempSensorInfo
 
     sensors_temperatures = _psimpl.sensors_temperatures
+
+
+if hasattr(_psimpl, "pernic_net_io_counters"):
+    pernic_net_io_counters = _psimpl.pernic_net_io_counters
+
+    def net_io_counters() -> Optional[NetIOCounts]:
+        totals = NetIOCounts(
+            bytes_sent=0,
+            bytes_recv=0,
+            packets_sent=0,
+            packets_recv=0,
+            errin=0,
+            errout=0,
+            dropin=0,
+            dropout=0,
+        )
+
+        allnic_counts = pernic_net_io_counters().values()
+        if not allnic_counts:
+            return None
+
+        for nic_counts in allnic_counts:
+            for field in dataclasses.fields(NetIOCounts):
+                setattr(
+                    totals,
+                    field.name,
+                    getattr(totals, field.name) + getattr(nic_counts, field.name),
+                )
+
+        return totals
 
 
 boot_time = _psimpl.boot_time

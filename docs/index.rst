@@ -1430,6 +1430,43 @@ System information
    Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
+.. py:function:: net_io_counters()
+
+   Returns a dataclass containing various network I/O statisitcs:
+
+   - ``bytes_sent``: the number of bytes sent
+   - ``bytes_recv``: the number of bytes received
+   - ``packets_sent``: the number of packets sent
+   - ``packets_recv``: the number of packets received
+   - ``errin``: the number of errors encountered while receiving
+   - ``errout``: the number of errors encountered while sending
+   - ``dropin``: the number of dropped incoming packets
+   - ``dropout``: the number of dropped outgoing packets
+
+   Note that some of these counts may overflow on long-running systems. Unlike ``psutil``,
+   ``pypsutil`` currently has no methods to work around such overflows.
+
+   If the system has no network interfaces, returns ``None``.
+
+   :returns: A dataclass containg network I/O statistics
+   :rtype: NetIOCounts or None
+
+   Availability: Linux
+
+
+.. py:function:: pernic_net_io_counters()
+
+   Identical to :py:func:`net_io_counters()`, but returns a dictionary mapping interface names to
+   network I/O statistics.
+
+   If the system has no network interfaces, returns an empty dict.
+
+   :returns: A dictionary mapping interface names to :py:class:`NetIOCounts` s
+   :rtype: dict[str, NetIOCounts]
+
+   Availability: Linux
+
+
 Sensor information
 ==================
 

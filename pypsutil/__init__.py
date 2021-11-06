@@ -29,6 +29,7 @@ from ._system import (
     CPUFrequencies,
     CPUStats,
     DiskUsage,
+    NetIOCounts,
     PowerSupplySensorInfo,
     SwapInfo,
     VirtualMemoryInfo,
@@ -55,6 +56,8 @@ _OPTIONAL_SYSTEM = [
     "TempSensorInfo",
     "sensors_temperatures",
     "net_connections",
+    "net_io_counters",
+    "pernic_net_io_counters",
 ]
 
 _OPTIONAL_PROCESS = ["ProcessMemoryMap", "ProcessMemoryMapGrouped"]
@@ -102,6 +105,7 @@ __all__ = [
     "ACPowerInfo",
     "BatteryInfo",
     "BatteryStatus",
+    "NetIOCounts",
     "Uids",
     "Gids",
     "Error",
