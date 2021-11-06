@@ -321,9 +321,6 @@ if hasattr(pypsutil, "cpu_stats"):
 if hasattr(pypsutil, "sensors_battery"):
     sensors_battery = pypsutil.sensors_battery
 
-if hasattr(pypsutil, "sensors_temperatures"):
-    sensors_temperatures = pypsutil.sensors_temperatures
-
 
 def cpu_count(logical: bool = True) -> Optional[int]:
     return os.cpu_count() if logical else pypsutil.physical_cpu_count()
