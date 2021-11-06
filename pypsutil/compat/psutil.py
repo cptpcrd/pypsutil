@@ -347,3 +347,29 @@ if (
         percpu: bool = False,
     ) -> Union[pypsutil.CPUFrequencies, List[pypsutil.CPUFrequencies]]:
         return pypsutil.percpu_freq() if percpu else pypsutil.cpu_freq()  # type: ignore
+
+
+if hasattr(pypsutil, "net_io_counters"):
+    # pylint: disable=no-member
+    assert hasattr(pypsutil, "pernic_net_io_counters")
+
+    @overload
+    def net_io_counters(
+        *, pernic: False = False, nowrap: bool = True  # type: ignore[valid-type]
+    ) -> pypsutil.NetIOCounts:
+        ...
+
+    @overload
+    def net_io_counters(  # type: ignore
+        *, pernic: True = True, nowrap: bool = True  # type: ignore[valid-type]
+    ) -> List[pypsutil.NetIOCounts]:
+        ...
+
+    def net_io_counters(
+        *, pernic: bool = False, nowrap: bool = True
+    ) -> Union[pypsutil.NetIOCounts, List[pypsutil.NetIOCounts]]:
+        return (  # type: ignore[no-any-return]
+            pypsutil.pernic_net_io_counters(nowrap=nowrap)  # type: ignore[attr-defined]
+            if pernic
+            else pypsutil.net_io_counters(nowrap=nowrap)  # type: ignore[attr-defined]
+        )
