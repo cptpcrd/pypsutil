@@ -286,10 +286,6 @@ virtual_memory = pypsutil.virtual_memory
 swap_memory = pypsutil.swap_memory
 
 boot_time = pypsutil.boot_time
-time_since_boot = pypsutil.time_since_boot
-
-if hasattr(pypsutil, "uptime"):
-    uptime = pypsutil.uptime  # type: ignore  # pylint: disable=no-member
 
 if hasattr(pypsutil, "cpu_stats"):
     cpu_stats = pypsutil.cpu_stats  # type: ignore  # pylint: disable=no-member
