@@ -15,6 +15,8 @@ from typing import (
     overload,
 )
 
+from typing_extensions import Literal
+
 import pypsutil
 
 
@@ -157,15 +159,15 @@ class Process:
         def memory_maps(
             self,
             *,
-            grouped: False = False,  # type: ignore[valid-type]
+            grouped: Literal[False] = False,
         ) -> pypsutil.ProcessMemoryMap:  # type: ignore[name-defined]
             ...
 
         @overload
-        def memory_maps(  # type: ignore
+        def memory_maps(
             self,
             *,
-            grouped: True = True,  # type: ignore[valid-type]
+            grouped: Literal[True] = True,
         ) -> pypsutil.ProcessMemoryMapGrouped:  # type: ignore[name-defined]
             ...
 
@@ -340,11 +342,11 @@ if (
     # pylint: disable=no-member
 
     @overload
-    def cpu_times(percpu: False = False) -> pypsutil.CPUTimes:  # type: ignore
+    def cpu_times(percpu: Literal[False] = False) -> pypsutil.CPUTimes:  # type: ignore
         ...
 
     @overload
-    def cpu_times(percpu: True) -> List[pypsutil.CPUTimes]:  # type: ignore
+    def cpu_times(percpu: Literal[True]) -> List[pypsutil.CPUTimes]:  # type: ignore
         ...
 
     def cpu_times(
@@ -362,11 +364,11 @@ if (
     # pylint: disable=no-member
 
     @overload
-    def cpu_freq(percpu: False = False) -> pypsutil.CPUFrequencies:  # type: ignore
+    def cpu_freq(percpu: Literal[False] = False) -> pypsutil.CPUFrequencies:
         ...
 
     @overload
-    def cpu_freq(percpu: True) -> List[pypsutil.CPUFrequencies]:  # type: ignore
+    def cpu_freq(percpu: Literal[True]) -> List[pypsutil.CPUFrequencies]:
         ...
 
     def cpu_freq(
@@ -381,13 +383,13 @@ if hasattr(pypsutil, "net_io_counters"):
 
     @overload
     def net_io_counters(
-        *, pernic: False = False, nowrap: bool = True  # type: ignore[valid-type]
+        *, pernic: Literal[False] = False, nowrap: bool = True
     ) -> pypsutil.NetIOCounts:
         ...
 
     @overload
-    def net_io_counters(  # type: ignore
-        *, pernic: True = True, nowrap: bool = True  # type: ignore[valid-type]
+    def net_io_counters(
+        *, pernic: Literal[True], nowrap: bool = True
     ) -> List[pypsutil.NetIOCounts]:
         ...
 
