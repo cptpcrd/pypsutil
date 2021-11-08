@@ -1501,7 +1501,18 @@ def sensors_power() -> PowerSupplySensorInfo:
 
 
 def sensors_is_on_ac_power() -> Optional[bool]:
-    return sensors_power().is_on_ac_power
+    batteries = []
+    ac_supplies = []
+
+    for info in _iter_sensors_power():
+        if isinstance(info, BatteryInfo):
+            batteries.append(info)
+        else:
+            if info.is_online:
+                return True
+            ac_supplies.append(info)
+
+    return PowerSupplySensorInfo(batteries=batteries, ac_supplies=ac_supplies).is_on_ac_power
 
 
 def sensors_temperatures() -> Dict[str, List[TempSensorInfo]]:
