@@ -1719,7 +1719,7 @@ class NetlinkSocket(socket.socket):
     _NLMSG_SIZE = struct.calcsize(_NLMSG_FORMAT)
 
     def __init__(self, family: int) -> None:
-        super().__init__(socket.AF_NETLINK, socket.SOCK_DGRAM, family)
+        super().__init__(AF_NETLINK, socket.SOCK_DGRAM, family)
         self.setblocking(False)
 
     def read_nlmsgs(self) -> List[Tuple[int, int, int, int, bytes]]:
@@ -1763,7 +1763,7 @@ def decode_rtattrs(data: bytes) -> Iterator[Tuple[int, bytes]]:
 def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
     while True:
         try:
-            with NetlinkSocket(socket.NETLINK_ROUTE) as sock:
+            with NetlinkSocket(NETLINK_ROUTE) as sock:
                 pid = os.getpid()
 
                 mac_nicaddrs = {}
