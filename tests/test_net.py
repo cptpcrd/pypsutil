@@ -198,3 +198,10 @@ if hasattr(pypsutil, "net_connections"):
 
     def test_net_connections_bad_kind() -> None:
         assert pypsutil.net_connections("") == []
+
+
+def test_net_if_names() -> None:
+    if not hasattr(pypsutil, "net_if_addrs") or not hasattr(pypsutil, "pernic_net_io_counters"):
+        pytest.skip("net_if_addrs() or pernic_net_io_counters() not supported")
+
+    assert set(pypsutil.net_if_addrs().keys()) == set(pypsutil.pernic_net_io_counters().keys())
