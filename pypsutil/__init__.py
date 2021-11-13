@@ -1,4 +1,5 @@
 import socket
+from typing import cast
 
 from . import _process, _system
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
@@ -159,7 +160,12 @@ if hasattr(_process, "ProcessMemoryMapGrouped"):
 
 
 # Alias to help with net_if_addrs()
-AF_LINK = socket.AF_LINK if hasattr(socket, "AF_LINK") else socket.AF_PACKET
+# pylint: disable=no-member
+if hasattr(socket, "AF_LINK"):
+    AF_LINK = socket.AF_LINK
+else:
+    AF_LINK = cast(socket.AddressFamily, socket.AF_PACKET)  # type: ignore
+# pylint: enable=no-member
 
 DEVFS_PATH = "/dev"
 

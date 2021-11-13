@@ -63,6 +63,15 @@ O_LARGEFILE = {
 
 CPU_SETSIZE = 1024
 
+if TYPE_CHECKING:
+    AF_PACKET = -1
+    AF_NETLINK = -1
+    NETLINK_ROUTE = -1
+else:
+    AF_PACKET = socket.AF_PACKET
+    AF_NETLINK = socket.AF_NETLINK
+    NETLINK_ROUTE = socket.NETLINK_ROUTE
+
 
 RTM_NEWLINK = 16
 RTM_GETLINK = 18
@@ -1764,7 +1773,7 @@ def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
                     NLM_F_REQUEST | NLM_F_DUMP,
                     1,
                     pid,
-                    bytes([socket.AF_PACKET]),
+                    bytes([AF_PACKET]),
                 )
                 for msg in sock.read_nlmsgs():
                     if msg[0] != RTM_NEWLINK:
@@ -1788,7 +1797,7 @@ def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
                     if ifname and mac_addr:
                         assert ifname not in mac_nicaddrs
                         mac_nicaddrs[ifname] = _util.NICAddr(
-                            family=socket.AF_PACKET,
+                            family=AF_PACKET,
                             address=mac_addr,
                             netmask=None,
                             broadcast=broadcast,
@@ -1803,7 +1812,7 @@ def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
                     NLM_F_REQUEST | NLM_F_DUMP,
                     1,
                     pid,
-                    bytes([socket.AF_PACKET]),
+                    bytes([AF_PACKET]),
                 )
                 for msg in sock.read_nlmsgs():
                     if msg[0] != RTM_NEWADDR:
