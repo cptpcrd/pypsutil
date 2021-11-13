@@ -1,12 +1,15 @@
 # pylint: disable=too-many-lines,fixme
 import ctypes
 import dataclasses
+import errno
+import ipaddress
 import os
 import re
 import resource
 import signal
 import socket
 import stat
+import struct
 import sys
 import time
 from typing import (
@@ -59,6 +62,43 @@ O_LARGEFILE = {
 )
 
 CPU_SETSIZE = 1024
+
+
+RTM_NEWLINK = 16
+RTM_GETLINK = 18
+RTM_NEWADDR = 20
+RTM_GETADDR = 22
+
+NLM_F_REQUEST = 1
+NLM_F_ROOT = 0x100
+NLM_F_MATCH = 0x200
+NLM_F_DUMP = NLM_F_ROOT | NLM_F_MATCH
+
+IFLA_ADDRESS = 1
+IFLA_BROADCAST = 2
+IFLA_IFNAME = 3
+IFLA_LINK = 5
+
+IFA_ADDRESS = 1
+IFA_LOCAL = 2
+IFA_LABEL = 3
+IFA_BROADCAST = 4
+IFA_ANYCAST = 5
+IFA_MULTICAST = 7
+IFA_FLAGS = 8
+
+_IFINFOMSG_FORMAT = "=BHiII"
+_IFINFOMSG_SIZE = struct.calcsize(_IFINFOMSG_FORMAT)
+
+_IFADDRMSG_FORMAT = "=BBBBI"
+_IFADDRMSG_SIZE = struct.calcsize(_IFADDRMSG_FORMAT)
+
+_RTATTR_FORMAT = "=HH"
+_RTATTR_SIZE = struct.calcsize(_RTATTR_FORMAT)
+
+
+def nlmsg_align(size: int) -> int:
+    return (size + 3) & ~3
 
 
 @dataclasses.dataclass
@@ -1663,3 +1703,194 @@ proc_getpriority = _psposix.proc_getpriority
 
 DiskUsage = _psposix.DiskUsage
 disk_usage = _psposix.disk_usage
+
+
+class NetlinkSocket(socket.socket):
+    _NLMSG_FORMAT = "=IHHII"
+    _NLMSG_SIZE = struct.calcsize(_NLMSG_FORMAT)
+
+    def __init__(self, family: int) -> None:
+        super().__init__(socket.AF_NETLINK, socket.SOCK_DGRAM, family)
+        self.setblocking(False)
+
+    def read_nlmsgs(self) -> List[Tuple[int, int, int, int, bytes]]:
+        nlmsgs = []
+        data = b""
+        while True:
+            try:
+                data += self.recvmsg(8192)[0]
+            except BlockingIOError:
+                break
+
+            while len(data) >= self._NLMSG_SIZE:
+                length, mtype, flags, seq, pid = struct.unpack(
+                    self._NLMSG_FORMAT, data[: self._NLMSG_SIZE]
+                )
+                if len(data) >= length:
+                    nlmsgs.append((mtype, flags, seq, pid, data[self._NLMSG_SIZE:]))
+                    data = data[nlmsg_align(length):]
+                else:
+                    break
+
+        return nlmsgs
+
+    def send_nlmsg(  # pylint: disable=too-many-arguments
+        self, mtype: int, flags: int, seq: int, pid: int, data: bytes
+    ) -> None:
+        fullmsg = (
+            struct.pack(self._NLMSG_FORMAT, len(data) + self._NLMSG_SIZE, mtype, flags, seq, pid)
+            + data
+        )
+        self.sendmsg([fullmsg], [], 0, (0, 0))
+
+
+def decode_rtattrs(data: bytes) -> Iterator[Tuple[int, bytes]]:
+    while data:
+        length, rtype = struct.unpack(_RTATTR_FORMAT, data[:_RTATTR_SIZE])
+        yield rtype, data[nlmsg_align(_RTATTR_SIZE): length]
+        data = data[nlmsg_align(length):]
+
+
+def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
+    while True:
+        try:
+            with NetlinkSocket(socket.NETLINK_ROUTE) as sock:
+                pid = os.getpid()
+
+                mac_nicaddrs = {}
+
+                sock.send_nlmsg(
+                    RTM_GETLINK,
+                    NLM_F_REQUEST | NLM_F_DUMP,
+                    1,
+                    pid,
+                    bytes([socket.AF_PACKET]),
+                )
+                for msg in sock.read_nlmsgs():
+                    if msg[0] != RTM_NEWLINK:
+                        continue
+
+                    rtattrs_data = msg[4][nlmsg_align(_IFINFOMSG_SIZE):]
+
+                    ifname = ""
+                    mac_addr = ""
+                    broadcast = None
+                    ptpaddr = None
+                    for rtype, data in decode_rtattrs(rtattrs_data):
+                        if rtype == IFLA_IFNAME:
+                            ifname = data.split(b"\0", maxsplit=1)[0].decode()
+                        elif rtype == IFLA_ADDRESS:
+                            mac_addr = ":".join(f"{byte:02x}" for byte in data[:6])
+                        elif rtype == IFLA_BROADCAST:
+                            if any(data[:6]):
+                                broadcast = ":".join(f"{byte:02x}" for byte in data[:6])
+
+                    if ifname and mac_addr:
+                        assert ifname not in mac_nicaddrs
+                        mac_nicaddrs[ifname] = _util.NICAddr(
+                            family=socket.AF_PACKET,
+                            address=mac_addr,
+                            netmask=None,
+                            broadcast=broadcast,
+                            ptp=ptpaddr,
+                        )
+
+                ifnames: Dict[int, str] = {}
+                ifaddrs: Dict[int, List[_util.NICAddr]] = {}
+
+                sock.send_nlmsg(
+                    RTM_GETADDR,
+                    NLM_F_REQUEST | NLM_F_DUMP,
+                    1,
+                    pid,
+                    bytes([socket.AF_PACKET]),
+                )
+                for msg in sock.read_nlmsgs():
+                    if msg[0] != RTM_NEWADDR:
+                        continue
+
+                    _, prefixlen, _, _, link_index = struct.unpack(
+                        _IFADDRMSG_FORMAT, msg[4][:_IFADDRMSG_SIZE]
+                    )
+                    rtattrs_data = msg[4][nlmsg_align(_IFADDRMSG_SIZE):]
+
+                    ifname = ""
+                    family = socket.AF_UNSPEC
+                    addr_local = ""
+                    addr_address = ""
+                    netmask = None
+                    broadaddr = None
+                    for rtype, data in decode_rtattrs(rtattrs_data):
+                        if rtype == IFA_LABEL:
+                            ifname = data.split(b"\0", maxsplit=1)[0].decode()
+                        elif rtype == IFA_LOCAL:
+                            if len(data) == 4:
+                                family = socket.AF_INET
+                                addr_local = ".".join(map(str, data))
+                            else:
+                                family = socket.AF_INET6
+                                addr_local = str(ipaddress.IPv6Address(data))
+                        elif rtype == IFA_ADDRESS:
+                            if len(data) == 4:
+                                family = socket.AF_INET
+                                addr_address = ".".join(map(str, data))
+                            else:
+                                family = socket.AF_INET6
+                                addr_address = str(ipaddress.IPv6Address(data))
+                        elif rtype == IFA_BROADCAST:
+                            if len(data) == 4:
+                                broadaddr = ".".join(map(str, data))
+                            else:
+                                broadaddr = str(ipaddress.IPv6Address(data))
+
+                    addr = addr_local or addr_address
+                    ptpaddr = (
+                        addr_address if addr_local and addr_address and broadaddr is None else None
+                    )
+
+                    assert family in (socket.AF_INET, socket.AF_INET6)
+
+                    if family == socket.AF_INET:
+                        netmask = str(ipaddress.IPv4Network((0, prefixlen)).netmask)
+                    else:
+                        netmask = str(ipaddress.IPv6Network((0, prefixlen)).netmask)
+
+                    if ifname:
+                        assert ifnames.get(link_index) in (None, ifname)
+                        ifnames[link_index] = ifname
+
+                    ifaddrs.setdefault(link_index, [])
+                    ifaddrs[link_index].append(
+                        _util.NICAddr(
+                            family=family,
+                            address=addr,
+                            netmask=netmask,
+                            broadcast=broadaddr,
+                            ptp=ptpaddr,
+                        )
+                    )
+
+            results: Dict[str, List[_util.NICAddr]] = {}
+
+            for link_index, ifname in ifnames.items():
+                for nicaddr in ifaddrs[link_index]:
+                    if nicaddr.family == socket.AF_INET6:
+                        if ipaddress.IPv6Address(nicaddr.address).is_link_local:
+                            nicaddr.address += "%" + ifname
+
+                results.setdefault(ifname, [])
+                results[ifname].extend(ifaddrs[link_index])
+
+            for ifname, macaddr in mac_nicaddrs.items():
+                results.setdefault(ifname, [])
+                results[ifname].append(macaddr)
+
+            for nicaddrs in results.values():
+                nicaddrs.sort(key=lambda nicaddr: nicaddr.family)
+
+            return results
+
+        except OSError as ex:
+            # ENOBUFS means the kernel ran into problems; start over
+            if ex.errno != errno.ENOBUFS:
+                raise

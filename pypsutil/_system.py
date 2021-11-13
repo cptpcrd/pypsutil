@@ -8,6 +8,7 @@ from . import _util
 from ._detect import _psimpl
 
 SwapInfo = _util.SwapInfo
+NICAddr = _util.NICAddr
 
 PowerSupplySensorInfo = _util.PowerSupplySensorInfo
 ACPowerInfo = _util.ACPowerInfo
@@ -259,3 +260,6 @@ if hasattr(_psimpl, "uptime"):
 
 DiskUsage = _psimpl.DiskUsage
 disk_usage = _psimpl.disk_usage
+
+if hasattr(_psimpl, "net_if_addrs"):
+    net_if_addrs = _psimpl.net_if_addrs

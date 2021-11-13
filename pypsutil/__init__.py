@@ -1,3 +1,5 @@
+import socket
+
 from . import _process, _system
 from ._detect import BSD, FREEBSD, LINUX, MACOS, NETBSD, OPENBSD
 from ._errors import AccessDenied, Error, NoSuchProcess, TimeoutExpired, ZombieProcess
@@ -30,6 +32,7 @@ from ._system import (
     CPUStats,
     DiskUsage,
     NetIOCounts,
+    NICAddr,
     PowerSupplySensorInfo,
     SwapInfo,
     VirtualMemoryInfo,
@@ -85,6 +88,7 @@ __all__ = [
     "BatteryInfo",
     "BatteryStatus",
     "NetIOCounts",
+    "NICAddr",
     "Uids",
     "Gids",
     "Error",
@@ -130,6 +134,9 @@ if hasattr(_system, "sensors_temperatures"):
 if hasattr(_system, "net_connections"):
     net_connections = _system.net_connections
     __all__.append("net_connections")
+if hasattr(_system, "net_if_addrs"):
+    net_if_addrs = _system.net_if_addrs
+    __all__.append("net_if_addrs")
 if hasattr(_system, "net_io_counters"):
     net_io_counters = _system.net_io_counters
     __all__.append("net_io_counters")
@@ -150,6 +157,9 @@ if hasattr(_process, "ProcessMemoryMapGrouped"):
     ProcessMemoryMapGrouped = _process.ProcessMemoryMapGrouped
     __all__.append("ProcessMemoryMapGrouped")
 
+
+# Alias to help with net_if_addrs()
+AF_LINK = socket.AF_LINK if hasattr(socket, "AF_LINK") else socket.AF_PACKET
 
 DEVFS_PATH = "/dev"
 

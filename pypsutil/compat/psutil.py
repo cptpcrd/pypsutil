@@ -19,6 +19,8 @@ from typing_extensions import Literal
 
 import pypsutil
 
+AF_LINK = pypsutil.AF_LINK
+
 
 class Process:
     _proc: pypsutil.Process

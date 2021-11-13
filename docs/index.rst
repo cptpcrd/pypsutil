@@ -1466,6 +1466,27 @@ System information
 
    Availability: Linux
 
+.. py:function:: net_if_addrs()
+
+   Return a dictionary mapping interface names to addresses.
+
+   Each key is the name of an interface, and each value is a list of dataclasses representing
+   addresses, each of which have the following attributes:
+
+   - ``family``: The address family. This is :py:attr:`AF_LINK` for MAC addresses,
+     ``socket.AF_INET`` for IPv4 addresses, and ``socket.AF_INET`` for IPv6 addresses.
+   - ``address``: A string representation of the IP/MAC address.
+   - ``netmask``: A string representation of the corresponding netmask (or ``None``).
+   - ``broadcast``: A string representation of the broadcast address (or ``None``).
+   - ``ptp``: The destination address for point-to-point interfaces (or ``None``).
+
+   ``ptp`` and ``broadcast`` are mutually exclusive.
+
+   :returns: A dictionary mapping interface names to lists of :py:class:`NICAddr` s
+   :rtype: dict[str, list[NICAddr]]
+
+   Availability: Linux
+
 
 Sensor information
 ==================

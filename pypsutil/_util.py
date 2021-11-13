@@ -328,6 +328,15 @@ class NetIOCounts:  # pylint: disable=too-many-instance-attributes
         return cacheobj
 
 
+@dataclasses.dataclass
+class NICAddr:
+    family: int
+    address: str
+    netmask: Optional[str]
+    broadcast: Optional[str]
+    ptp: Optional[str]
+
+
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 
