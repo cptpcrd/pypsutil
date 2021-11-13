@@ -63,6 +63,7 @@ O_LARGEFILE = {
 
 CPU_SETSIZE = 1024
 
+# pylint: disable=no-member
 if TYPE_CHECKING:
     AF_PACKET = -1
     AF_NETLINK = -1
@@ -71,6 +72,7 @@ else:
     AF_PACKET = socket.AF_PACKET
     AF_NETLINK = socket.AF_NETLINK
     NETLINK_ROUTE = socket.NETLINK_ROUTE
+# pylint: enable=no-member
 
 
 RTM_NEWLINK = 16
