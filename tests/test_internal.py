@@ -67,7 +67,7 @@ def test_parse_cmdline() -> None:
 
 
 def test_parse_environ() -> None:
-    assert pypsutil._util.parse_environ_bytes(b"\0") == {}
+    assert not pypsutil._util.parse_environ_bytes(b"\0")
     assert pypsutil._util.parse_environ_bytes(b"abc=def\0") == {"abc": "def"}
     assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi=jkl\0") == {"abc": "def", "ghi": "jkl"}
 
@@ -75,13 +75,13 @@ def test_parse_environ() -> None:
     assert pypsutil._util.parse_environ_bytes(b"abc\0def=ghi\0") == {"def": "ghi"}
 
     # If there isn't a trailing NUL, everything after it is ignored
-    assert pypsutil._util.parse_environ_bytes(b"") == {}
-    assert pypsutil._util.parse_environ_bytes(b"abc=def") == {}
+    assert not pypsutil._util.parse_environ_bytes(b"")
+    assert not pypsutil._util.parse_environ_bytes(b"abc=def")
     assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi=jkl") == {"abc": "def"}
 
-    assert pypsutil._util.parse_environ_bytes(b"abc") == {}
+    assert not pypsutil._util.parse_environ_bytes(b"abc")
     assert pypsutil._util.parse_environ_bytes(b"abc=def\0ghi") == {"abc": "def"}
-    assert pypsutil._util.parse_environ_bytes(b"abc\0def=ghi") == {}
+    assert not pypsutil._util.parse_environ_bytes(b"abc\0def=ghi")
 
 
 def test_read_file(tmp_path: pathlib.Path) -> None:

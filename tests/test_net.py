@@ -139,7 +139,7 @@ if hasattr(pypsutil.Process, "connections"):
             proc.connections()
 
     def test_proc_connections_bad_kind() -> None:
-        assert pypsutil.Process().connections("") == []
+        assert not pypsutil.Process().connections("")
 
 
 if hasattr(pypsutil, "net_connections"):
@@ -197,7 +197,7 @@ if hasattr(pypsutil, "net_connections"):
         verify_connections({}, conns)
 
     def test_net_connections_bad_kind() -> None:
-        assert pypsutil.net_connections("") == []
+        assert not pypsutil.net_connections("")
 
 
 def test_net_if_names() -> None:

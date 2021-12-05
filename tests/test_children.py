@@ -10,8 +10,8 @@ def test_children() -> None:
     cur_proc = pypsutil.Process()
 
     # We have no children
-    assert cur_proc.children() == []
-    assert cur_proc.children(recursive=True) == []
+    assert not cur_proc.children()
+    assert not cur_proc.children(recursive=True)
 
     with managed_child_process(
         [
@@ -46,5 +46,5 @@ def test_children() -> None:
     # PID 1 (which should reap it)
 
     # So now we have no children
-    assert cur_proc.children() == []
-    assert cur_proc.children(recursive=True) == []
+    assert not cur_proc.children()
+    assert not cur_proc.children(recursive=True)

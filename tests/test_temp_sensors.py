@@ -60,7 +60,7 @@ def test_sensors_temperatures(tmp_path: pathlib.Path) -> None:
     shutil.rmtree(tmp_path / "class")
 
     with replace_info_directories(sysfs=str(tmp_path)):
-        assert pypsutil.sensors_temperatures() == {}
+        assert not pypsutil.sensors_temperatures()
 
 
 @linux_only
