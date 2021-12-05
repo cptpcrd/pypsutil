@@ -337,6 +337,21 @@ class NICAddr:
     ptp: Optional[str]
 
 
+@enum.unique
+class NICDuplex(enum.Enum):
+    UNKNOWN = 0
+    HALF = 1
+    FULL = 2
+
+
+@dataclasses.dataclass
+class NICStats:
+    isup: bool
+    duplex: NICDuplex
+    speed: int
+    mtu: int
+
+
 def get_procfs_path() -> str:
     return sys.modules[__package__].PROCFS_PATH  # type: ignore
 

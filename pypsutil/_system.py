@@ -263,3 +263,6 @@ disk_usage = _psimpl.disk_usage
 
 if hasattr(_psimpl, "net_if_addrs"):
     net_if_addrs = _psimpl.net_if_addrs
+
+if hasattr(_psimpl, "net_if_stats"):
+    net_if_stats = _psimpl.net_if_stats

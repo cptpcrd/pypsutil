@@ -1,7 +1,9 @@
 # pylint: disable=too-many-lines,fixme
+import array
 import ctypes
 import dataclasses
 import errno
+import fcntl
 import ipaddress
 import os
 import re
@@ -33,6 +35,8 @@ from ._util import (
     Connection,
     ConnectionStatus,
     NetIOCounts,
+    NICDuplex,
+    NICStats,
     ProcessCPUTimes,
     ProcessFd,
     ProcessFdType,
@@ -110,6 +114,29 @@ _RTATTR_SIZE = struct.calcsize(_RTATTR_FORMAT)
 
 def nlmsg_align(size: int) -> int:
     return (size + 3) & ~3
+
+
+DUPLEX_HALF = 0x0
+DUPLEX_FULL = 0x1
+DUPLEX_UNKNOWN = 0xFF
+
+SIOCETHTOOL = 0x8946
+SIOCGIFFLAGS = 0x8913
+SIOCGIFMTU = 0x8921
+
+ETHTOOL_GSET = 0x1
+ETHTOOL_GLINKSETTINGS = 0x4C
+
+IFF_UP = 0x1
+IFF_LOOPBACK = 0x8
+IFF_RUNNING = 0x40
+
+_IFREQ_INT_FORMAT = "16si"
+_IFREQ_SHORT_FORMAT = "16sh"
+_IFREQ_PTR_FORMAT = "16sP"
+_IFREQ_PAD_LENGTH = 40
+_ETHTOOL_CMD_FORMAT = "=IIIHBBBBBBIIHBBI2I"
+_ETHTOOL_LINK_SETTINGS_FORMAT = "=IIBBBBBBBbBBB1B7I"
 
 
 @dataclasses.dataclass
@@ -1905,3 +1932,145 @@ def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
             # ENOBUFS means the kernel ran into problems; start over
             if ex.errno != errno.ENOBUFS:
                 raise
+
+
+_LINK_MODE_MASKS_NWORDS = 0
+
+
+def net_if_stats() -> Dict[str, NICStats]:
+    global _LINK_MODE_MASKS_NWORDS  # pylint: disable=global-statement
+
+    results = {}
+
+    ifnames = []
+    with open("/proc/net/dev", encoding="utf8") as file:
+        file.readline()
+        file.readline()
+        for line in file:
+            ifnames.append(line.split()[0].rstrip(":"))
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0) as sock:
+        for name in ifnames:
+            ifreq = bytearray(
+                struct.pack(_IFREQ_SHORT_FORMAT, name.encode(), 0).ljust(_IFREQ_PAD_LENGTH, b"\0")
+            )
+            fcntl.ioctl(sock, SIOCGIFFLAGS, ifreq)
+            _, flags = struct.unpack(
+                _IFREQ_SHORT_FORMAT, ifreq[: struct.calcsize(_IFREQ_SHORT_FORMAT)]
+            )
+
+            ifreq = bytearray(
+                struct.pack(_IFREQ_INT_FORMAT, name.encode(), 0).ljust(_IFREQ_PAD_LENGTH, b"\0")
+            )
+            fcntl.ioctl(sock, SIOCGIFMTU, ifreq)
+            _, mtu = struct.unpack(_IFREQ_INT_FORMAT, ifreq[: struct.calcsize(_IFREQ_INT_FORMAT)])
+
+            speed = 0
+            duplex_raw = DUPLEX_UNKNOWN
+
+            lsettings = array.array(
+                "B",
+                struct.pack(
+                    _ETHTOOL_LINK_SETTINGS_FORMAT,
+                    ETHTOOL_GLINKSETTINGS,
+                    *([0] * 8),
+                    _LINK_MODE_MASKS_NWORDS,
+                    *([0] * 11),
+                )
+                + (b"\0" * (12 * _LINK_MODE_MASKS_NWORDS)),
+            )
+            ifreq = bytearray(
+                struct.pack(_IFREQ_PTR_FORMAT, name.encode(), lsettings.buffer_info()[0]).ljust(
+                    _IFREQ_PAD_LENGTH, b"\0"
+                )
+            )
+            try:
+                fcntl.ioctl(sock, SIOCETHTOOL, ifreq)
+            except OSError:
+                pass
+            else:
+                link_mode_masks_nwords = struct.unpack(
+                    _ETHTOOL_LINK_SETTINGS_FORMAT,
+                    lsettings[: struct.calcsize(_ETHTOOL_LINK_SETTINGS_FORMAT)],
+                )[9]
+                if link_mode_masks_nwords < 0:
+                    # Remember this value for next time
+                    _LINK_MODE_MASKS_NWORDS = -link_mode_masks_nwords
+                    # Update our request and try again
+                    lsettings = array.array(
+                        "B",
+                        struct.pack(
+                            _ETHTOOL_LINK_SETTINGS_FORMAT,
+                            ETHTOOL_GLINKSETTINGS,
+                            *([0] * 8),
+                            -link_mode_masks_nwords,
+                            *([0] * 11),
+                        )
+                        + (b"\0" * (12 * -link_mode_masks_nwords)),
+                    )
+                    ifreq = bytearray(
+                        struct.pack(
+                            _IFREQ_PTR_FORMAT, name.encode(), lsettings.buffer_info()[0]
+                        ).ljust(_IFREQ_PAD_LENGTH, b"\0")
+                    )
+                    try:
+                        fcntl.ioctl(sock, SIOCETHTOOL, ifreq)
+                    except OSError:
+                        pass
+                    else:
+                        parts = struct.unpack(
+                            _ETHTOOL_LINK_SETTINGS_FORMAT,
+                            lsettings[: struct.calcsize(_ETHTOOL_LINK_SETTINGS_FORMAT)],
+                        )
+                        speed = parts[1]
+                        duplex_raw = parts[2]
+                else:
+                    assert link_mode_masks_nwords >= 0
+                    parts = struct.unpack(
+                        _ETHTOOL_LINK_SETTINGS_FORMAT,
+                        lsettings[: struct.calcsize(_ETHTOOL_LINK_SETTINGS_FORMAT)],
+                    )
+                    speed = parts[1]
+                    duplex_raw = parts[2]
+
+            if not speed or duplex_raw == DUPLEX_UNKNOWN:
+                # ETHTOOL_GLINKSETTINGS failed somehow, or didn't retrieve the information we want
+                cmd = array.array(
+                    "B",
+                    struct.pack(
+                        _ETHTOOL_CMD_FORMAT,
+                        ETHTOOL_GSET,
+                        *([0] * 17),
+                    ),
+                )
+                ifreq = bytearray(
+                    struct.pack(_IFREQ_PTR_FORMAT, name.encode(), cmd.buffer_info()[0]).ljust(
+                        _IFREQ_PAD_LENGTH, b"\0"
+                    )
+                )
+                try:
+                    fcntl.ioctl(sock, SIOCETHTOOL, ifreq)
+                except OSError:
+                    pass
+                else:
+                    parts = struct.unpack(_ETHTOOL_CMD_FORMAT, cmd)
+                    speed_lo = parts[3]
+                    duplex_raw = parts[4]
+                    speed_hi = parts[12]
+                    speed = (speed_hi << 16) | speed_lo
+
+            if duplex_raw == DUPLEX_FULL:
+                duplex = NICDuplex.FULL
+            elif duplex_raw == DUPLEX_HALF:
+                duplex = NICDuplex.HALF
+            else:
+                duplex = NICDuplex.UNKNOWN
+
+            results[name] = NICStats(
+                isup=bool((flags & IFF_UP) and (flags & IFF_RUNNING)),
+                duplex=duplex,
+                speed=speed,
+                mtu=mtu,
+            )
+
+    return results

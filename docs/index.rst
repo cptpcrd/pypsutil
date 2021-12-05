@@ -1488,6 +1488,25 @@ System information
    Availability: Linux
 
 
+.. py:function:: net_if_stats()
+
+   Return information about each network interface.
+
+   Each key is the name of an interface, and each value is a dataclass which has the following
+   attributes:
+
+   - ``isup``: Whether or not the NIC is up and running.
+   - ``duplex``: The NICs' duplex status. This is one of ``NICDuplex.FULL``, ``NICDuplex.HALF``,
+     or ``NICDuplex.UNKNOWN``.
+   - ``speed``: The NIC's speed in MB/s, or 0 if unknown.
+   - ``mtu``: The NIC's maximum transmission unit, in bytes.
+
+   :returns: A dictionary mapping interface names to lists of :py:class:`NICStats` s
+   :rtype: dict[str, list[NICStats]]
+
+   Availability: Linux
+
+
 Sensor information
 ==================
 

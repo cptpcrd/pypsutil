@@ -138,6 +138,9 @@ if hasattr(_system, "net_connections"):
 if hasattr(_system, "net_if_addrs"):
     net_if_addrs = _system.net_if_addrs
     __all__.append("net_if_addrs")
+if hasattr(_system, "net_if_stats"):
+    net_if_stats = _system.net_if_stats
+    __all__.append("net_if_stats")
 if hasattr(_system, "net_io_counters"):
     net_io_counters = _system.net_io_counters
     __all__.append("net_io_counters")
