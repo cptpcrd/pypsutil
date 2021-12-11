@@ -572,6 +572,7 @@ class KinfoFileProc(ctypes.Structure):
         ("kf_pid", _ffi.pid_t),
     ]
 
+
 class KinfoFileEventfd(ctypes.Structure):
     _fields_ = [
         ("kf_eventfd_value", ctypes.c_uint64),
