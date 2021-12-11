@@ -550,7 +550,7 @@ class KinfoFilePipe(ctypes.Structure):
         ("kf_pipe_addr", ctypes.c_uint64),
         ("kf_pipe_peer", ctypes.c_uint64),
         ("kf_pipe_buffer_cnt", ctypes.c_uint32),
-        ("kf_pts_pad0", (ctypes.c_uint32 * 3)),
+        ("kf_pipe_pad0", (ctypes.c_uint32 * 3)),
     ]
 
 
@@ -572,6 +572,12 @@ class KinfoFileProc(ctypes.Structure):
         ("kf_pid", _ffi.pid_t),
     ]
 
+class KinfoFileEventfd(ctypes.Structure):
+    _fields_ = [
+        ("kf_eventfd_value", ctypes.c_uint64),
+        ("kf_eventfd_flags", ctypes.c_uint32),
+    ]
+
 
 class KinfoFileUn(ctypes.Union):
     _fields_ = [
@@ -582,6 +588,7 @@ class KinfoFileUn(ctypes.Union):
         ("kf_pipe", KinfoFilePipe),
         ("kf_pts", KinfoFilePts),
         ("kf_proc", KinfoFileProc),
+        ("kf_eventfd", KinfoFileEventfd),
     ]
 
 
