@@ -1017,6 +1017,12 @@ def proc_sid(proc: "Process") -> int:
     return cast(int, _get_kinfo_proc(proc).p_sid)
 
 
+def proc_child_pids(proc: "Process") -> List[int]:
+    for kinfo in _list_kinfo_procs():
+        if kinfo.p_ppid == proc.pid:
+            yield kinfo.p_pid
+
+
 def proc_getpriority(proc: "Process") -> int:
     if proc.pid == 0:
         # We don't call _get_kinfo_proc() if pid != 0 and the cache is enabled because
