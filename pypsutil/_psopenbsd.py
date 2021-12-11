@@ -1017,7 +1017,7 @@ def proc_sid(proc: "Process") -> int:
     return cast(int, _get_kinfo_proc(proc).p_sid)
 
 
-def proc_child_pids(proc: "Process") -> List[int]:
+def proc_child_pids(proc: "Process") -> Iterator[int]:
     for kinfo in _list_kinfo_procs():
         if kinfo.p_ppid == proc.pid:
             yield kinfo.p_pid

@@ -1671,7 +1671,7 @@ def proc_sid(proc: "Process") -> int:
         return _psposix.proc_sid(proc)
 
 
-def proc_child_pids(proc: "Process") -> List[int]:
+def proc_child_pids(proc: "Process") -> Iterator[int]:
     for kinfo in _list_kinfo_procs():
         if kinfo.ki_ppid == proc.pid:
             yield kinfo.ki_pid
