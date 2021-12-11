@@ -538,7 +538,6 @@ if sys.byteorder == "big":
     def cvt_endian_hton(hostval: int, widthbytes: int) -> int:  # pylint: disable=unused-argument
         return hostval
 
-
 else:
 
     def cvt_endian_hton(hostval: int, widthbytes: int) -> int:

@@ -970,7 +970,6 @@ if hasattr(resource, "prlimit"):
         else:
             return resource.prlimit(proc.pid, res, new_limits)  # pylint: disable=no-member
 
-
 else:
     # PyPy doesn't have resource.prlimit() (!)
     rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name

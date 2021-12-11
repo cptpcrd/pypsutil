@@ -50,7 +50,6 @@ if hasattr(_psimpl, "cpu_freq"):
         else:
             return None
 
-
 elif hasattr(_psimpl, "percpu_freq"):
 
     def cpu_freq() -> Optional[CPUFrequencies]:

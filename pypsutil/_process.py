@@ -54,7 +54,6 @@ if getattr(_psimpl.pid_raw_create_time, "works_on_zombies", True):
     def raw_create_times_eq(time1: float, time2: float) -> bool:
         return time1 == time2
 
-
 else:
 
     def raw_create_times_eq(time1: float, time2: float) -> bool:
