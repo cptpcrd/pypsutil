@@ -102,7 +102,7 @@ IFA_ANYCAST = 5
 IFA_MULTICAST = 7
 IFA_FLAGS = 8
 
-_IFINFOMSG_FORMAT = "=BHiII"
+_IFINFOMSG_FORMAT = "=BxHiII"
 _IFINFOMSG_SIZE = struct.calcsize(_IFINFOMSG_FORMAT)
 
 _IFADDRMSG_FORMAT = "=BBBBI"
@@ -1817,7 +1817,10 @@ def net_if_addrs() -> Dict[str, List[_util.NICAddr]]:
                         if rtype == IFLA_IFNAME:
                             ifname = data.split(b"\0", maxsplit=1)[0].decode()
                         elif rtype == IFLA_ADDRESS:
-                            mac_addr = ":".join(f"{byte:02x}" for byte in data[:6])
+                            if len(data) == 4:
+                                mac_addr = ".".join(f"{byte}" for byte in data[:4])
+                            else:
+                                mac_addr = ":".join(f"{byte:02x}" for byte in data[:6])
                         elif rtype == IFLA_BROADCAST:
                             if any(data[:6]):
                                 broadcast = ":".join(f"{byte:02x}" for byte in data[:6])
