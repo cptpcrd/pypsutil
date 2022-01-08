@@ -1451,7 +1451,7 @@ System information
    :returns: A dataclass containg network I/O statistics
    :rtype: NetIOCounts or None
 
-   Availability: Linux
+   Availability: Linux, FreeBSD
 
 
 .. py:function:: pernic_net_io_counters()
@@ -1464,7 +1464,7 @@ System information
    :returns: A dictionary mapping interface names to :py:class:`NetIOCounts` s
    :rtype: dict[str, NetIOCounts]
 
-   Availability: Linux
+   Availability: Linux, FreeBSD
 
 .. py:function:: net_if_addrs()
 

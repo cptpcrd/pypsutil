@@ -15,6 +15,7 @@ from . import _bsd, _cache, _ffi, _psposix, _util
 from ._util import (
     Connection,
     ConnectionStatus,
+    NetIOCounts,
     ProcessCPUTimes,
     ProcessFd,
     ProcessFdType,
@@ -78,6 +79,14 @@ SWAIT = 6
 SLOCK = 7
 
 PATH_MAX = 1024
+
+CTL_NET = 4
+PF_LINK = socket.AF_LINK  # pylint: disable=no-member
+NETLINK_GENERIC = 0
+IFMIB_SYSTEM = 1
+IFMIB_IFDATA = 2
+IFMIB_IFCOUNT = 1
+IFDATA_GENERAL = 1
 
 KI_CRF_GRP_OVERFLOW = 0x80000000
 
@@ -197,6 +206,8 @@ CPU_LEVEL_WHICH = 3
 CPU_WHICH_PID = 2
 
 _BITSET_BITS = ctypes.sizeof(ctypes.c_long) * 8
+
+IFNAMSIZ = 16
 
 
 def _IOC(inout: int, group: int, num: int, length: int) -> int:
@@ -944,6 +955,70 @@ class Cpuset(ctypes.Structure):
     ]
 
 
+class IfDataEpoch(ctypes.Union):
+    _fields_ = [
+        ("tt", time_t),
+        ("ph", ctypes.c_uint64),
+    ]
+
+
+class IfDataLastChangePh(ctypes.Union):
+    _fields_ = [
+        ("ph1", ctypes.c_uint64),
+        ("ph2", ctypes.c_uint64),
+    ]
+
+
+class IfDataLastChange(ctypes.Union):
+    _fields_ = [
+        ("tv", Timeval),
+        ("ph", IfDataLastChangePh),
+    ]
+
+
+class IfData(ctypes.Structure):
+    _fields_ = [
+        ("ifi_type", ctypes.c_uint8),
+        ("ifi_physical", ctypes.c_uint8),
+        ("ifi_addrlen", ctypes.c_uint8),
+        ("ifi_hdrlen", ctypes.c_uint8),
+        ("ifi_link_state", ctypes.c_uint8),
+        ("ifi_vhid", ctypes.c_uint8),
+        ("ifi_datalen", ctypes.c_uint16),
+        ("ifi_mtu", ctypes.c_uint32),
+        ("ifi_metric", ctypes.c_uint32),
+        ("ifi_baudrate", ctypes.c_uint64),
+        ("ifi_ipackets", ctypes.c_uint64),
+        ("ifi_ierrors", ctypes.c_uint64),
+        ("ifi_opackets", ctypes.c_uint64),
+        ("ifi_oerrors", ctypes.c_uint64),
+        ("ifi_collisions", ctypes.c_uint64),
+        ("ifi_ibytes", ctypes.c_uint64),
+        ("ifi_obytes", ctypes.c_uint64),
+        ("ifi_imcasts", ctypes.c_uint64),
+        ("ifi_omcasts", ctypes.c_uint64),
+        ("ifi_iqdrops", ctypes.c_uint64),
+        ("ifi_oqdrops", ctypes.c_uint64),
+        ("ifi_noproto", ctypes.c_uint64),
+        ("ifi_hwassist", ctypes.c_uint64),
+        ("ifi_epoch", IfDataEpoch),
+        ("ifi_lastchange", IfDataLastChange),
+    ]
+
+
+class IfMibData(ctypes.Structure):
+    _fields_ = [
+        ("ifmd_name", (ctypes.c_char * IFNAMSIZ)),
+        ("ifmd_pcount", ctypes.c_int),
+        ("ifmd_flags", ctypes.c_int),
+        ("ifmd_snd_len", ctypes.c_int),
+        ("ifmd_snd_maxlen", ctypes.c_int),
+        ("ifmd_snd_drops", ctypes.c_int),
+        ("ifmd_filler", (ctypes.c_int * 4)),
+        ("ifmd_data", IfData),
+    ]
+
+
 ACPIIO_BATT_GET_BIF = _IOC(IOC_INOUT, ord("B"), 0x10, ctypes.sizeof(ACPIBatteryIoctlArg))
 ACPIIO_BATT_GET_BST = _IOC(IOC_INOUT, ord("B"), 0x11, ctypes.sizeof(ACPIBatteryIoctlArg))
 
@@ -1412,6 +1487,42 @@ def net_connections(kind: str, *, _pid: Optional[int] = None) -> Iterator[Connec
             fd=xfile.xf_fd,
             pid=xfile.xf_pid,
         )
+
+
+def pernic_net_io_counters() -> Dict[str, NetIOCounts]:
+    num_ifaces = ctypes.c_uint()
+    _bsd.sysctl(
+        [CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_SYSTEM, IFMIB_IFCOUNT],
+        None,
+        num_ifaces,  # type: ignore[arg-type]
+    )
+
+    data = IfMibData()
+    pernic_counts: Dict[str, NetIOCounts] = {}
+    i = 0
+    while len(pernic_counts) < num_ifaces.value:
+        try:
+            _bsd.sysctl(
+                [CTL_NET, PF_LINK, NETLINK_GENERIC, IFMIB_IFDATA, i, IFDATA_GENERAL], None, data
+            )
+        except FileNotFoundError:
+            pass
+        else:
+            name = data.ifmd_name.decode()
+            pernic_counts[name] = NetIOCounts(
+                bytes_sent=data.ifmd_data.ifi_obytes,
+                bytes_recv=data.ifmd_data.ifi_ibytes,
+                packets_sent=data.ifmd_data.ifi_opackets,
+                packets_recv=data.ifmd_data.ifi_ipackets,
+                errin=data.ifmd_data.ifi_ierrors,
+                errout=data.ifmd_data.ifi_oerrors,
+                dropin=data.ifmd_data.ifi_iqdrops,
+                dropout=data.ifmd_data.ifi_oqdrops,
+            )
+
+        i += 1
+
+    return pernic_counts
 
 
 _KVME_TYPE_NAMES = {
