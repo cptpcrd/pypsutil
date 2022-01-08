@@ -11,7 +11,7 @@ import time
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
-from . import _bsd, _cache, _ffi, _psposix, _util
+from . import _bsd, _cache, _ffi, _ifaddrs, _psposix, _util
 from ._util import (
     Connection,
     ConnectionStatus,
@@ -208,6 +208,9 @@ CPU_WHICH_PID = 2
 _BITSET_BITS = ctypes.sizeof(ctypes.c_long) * 8
 
 IFNAMSIZ = 16
+
+IFF_BROADCAST = 0x2
+IFF_POINTOPOINT = 0x10
 
 
 def _IOC(inout: int, group: int, num: int, length: int) -> int:
@@ -703,6 +706,19 @@ class SockaddrUn(ctypes.Structure):
         ("sun_len", ctypes.c_uint8),
         ("sun_family", sa_family_t),
         ("sun_path", (ctypes.c_char * SUNPATHLEN)),
+    ]
+
+
+class SockaddrDl(ctypes.Structure):
+    _fields_ = [
+        ("sdl_len", ctypes.c_uint8),
+        ("sdl_family", sa_family_t),
+        ("sdl_index", ctypes.c_ushort),
+        ("sdl_type", ctypes.c_uint8),
+        ("sdl_nlen", ctypes.c_uint8),
+        ("sdl_alen", ctypes.c_uint8),
+        ("sdl_slen", ctypes.c_uint8),
+        ("sdl_data", (ctypes.c_char * 46)),
     ]
 
 
@@ -2196,3 +2212,5 @@ def uptime() -> float:
 
 DiskUsage = _psposix.DiskUsage
 disk_usage = _psposix.disk_usage
+
+net_if_addrs = _ifaddrs.net_if_addrs

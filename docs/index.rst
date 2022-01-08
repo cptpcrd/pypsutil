@@ -1485,7 +1485,7 @@ System information
    :returns: A dictionary mapping interface names to lists of :py:class:`NICAddr` s
    :rtype: dict[str, list[NICAddr]]
 
-   Availability: Linux
+   Availability: Linux, FreeBSD
 
 
 .. py:function:: net_if_stats()
