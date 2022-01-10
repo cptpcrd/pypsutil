@@ -386,8 +386,8 @@ def expand_sig_bitmask(
         try:
             res.add(signal.Signals(sig))  # pylint: disable=no-member
         except ValueError:
-            if include_internal or getattr(signal, "SIGRTMIN", float("inf")) <= sig <= getattr(
-                signal, "SIGRTMAX", float("-inf")
+            if include_internal or getattr(signal, "SIGRTMIN", 10000) <= sig <= getattr(
+                signal, "SIGRTMAX", -10000
             ):
                 res.add(sig)
 

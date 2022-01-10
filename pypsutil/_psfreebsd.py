@@ -2012,7 +2012,7 @@ def _iter_batteries_raw() -> Iterator[Tuple[ACPIBif, ACPIBst]]:
             # Get the number of batteries
             c_bat_count = ctypes.c_int()
             try:
-                fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_UNITS, c_bat_count)  # type: ignore
+                fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_UNITS, c_bat_count)
             except PermissionError:
                 bat_count = 0
             else:
@@ -2024,11 +2024,11 @@ def _iter_batteries_raw() -> Iterator[Tuple[ACPIBif, ACPIBst]]:
             for i in range(bat_count):
                 try:
                     arg.unit = i  # pylint: disable=attribute-defined-outside-init
-                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BIF, arg)  # type: ignore
+                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BIF, arg)
                     bif = ACPIBif.from_buffer_copy(arg.bif)
 
                     arg.unit = i  # pylint: disable=attribute-defined-outside-init
-                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BST, arg)  # type: ignore
+                    fcntl.ioctl(acpi_file, ACPIIO_BATT_GET_BST, arg)
                     bst = ACPIBst.from_buffer_copy(arg.bst)
                 except PermissionError:
                     pass

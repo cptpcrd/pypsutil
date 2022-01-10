@@ -11,7 +11,6 @@ from typing import (
     Set,
     Tuple,
     Union,
-    cast,
     overload,
 )
 
@@ -32,7 +31,7 @@ class Process:
     def _wrap(cls, proc: pypsutil.Process) -> "Process":
         res = object.__new__(Process)
         res._proc = proc  # pylint: disable=protected-access
-        return cast(Process, res)
+        return res
 
     @property
     def pid(self) -> int:
