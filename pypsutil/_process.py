@@ -546,6 +546,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         # Assume it's a child of the current process by default
         is_child = self._pid > 0
+        tried_pidfd = False
 
         if timeout is None and self._pid > 0:
             # Wait with no timeout
@@ -587,10 +588,16 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     if self._wait_child_poll():
                         return self._exitcode
                 except ChildProcessError:
+                    # Switch to pid_exists()
+                    is_child = False
+                    # Restart the loop so it gets checked immediately, not 0.01 seconds from now
+                    continue
+
+            else:
+                if not tried_pidfd:
                     # On Linux 5.3+ (and Python 3.9+), pidfd_open() may avoid a busy loop
                     if hasattr(os, "pidfd_open"):
                         assert self._pid > 0
-                        assert timeout is not None
 
                         try:
                             pidfd = os.pidfd_open(self._pid)  # pylint: disable=no-member
@@ -598,10 +605,14 @@ class Process:  # pylint: disable=too-many-instance-attributes
                             pass
                         else:
                             remaining_time = (
-                                (start_time + timeout) - time.monotonic() if timeout > 0 else 0
+                                None
+                                if timeout is None
+                                else max((start_time + timeout) - time.monotonic(), 0)
+                                if timeout > 0
+                                else 0
                             )
 
-                            readfds, _, _ = select.select([pidfd], [], [], max(remaining_time, 0))
+                            readfds, _, _ = select.select([pidfd], [], [], remaining_time)
                             os.close(pidfd)
                             if not readfds:
                                 # Timeout expired, and still not dead
@@ -612,12 +623,8 @@ class Process:  # pylint: disable=too-many-instance-attributes
                             # Dead, but now it may be a zombie, so we need to keep watching it
                             # Fall through to the normal monitoring code
 
-                    # Switch to pid_exists()
-                    is_child = False
-                    # Restart the loop so it gets checked immediately, not 0.01 seconds from now
-                    continue
+                    tried_pidfd = True
 
-            else:
                 if not pid_exists(self._pid):
                     with self._lock, self._exitcode_lock:
                         return self._exitcode
