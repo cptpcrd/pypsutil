@@ -37,7 +37,7 @@ def test_cmdline_pid_0() -> None:
 
 
 @linux_only
-def test_exe_no_exist(tmp_path: pathlib.Path) -> None:
+def test_cmdline_empty(tmp_path: pathlib.Path) -> None:
     populate_directory(
         str(tmp_path),
         {
