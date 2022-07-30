@@ -18,10 +18,13 @@ def test_environ() -> None:
     ) as proc:
         proc_env = proc.environ()
 
-    # Check that env is a subset of proc.environ()
-    # On macOS, proc.environ() includes some extra ifnormation
-    for name in env:  # pylint: disable=consider-using-dict-items
-        assert env[name] == proc_env[name]
+    if pypsutil.MACOS:
+        # On macOS, proc.environ() includes some extra information
+        # Check that env is a subset of proc.environ()
+        for name, val in env.items():
+            assert val == proc_env[name]
+    else:
+        assert env == proc_env
 
 
 def test_environ_no_proc() -> None:
