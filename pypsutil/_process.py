@@ -903,29 +903,29 @@ def wait_procs(
     if not alive:
         return gone, alive
 
-    elif len(alive) == 1:
-        # Only one process left; Process.wait() may be able to optimize.
-        proc = alive[0]
-
-        try:
-            res = proc.wait(timeout=timeout)
-        except TimeoutExpired:
-            pass
-        else:
-            if not isinstance(proc, Popen):
-                proc.returncode = res
-
-            if callback is not None:
-                callback(proc)
-
-            alive = []
-            gone.append(proc)
-
-        return gone, alive
-
     nonchildren = set()
 
     while True:
+        if len(alive) == 1:
+            # Only one process left; Process.wait() may be able to optimize.
+            proc = alive[0]
+
+            try:
+                res = proc.wait(timeout=timeout)
+            except TimeoutExpired:
+                pass
+            else:
+                if not isinstance(proc, Popen):
+                    proc.returncode = res
+
+                if callback is not None:
+                    callback(proc)
+
+                alive.remove(proc)
+                gone.append(proc)
+
+            return gone, alive
+
         for proc in list(alive):
             res = None
             dead = False
