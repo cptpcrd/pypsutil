@@ -314,7 +314,11 @@ def _get_proc_status_entry(proc: "Process", name: str) -> str:
 
 
 def pid_raw_create_time(pid: int) -> float:
-    ctime_ticks = int(_get_pid_stat_fields(pid)[21])
+    return _extract_create_time(_get_pid_stat_fields(pid))
+
+
+def _extract_create_time(stat_fields: List[str]) -> float:
+    ctime_ticks = int(stat_fields[21])
     return ctime_ticks / _util.CLK_TCK
 
 
@@ -1217,7 +1221,9 @@ def iter_pids() -> Iterator[int]:
             pass
 
 
-def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple[int, float]]:
+def iter_pid_raw_create_time(
+    *, ppids: Optional[Set[int]] = None, skip_perm_error: bool = False
+) -> Iterator[Tuple[int, float]]:
     for name in os.listdir(_util.get_procfs_path()):
         try:
             pid = int(name)
@@ -1225,7 +1231,7 @@ def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple
             continue
 
         try:
-            ctime = pid_raw_create_time(pid)
+            stat_fields = _get_pid_stat_fields(pid)
         except ProcessLookupError:
             continue
         except PermissionError as ex:
@@ -1234,6 +1240,10 @@ def iter_pid_raw_create_time(*, skip_perm_error: bool = False) -> Iterator[Tuple
             else:
                 raise AccessDenied(pid=pid) from ex
 
+        if ppids is not None and int(stat_fields[3]) not in ppids:
+            continue
+
+        ctime = _extract_create_time(stat_fields)
         yield (pid, ctime)
 
 

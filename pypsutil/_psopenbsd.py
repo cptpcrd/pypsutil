@@ -5,7 +5,7 @@ import errno
 import os
 import socket
 import time
-from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from . import _bsd, _cache, _psposix, _util
 from ._util import (
@@ -613,9 +613,13 @@ def _list_kinfo_files(pid: int) -> List[KinfoFile]:
 
 def iter_pid_raw_create_time(
     *,
+    ppids: Optional[Set[int]] = None,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
+        if ppids is not None and kinfo.p_ppid not in ppids:
+            continue
+
         yield kinfo.p_pid, cast(float, kinfo.p_ustart_sec + kinfo.p_ustart_usec / 1000000.0)
 
 
@@ -1015,12 +1019,6 @@ def proc_sid(proc: "Process") -> int:
             pass
 
     return cast(int, _get_kinfo_proc(proc).p_sid)
-
-
-def proc_child_pids(proc: "Process") -> Iterator[int]:
-    for kinfo in _list_kinfo_procs():
-        if kinfo.p_ppid == proc.pid:
-            yield kinfo.p_pid
 
 
 def proc_getpriority(proc: "Process") -> int:

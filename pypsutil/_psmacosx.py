@@ -1087,9 +1087,13 @@ def _get_proc_thread_info(proc: "Process", tid: int) -> ProcThreadInfo:
 
 def iter_pid_raw_create_time(
     *,
+    ppids: Optional[Set[int]] = None,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
+        if ppids is not None and kinfo.kp_proc.p_ppid not in ppids:
+            continue
+
         yield kinfo.kp_proc.p_pid, kinfo.kp_proc.p_un.p_starttime.to_float()
 
 

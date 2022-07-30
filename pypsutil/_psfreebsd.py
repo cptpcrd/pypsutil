@@ -1109,9 +1109,13 @@ def _iter_xfiles() -> Iterator[XFile]:
 
 def iter_pid_raw_create_time(
     *,
+    ppids: Optional[Set[int]] = None,
     skip_perm_error: bool = False,  # pylint: disable=unused-argument
 ) -> Iterator[Tuple[int, float]]:
     for kinfo in _list_kinfo_procs():
+        if ppids is not None and kinfo.ki_ppid not in ppids:
+            continue
+
         yield kinfo.ki_pid, kinfo.ki_start.to_float()
 
 
@@ -1796,12 +1800,6 @@ def proc_sid(proc: "Process") -> int:
         return cast(int, _get_kinfo_proc(proc).ki_sid)
     else:
         return _psposix.proc_sid(proc)
-
-
-def proc_child_pids(proc: "Process") -> Iterator[int]:
-    for kinfo in _list_kinfo_procs():
-        if kinfo.ki_ppid == proc.pid:
-            yield kinfo.ki_pid
 
 
 def proc_getpriority(proc: "Process") -> int:
