@@ -7,13 +7,18 @@ task:
 
   matrix:
     - env:
-        FREEBSD_VERSION: 12.2
-        FREEBSD_IMAGE: freebsd-12-2
+        FREEBSD_VERSION: 12.3
+        FREEBSD_IMAGE: freebsd-12-3
     - env:
-        FREEBSD_VERSION: 13.0
-        FREEBSD_IMAGE: freebsd-13-0
+        FREEBSD_VERSION: 13.1
+        FREEBSD_IMAGE: freebsd-13-1
 
   matrix:
+    - env:
+        PYTHON_VERSION: 3.10
+        PYTHON_PORT_NAMES: python310 py310-sqlite3
+        PYTHON_EXE: python3.10
+        PIP_EXE: python3.10 -m pip
     - env:
         PYTHON_VERSION: 3.9
         PYTHON_PORT_NAMES: python39 py39-sqlite3
@@ -41,7 +46,7 @@ task:
         $PIP_EXE install -U pip
       fi
     - $PIP_EXE install pipenv
-    - pipenv install --dev --deploy
+    - pipenv install --python $PYTHON_EXE --dev --deploy
 
   test_script:
     - pipenv run pytest --cov-report=xml --verbose --showlocals tests/
