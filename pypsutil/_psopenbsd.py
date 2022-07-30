@@ -83,7 +83,7 @@ KI_EMULNAMELEN = 8
 KI_MNAMELEN = 96
 KI_UNPPATHLEN = 104
 
-KI_NOCPU = 2 ** 64 - 1
+KI_NOCPU = 2**64 - 1
 
 time_t = ctypes.c_int64  # pylint: disable=invalid-name
 suseconds_t = ctypes.c_long  # pylint: disable=invalid-name
@@ -718,7 +718,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fdtype = ProcessFdType.UNKNOWN
 
         # Map F* flags to O_* flags
-        flags = kfile.f_flag & ~os.O_ACCMODE  # type: ignore[attr-defined]
+        flags = kfile.f_flag & ~os.O_ACCMODE
         if kfile.f_flag & 3:
             flags |= (kfile.f_flag & 3) - 1
 
@@ -1034,7 +1034,7 @@ def proc_getpriority(proc: "Process") -> int:
 
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc(proc).p_tdev
-    return tdev if tdev != 2 ** 32 - 1 else None
+    return tdev if tdev != 2**32 - 1 else None
 
 
 def proc_cpu_num(proc: "Process") -> int:

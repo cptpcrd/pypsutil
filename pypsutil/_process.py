@@ -98,7 +98,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
     def _create(cls, pid: int, raw_create_time: float) -> "Process":
         proc = object.__new__(cls)
         proc._raw_create_time = raw_create_time  # pylint: disable=protected-access
-        proc.__init__(pid)
+        proc.__init__(pid)  # pylint: disable=unnecessary-dunder-call
         return cast(Process, proc)
 
     def _get_cache(self, name: str) -> Any:

@@ -55,10 +55,10 @@ if hasattr(pypsutil.Process, "rlimit"):
             proc.rlimit(max(RESOURCE_NUMS) + 1)
 
         with pytest.raises(OverflowError):
-            proc.rlimit(resource.RLIMIT_NOFILE, (2 ** 64, -1))
+            proc.rlimit(resource.RLIMIT_NOFILE, (2**64, -1))
 
         with pytest.raises(OverflowError):
-            proc.rlimit(resource.RLIMIT_NOFILE, (2 ** 31 - 1, 2 ** 64))
+            proc.rlimit(resource.RLIMIT_NOFILE, (2**31 - 1, 2**64))
 
 
 if hasattr(pypsutil.Process, "getrlimit"):

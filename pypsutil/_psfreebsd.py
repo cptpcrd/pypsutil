@@ -139,7 +139,7 @@ XSWDEV_VERSION = 2
 gid_t = ctypes.c_uint32  # pylint: disable=invalid-name
 rlim_t = ctypes.c_int64  # pylint: disable=invalid-name
 
-if sys.maxsize > 2 ** 32 or os.uname().machine.startswith("riscv"):
+if sys.maxsize > 2**32 or os.uname().machine.startswith("riscv"):
     # 64-bit or RISCV
     vm_size_t = ctypes.c_uint64
     segsz_t = ctypes.c_int64
@@ -155,7 +155,7 @@ dev_t = ctypes.c_uint64
 
 off_t = ctypes.c_int64
 
-if os.uname().machine.startswith("x86") and sys.maxsize <= 2 ** 32:
+if os.uname().machine.startswith("x86") and sys.maxsize <= 2**32:
     # x86, 32-bit
     time_t = ctypes.c_int32
 else:
@@ -479,10 +479,10 @@ class KinfoProc(ctypes.Structure):
     def get_tdev(self) -> Optional[int]:
         if self.ki_tdev:
             tdev = cast(int, self.ki_tdev)
-            NODEV = 2 ** 64 - 1
+            NODEV = 2**64 - 1
         else:
             tdev = cast(int, self.ki_tdev_freebsd11)
-            NODEV = 2 ** 32 - 1
+            NODEV = 2**32 - 1
 
         return tdev if tdev != NODEV else None
 
@@ -1279,11 +1279,11 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
         rdev = None
         if rdev_options is not None:
             if rdev_options[0]:
-                if rdev_options[0] == 2 ** 64 - 1:
+                if rdev_options[0] == 2**64 - 1:
                     rdev = -1
                 else:
                     rdev = rdev_options[0]
-            elif rdev_options[1] == 2 ** 32 - 1:
+            elif rdev_options[1] == 2**32 - 1:
                 rdev = -1
             else:
                 rdev = rdev_options[1]
@@ -1346,9 +1346,9 @@ def proc_connections(proc: "Process", kind: str) -> Iterator[Connection]:
         return
 
     tcp_states = None
+    seen_any = False
 
     try:
-        seen_any = False
         for kfile in _iter_kinfo_files(proc):
             seen_any = True
 

@@ -9,14 +9,14 @@ typing-extensions = ">=3.10.0"
 
 [dev-packages]
 flake8 = "~=4.0.1"
-pylint = "~=2.12.2"
-mypy = "~=0.931"
+pylint = "~=2.14.5"
+mypy = "~=0.971"
 
 isort = "~=5.10.1"
-black = "==21.12b0"
+black = "==22.6.0"
 autopep8 = "~=1.6.0"
 
-pytest = "~=6.2.5"
+pytest = "~=7.1.2"
 pytest-cov = "~=3.0.0"
 
 # Required by pytest, but not properly pulled in by Pipenv

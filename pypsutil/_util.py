@@ -423,12 +423,12 @@ def parse_environ_bytes(env: bytes) -> Dict[str, str]:
 
 
 def flags_to_mode(flags: int) -> str:
-    if flags & os.O_ACCMODE == os.O_WRONLY:  # type: ignore[attr-defined]
+    if flags & os.O_ACCMODE == os.O_WRONLY:
         if flags & os.O_APPEND == os.O_APPEND:
             return "a"
         else:
             return "w"
-    elif flags & os.O_ACCMODE == os.O_RDWR:  # type: ignore[attr-defined]
+    elif flags & os.O_ACCMODE == os.O_RDWR:
         if flags & os.O_APPEND == os.O_APPEND:
             return "a+"
         else:

@@ -95,7 +95,7 @@ KI_MAXLOGNAME = 24
 KI_MAXEMULLEN = 16
 KI_LNAMELEN = 20
 
-KI_NOCPU = 2 ** 64 - 1
+KI_NOCPU = 2**64 - 1
 
 rlim_t = ctypes.c_uint64  # pylint: disable=invalid-name
 
@@ -823,7 +823,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             fdtype = ProcessFdType.UNKNOWN
 
         # Map F* flags to O_* flags
-        flags = kfile.ki_flag & ~os.O_ACCMODE  # type: ignore[attr-defined]
+        flags = kfile.ki_flag & ~os.O_ACCMODE
         if kfile.ki_flag & 3:
             flags |= (kfile.ki_flag & 3) - 1
 
@@ -1146,7 +1146,7 @@ def proc_getpriority(proc: "Process") -> int:
 
 def proc_tty_rdev(proc: "Process") -> Optional[int]:
     tdev = _get_kinfo_proc2(proc).p_tdev
-    return tdev if tdev != 2 ** 32 - 1 else None
+    return tdev if tdev != 2**32 - 1 else None
 
 
 def proc_cpu_num(proc: "Process") -> int:

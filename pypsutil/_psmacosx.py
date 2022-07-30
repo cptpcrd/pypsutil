@@ -1408,7 +1408,7 @@ def proc_iter_fds(proc: "Process") -> Iterator[ProcessFd]:
             offset = pfi.fi_offset
 
             # Map F* flags to O_* flags
-            flags = pfi.fi_openflags & ~os.O_ACCMODE  # type: ignore[attr-defined]
+            flags = pfi.fi_openflags & ~os.O_ACCMODE
             if pfi.fi_openflags & 3:
                 flags |= (pfi.fi_openflags & 3) - 1
 
@@ -1848,7 +1848,7 @@ def percpu_times() -> List[CPUTimes]:
     with _managed_port(libc.mach_host_self()) as host:
         pcount = natural_t()
 
-        ticks = ctypes.POINTER(ctypes.c_uint)()
+        ticks = ctypes.POINTER(ctypes.c_uint)()  # type: ignore[call-arg]
         tickcount = mach_msg_type_number_t(0)  # pylint: disable=no-member
 
         _check_kernerror(
@@ -1862,12 +1862,7 @@ def percpu_times() -> List[CPUTimes]:
         )
 
         times = [
-            CPUTimes(
-                *(
-                    int(item) / _util.CLK_TCK  # type: ignore[call-overload]
-                    for item in ticks[i * 4: i * 4 + 4]
-                )
-            )
+            CPUTimes(*(int(item) / _util.CLK_TCK for item in ticks[i * 4: i * 4 + 4]))
             for i in range(pcount.value)
         ]
 

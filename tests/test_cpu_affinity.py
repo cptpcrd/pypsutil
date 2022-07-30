@@ -60,7 +60,7 @@ def test_setaffinity_errors() -> None:
         pypsutil.Process().cpu_setaffinity([-1])
 
     with pytest.raises((ValueError, OverflowError)):
-        pypsutil.Process().cpu_setaffinity([2 ** 32])
+        pypsutil.Process().cpu_setaffinity([2**32])
 
 
 @pytest.mark.skipif(
