@@ -9,6 +9,7 @@ import datetime
 import os
 import pwd
 import resource
+import select
 import shutil
 import signal
 import subprocess
@@ -20,9 +21,6 @@ from . import _system, _util
 from ._detect import _psimpl
 from ._errors import AccessDenied, NoSuchProcess, TimeoutExpired, ZombieProcess
 from ._util import translate_proc_errors
-
-if hasattr(os, "pidfd_open"):
-    import select
 
 ThreadInfo = _util.ThreadInfo
 
@@ -546,7 +544,6 @@ class Process:  # pylint: disable=too-many-instance-attributes
 
         # Assume it's a child of the current process by default
         is_child = self._pid > 0
-        tried_pidfd = False
 
         if timeout is None and self._pid > 0:
             # Wait with no timeout
@@ -582,6 +579,65 @@ class Process:  # pylint: disable=too-many-instance-attributes
                 # We already checked is_running(), so we know it's still running
                 raise TimeoutExpired(timeout, pid=self._pid)  # pylint: disable=raise-missing-from
 
+        # On Linux 5.3+ (and Python 3.9+), pidfd_open() may avoid a busy loop
+        if hasattr(os, "pidfd_open") and self._pid > 0:
+            assert self._pid > 0
+
+            try:
+                pidfd = os.pidfd_open(self._pid)  # pylint: disable=no-member
+            except OSError:
+                pass
+            else:
+                remaining_time = (
+                    None
+                    if timeout is None
+                    else max((start_time + timeout) - time.monotonic(), 0)
+                    if timeout > 0
+                    else 0
+                )
+
+                readfds, _, _ = select.select([pidfd], [], [], remaining_time)
+                os.close(pidfd)
+                if not readfds:
+                    # Timeout expired, and still not dead
+                    raise TimeoutExpired(timeout, pid=self._pid)
+
+            # Dead, but now it may be a zombie, so we need to keep watching it
+            # Fall through to the normal monitoring code
+
+        # On macOS and the BSDs, we can do something similar with kqueue
+        elif hasattr(select, "kqueue"):
+            # pylint: disable=no-member
+            kqueue: Optional[select.kqueue] = None
+            try:
+                kqueue = select.kqueue()
+                remaining_time = (
+                    None
+                    if timeout is None
+                    else max((start_time + timeout) - time.monotonic(), 0)
+                    if timeout > 0
+                    else 0
+                )
+                events = kqueue.control(
+                    [
+                        select.kevent(
+                            self._pid, select.KQ_FILTER_PROC, fflags=select.KQ_NOTE_EXIT
+                        )
+                    ],
+                    1,
+                    remaining_time,
+                )
+                if not events:
+                    # Timeout expired, and still not dead
+                    raise TimeoutExpired(timeout, pid=self._pid)
+            except OSError:
+                pass
+            finally:
+                if kqueue is not None:
+                    kqueue.close()
+
+            # Once again, just fall through
+
         while True:
             if is_child:
                 try:
@@ -592,39 +648,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     is_child = False
                     # Restart the loop so it gets checked immediately, not 0.01 seconds from now
                     continue
-
             else:
-                if not tried_pidfd:
-                    # On Linux 5.3+ (and Python 3.9+), pidfd_open() may avoid a busy loop
-                    if hasattr(os, "pidfd_open"):
-                        assert self._pid > 0
-
-                        try:
-                            pidfd = os.pidfd_open(self._pid)  # pylint: disable=no-member
-                        except OSError:
-                            pass
-                        else:
-                            remaining_time = (
-                                None
-                                if timeout is None
-                                else max((start_time + timeout) - time.monotonic(), 0)
-                                if timeout > 0
-                                else 0
-                            )
-
-                            readfds, _, _ = select.select([pidfd], [], [], remaining_time)
-                            os.close(pidfd)
-                            if not readfds:
-                                # Timeout expired, and still not dead
-                                raise TimeoutExpired(  # pylint: disable=raise-missing-from
-                                    timeout, pid=self._pid
-                                )
-
-                            # Dead, but now it may be a zombie, so we need to keep watching it
-                            # Fall through to the normal monitoring code
-
-                    tried_pidfd = True
-
                 if not pid_exists(self._pid):
                     with self._lock, self._exitcode_lock:
                         return self._exitcode
