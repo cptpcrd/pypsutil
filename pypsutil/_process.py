@@ -619,11 +619,7 @@ class Process:  # pylint: disable=too-many-instance-attributes
                     else 0
                 )
                 events = kqueue.control(
-                    [
-                        select.kevent(
-                            self._pid, select.KQ_FILTER_PROC, fflags=select.KQ_NOTE_EXIT
-                        )
-                    ],
+                    [select.kevent(self._pid, select.KQ_FILTER_PROC, fflags=select.KQ_NOTE_EXIT)],
                     1,
                     remaining_time,
                 )
