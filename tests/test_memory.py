@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+import dataclasses
 import math
 import os
 import sys
@@ -7,7 +8,7 @@ import pytest
 
 import pypsutil
 
-from .util import get_dead_process, linux_only
+from .util import get_dead_process, linux_only, managed_child_process
 
 if hasattr(pypsutil, "virtual_memory") and hasattr(pypsutil, "swap_memory"):
 
@@ -42,6 +43,23 @@ def test_memory_info_no_proc() -> None:
 
     with pytest.raises(pypsutil.NoSuchProcess):
         proc.memory_info()
+
+
+def test_memory_full_info() -> None:
+    if pypsutil.ProcessMemoryInfo is pypsutil.ProcessMemoryFullInfo:
+        pytest.skip()
+
+    with managed_child_process([sys.executable, "-c", "time.sleep(100)"]) as proc:
+        try:
+            proc.suspend()
+            proc_meminfo = proc.memory_info()
+            proc_full_meminfo = proc.memory_full_info()
+            assert proc_meminfo.rss == proc_full_meminfo.rss
+            assert proc_meminfo.vms == proc_full_meminfo.vms
+            for field in dataclasses.fields(pypsutil.ProcessMemoryInfo):
+                assert getattr(proc_meminfo, field.name) == getattr(proc_full_meminfo, field.name)
+        finally:
+            proc.resume()
 
 
 def test_memory_percent() -> None:
