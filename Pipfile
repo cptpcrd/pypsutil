@@ -7,7 +7,7 @@ verify_ssl = true
 typing-extensions = ">=3.10.0"
 
 [dev-packages]
-flake8 = "~=4.0.1"
+flake8 = "~=5.0.4"
 pylint = "~=2.14.5"
 mypy = "~=0.971"
 
