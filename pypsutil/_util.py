@@ -324,6 +324,8 @@ class NetIOCounts:  # pylint: disable=too-many-instance-attributes
             if self_value < cache_value:
                 setattr(self, field.name, self_value + cache_value)
                 setattr(cacheobj, field.name, self_value + cache_value)
+            else:
+                setattr(cacheobj, field.name, self_value)
 
         return cacheobj
 
