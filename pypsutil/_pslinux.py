@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines,fixme
+# pylint: disable=too-many-lines
 import array
 import ctypes
 import dataclasses
@@ -46,8 +46,6 @@ from ._util import (
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
 
-
-CLOCK_BOOTTIME = getattr(time, "CLOCK_BOOTTIME", 7)  # XXX: time.CLOCK_BOOTTIME added in 3.7
 
 # O_LARGEFILE is sometimes #define'd to 0 in the headers (and the value is added in in the open(2)
 # wrapper). We need to define it manually.
@@ -1736,7 +1734,7 @@ def _internal_boot_time() -> float:
 
 
 def time_since_boot() -> float:
-    return time.clock_gettime(CLOCK_BOOTTIME)
+    return time.clock_gettime(time.CLOCK_BOOTTIME)
 
 
 def uptime() -> float:

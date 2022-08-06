@@ -4,7 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-dataclasses = {version = "~=0.8", markers = "python_version < '3.7'"}
 typing-extensions = ">=3.10.0"
 
 [dev-packages]

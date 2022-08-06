@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods,too-many-lines,fixme
+# pylint: disable=too-few-public-methods,too-many-lines
 import ctypes
 import dataclasses
 import errno
@@ -20,10 +20,6 @@ from ._util import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from ._process import Process
-
-# XXX: time.CLOCK_BOOTTIME and time.CLOCK_UPTIME added in 3.7
-CLOCK_BOOTTIME = getattr(time, "CLOCK_BOOTTIME", 6)
-CLOCK_UPTIME = getattr(time, "CLOCK_UPTIME", 5)
 
 CTL_KERN = 1
 CTL_VM = 2
@@ -1124,11 +1120,12 @@ def boot_time() -> float:
 
 
 def time_since_boot() -> float:
-    return time.clock_gettime(CLOCK_BOOTTIME)
+    return time.clock_gettime(time.CLOCK_BOOTTIME)
 
 
 def uptime() -> float:
-    return time.clock_gettime(CLOCK_UPTIME)
+    # pylint:disable=no-member
+    return time.clock_gettime(time.CLOCK_UPTIME)  # type: ignore[attr-defined]
 
 
 DiskUsage = _psposix.DiskUsage
