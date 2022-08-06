@@ -1120,7 +1120,7 @@ def boot_time() -> float:
 
 
 def time_since_boot() -> float:
-    return time.clock_gettime(time.CLOCK_BOOTTIME)
+    return cast(float, time.clock_gettime(time.CLOCK_BOOTTIME))  # type: ignore
 
 
 def uptime() -> float:
