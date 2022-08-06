@@ -1430,7 +1430,7 @@ System information
    Availability: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 
 
-.. py:function:: net_io_counters()
+.. py:function:: net_io_counters(nowrap=True)
 
    Returns a dataclass containing various network I/O statisitcs:
 
@@ -1448,19 +1448,28 @@ System information
 
    If the system has no network interfaces, returns ``None``.
 
+   If ``nowrap`` is ``True``, pypsutil will attempt to detect if these counters overflow and wrap
+   around to 0, and then adjust them to ensure that the reported values never decrease.
+
+   :param bool nowrap:
+      Whether to adjust the counters across calls to ensure that they always increase or stay the
+      same.
    :returns: A dataclass containg network I/O statistics
    :rtype: NetIOCounts or None
 
    Availability: Linux, FreeBSD
 
 
-.. py:function:: pernic_net_io_counters()
+.. py:function:: pernic_net_io_counters(nowrap=True)
 
    Identical to :py:func:`net_io_counters()`, but returns a dictionary mapping interface names to
    network I/O statistics.
 
    If the system has no network interfaces, returns an empty dict.
 
+   :param bool nowrap:
+      Whether to adjust the counters across calls to ensure that they always increase or stay the
+      same.
    :returns: A dictionary mapping interface names to :py:class:`NetIOCounts` s
    :rtype: dict[str, NetIOCounts]
 
