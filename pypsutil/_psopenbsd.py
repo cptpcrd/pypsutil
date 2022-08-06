@@ -1120,6 +1120,7 @@ def boot_time() -> float:
 
 
 def time_since_boot() -> float:
+    # pylint:disable=no-member
     return cast(float, time.clock_gettime(time.CLOCK_BOOTTIME))  # type: ignore
 
 
